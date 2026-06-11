@@ -372,8 +372,10 @@ export default function Home() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #d8e3f2",
-          background: "rgba(255,255,255,0.75)",
+          borderBottom:
+            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
+          background:
+            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
@@ -382,18 +384,25 @@ export default function Home() {
       >
         <Typography.Title
           level={isDesktop ? 3 : 4}
-          style={{ margin: 0, color: "#12325a" }}
+          style={{
+            margin: 0,
+            color: mode === "dark" ? "#e5e7eb" : "#12325a",
+          }}
         >
           Curz POS
         </Typography.Title>
         <Space size={8}>
-          <Tag color="blue">Next.js + AntD</Tag>
-          {isDesktop ? <Tag color="cyan">Supabase Ready</Tag> : null}
           <Button
-            type="text"
             icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
             onClick={toggleMode}
+            aria-label="Toggle dark mode"
           />
+          <Link href="/">
+            <Button type="primary">POS</Button>
+          </Link>
+          <Link href="/transactions">
+            <Button>Transactions</Button>
+          </Link>
         </Space>
       </Header>
       <Layout style={{ background: "transparent" }}>
