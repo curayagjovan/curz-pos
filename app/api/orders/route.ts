@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type OrderItemInput = {
@@ -97,10 +98,40 @@ export async function POST(request: Request) {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.create({
+    const itemTotalsByProduct = new Map<string, number>();
+    for (const item of items) {
+      const productId = item.productId as string;
+      const quantity = Number(item.quantity);
+      itemTotalsByProduct.set(
+        productId,
+        (itemTotalsByProduct.get(productId) ?? 0) + quantity,
+      );
+    }
+
+    const productIds = Array.from(itemTotalsByProduct.keys());
+    const stockSnapshot = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, stock: true },
+    });
+
+    const stockById = new Map(stockSnapshot.map((p) => [p.id, p]));
+    for (const [productId, quantity] of itemTotalsByProduct) {
+      const current = stockById.get(productId);
+      if (!current) {
+        throw new Error("Product not found during checkout");
+      }
+      if (status === "PAID" && current.stock < quantity) {
+        throw new Error(`Insufficient stock for ${current.name}`);
+      }
+    }
+
+    const orderId = crypto.randomUUID();
+    const orderNo = createOrderNo();
+    const operations: Prisma.PrismaPromise<unknown>[] = [
+      prisma.order.create({
         data: {
-          orderNo: createOrderNo(),
+          id: orderId,
+          orderNo,
           status,
           subtotal,
           tax,
@@ -116,31 +147,36 @@ export async function POST(request: Request) {
             })),
           },
         },
-      });
+        select: {
+          id: true,
+          orderNo: true,
+          status: true,
+          subtotal: true,
+          tax: true,
+          total: true,
+          note: true,
+          createdAt: true,
+        },
+      }),
+    ];
 
-      if (status === "PAID") {
-        for (const item of items) {
-          const productId = item.productId as string;
-          const quantity = Number(item.quantity);
+    if (status === "PAID") {
+      for (const [productId, quantity] of itemTotalsByProduct) {
+        const current = stockById.get(productId);
+        if (!current) {
+          continue;
+        }
 
-          const current = await tx.product.findUnique({
-            where: { id: productId },
-          });
-          if (!current) {
-            throw new Error("Product not found during checkout");
-          }
-
-          if (current.stock < quantity) {
-            throw new Error(`Insufficient stock for ${current.name}`);
-          }
-
-          const newStock = current.stock - quantity;
-          await tx.product.update({
+        const newStock = current.stock - quantity;
+        operations.push(
+          prisma.product.update({
             where: { id: productId },
             data: { stock: newStock },
-          });
+          }),
+        );
 
-          await tx.inventoryMovement.create({
+        operations.push(
+          prisma.inventoryMovement.create({
             data: {
               productId,
               movementType: "SALE",
@@ -148,15 +184,15 @@ export async function POST(request: Request) {
               previousStock: current.stock,
               newStock,
               referenceType: "ORDER",
-              referenceId: order.id,
-              note: `Checkout sale (${order.orderNo})`,
+              referenceId: orderId,
+              note: `Checkout sale (${orderNo})`,
             },
-          });
-        }
+          }),
+        );
       }
+    }
 
-      return order;
-    });
+    const [result] = await prisma.$transaction(operations);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
