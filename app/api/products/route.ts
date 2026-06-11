@@ -1,6 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function normalizeSkuBase(value: string) {
+  return (
+    value
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "PRODUCT"
+  );
+}
+
+async function getNextSequentialSku(baseInput: string) {
+  const base = normalizeSkuBase(baseInput);
+  const existing = await prisma.product.findMany({
+    where: { sku: { startsWith: `${base}-` } },
+    select: { sku: true },
+  });
+
+  let maxSequence = 0;
+  for (const item of existing) {
+    const match = item.sku.match(new RegExp(`^${base}-(\\d+)$`));
+    if (!match) {
+      continue;
+    }
+
+    const sequence = Number(match[1]);
+    if (!Number.isNaN(sequence) && sequence > maxSequence) {
+      maxSequence = sequence;
+    }
+  }
+
+  return `${base}-${String(maxSequence + 1).padStart(3, "0")}`;
+}
+
 export async function GET() {
   try {
     const products = await prisma.product.findMany({
@@ -28,14 +63,13 @@ export async function POST(request: Request) {
       stock?: number;
     };
 
-    const sku = body.sku?.trim();
+    const rawSku = body.sku?.trim();
     const name = body.name?.trim();
     const description = body.description?.trim();
     const price = Number(body.price);
     const stock = Number(body.stock ?? 0);
 
     if (
-      !sku ||
       !name ||
       Number.isNaN(price) ||
       price < 0 ||
@@ -44,15 +78,55 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          message: "Invalid payload. sku, name, price, and stock are required.",
+          message: "Invalid payload. name, price, and stock are required.",
         },
         { status: 400 },
       );
     }
 
+    const baseForSequence = rawSku?.replace(/-\d+$/, "") || name;
+    const isSequentialPattern = !rawSku || /-\d+$/.test(rawSku);
+
+    if (isSequentialPattern) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const nextSku = await getNextSequentialSku(baseForSequence);
+
+        try {
+          const product = await prisma.product.create({
+            data: {
+              sku: nextSku,
+              name,
+              description: description || null,
+              price,
+              stock,
+              isActive: true,
+            },
+          });
+
+          return NextResponse.json(product, { status: 201 });
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { code?: string }).code === "P2002"
+          ) {
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      return NextResponse.json(
+        { message: "Unable to generate a unique SKU. Please try again." },
+        { status: 409 },
+      );
+    }
+
     const product = await prisma.product.create({
       data: {
-        sku,
+        sku: rawSku,
         name,
         description: description || null,
         price,

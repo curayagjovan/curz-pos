@@ -12,6 +12,7 @@ import {
   InputNumber,
   Layout,
   Space,
+  Switch,
   Typography,
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
@@ -26,10 +27,25 @@ type ProductFormValues = {
   stock: number;
 };
 
+function createSkuFromName(name: string) {
+  const base = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `${base || "PRODUCT"}-001`;
+}
+
 export default function AddProductPage() {
   const { message } = App.useApp();
   const router = useRouter();
+  const [form] = Form.useForm<ProductFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const [skuEditable, setSkuEditable] = useState(false);
+  const [skuManuallyEdited, setSkuManuallyEdited] = useState(false);
 
   const onSubmit = async (values: ProductFormValues) => {
     try {
@@ -91,16 +107,38 @@ export default function AddProductPage() {
       >
         <Card>
           <Form<ProductFormValues>
+            form={form}
             layout="vertical"
             onFinish={onSubmit}
             initialValues={{ stock: 0, price: 0 }}
           >
             <Form.Item
-              label="SKU"
+              label={
+                <Space size={8}>
+                  <span>SKU</span>
+                  <Switch
+                    size="small"
+                    checked={skuEditable}
+                    onChange={(checked) => {
+                      setSkuEditable(checked);
+                      if (!checked) {
+                        setSkuManuallyEdited(false);
+                      }
+                    }}
+                  />
+                  <Typography.Text type="secondary">
+                    Unlock edit
+                  </Typography.Text>
+                </Space>
+              }
               name="sku"
               rules={[{ required: true, message: "Please enter SKU" }]}
             >
-              <Input placeholder="e.g. MILK-001" />
+              <Input
+                placeholder="e.g. MILK-001"
+                onChange={() => setSkuManuallyEdited(true)}
+                disabled={!skuEditable}
+              />
             </Form.Item>
 
             <Form.Item
@@ -108,7 +146,19 @@ export default function AddProductPage() {
               name="name"
               rules={[{ required: true, message: "Please enter product name" }]}
             >
-              <Input placeholder="e.g. Fresh Milk" />
+              <Input
+                placeholder="e.g. Fresh Milk"
+                onChange={(event) => {
+                  if (skuManuallyEdited) {
+                    return;
+                  }
+
+                  form.setFieldValue(
+                    "sku",
+                    createSkuFromName(event.target.value),
+                  );
+                }}
+              />
             </Form.Item>
 
             <Form.Item label="Description" name="description">

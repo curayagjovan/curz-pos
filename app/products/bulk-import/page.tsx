@@ -185,8 +185,9 @@ export default function BulkImportPage() {
                 Upload CSV File
               </Typography.Title>
               <Typography.Text type="secondary">
-                CSV must have columns: sku, name, price, stock (description is
-                optional)
+                CSV must have columns: name, price, stock (sku and description
+                are optional). Existing SKU entries will add stock and refresh
+                price.
               </Typography.Text>
 
               <Upload.Dragger

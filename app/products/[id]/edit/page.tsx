@@ -13,6 +13,7 @@ import {
   Layout,
   Skeleton,
   Space,
+  Switch,
   Typography,
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
@@ -44,6 +45,7 @@ export default function EditProductPage() {
   const [form] = Form.useForm<ProductFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [skuEditable, setSkuEditable] = useState(false);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -137,77 +139,91 @@ export default function EditProductPage() {
         style={{ padding: 14, maxWidth: 720, width: "100%", margin: "0 auto" }}
       >
         <Card>
-          {loading ? (
-            <Skeleton active paragraph={{ rows: 7 }} />
-          ) : (
-            <Form<ProductFormValues>
-              form={form}
-              layout="vertical"
-              onFinish={onSubmit}
-            >
-              <Form.Item
-                label="SKU"
-                name="sku"
-                rules={[{ required: true, message: "Please enter SKU" }]}
-              >
-                <Input placeholder="e.g. MILK-001" />
-              </Form.Item>
+          <Form<ProductFormValues>
+            form={form}
+            layout="vertical"
+            onFinish={onSubmit}
+          >
+            {loading ? (
+              <Skeleton active paragraph={{ rows: 7 }} />
+            ) : (
+              <>
+                <Form.Item
+                  label={
+                    <Space size={8}>
+                      <span>SKU</span>
+                      <Switch
+                        size="small"
+                        checked={skuEditable}
+                        onChange={(checked) => setSkuEditable(checked)}
+                      />
+                      <Typography.Text type="secondary">
+                        Unlock edit
+                      </Typography.Text>
+                    </Space>
+                  }
+                  name="sku"
+                  rules={[{ required: true, message: "Please enter SKU" }]}
+                >
+                  <Input disabled={!skuEditable} placeholder="e.g. MILK-001" />
+                </Form.Item>
 
-              <Form.Item
-                label="Name"
-                name="name"
-                rules={[
-                  { required: true, message: "Please enter product name" },
-                ]}
-              >
-                <Input placeholder="e.g. Fresh Milk" />
-              </Form.Item>
+                <Form.Item
+                  label="Name"
+                  name="name"
+                  rules={[
+                    { required: true, message: "Please enter product name" },
+                  ]}
+                >
+                  <Input placeholder="e.g. Fresh Milk" />
+                </Form.Item>
 
-              <Form.Item label="Description" name="description">
-                <Input.TextArea
-                  autoSize={{ minRows: 2, maxRows: 4 }}
-                  placeholder="Optional details"
-                />
-              </Form.Item>
+                <Form.Item label="Description" name="description">
+                  <Input.TextArea
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    placeholder="Optional details"
+                  />
+                </Form.Item>
 
-              <Form.Item
-                label="Price (Peso)"
-                name="price"
-                rules={[{ required: true, message: "Please enter price" }]}
-              >
-                <InputNumber<number>
-                  style={{ width: "100%" }}
-                  min={0}
-                  step={0.01}
-                  precision={2}
-                  prefix="₱"
-                />
-              </Form.Item>
+                <Form.Item
+                  label="Price (Peso)"
+                  name="price"
+                  rules={[{ required: true, message: "Please enter price" }]}
+                >
+                  <InputNumber<number>
+                    style={{ width: "100%" }}
+                    min={0}
+                    step={0.01}
+                    precision={2}
+                    prefix="₱"
+                  />
+                </Form.Item>
 
-              <Form.Item
-                label="Stock"
-                name="stock"
-                rules={[{ required: true, message: "Please enter stock" }]}
-              >
-                <InputNumber<number>
-                  style={{ width: "100%" }}
-                  min={0}
-                  step={1}
-                />
-              </Form.Item>
+                <Form.Item
+                  label="Stock"
+                  name="stock"
+                  rules={[{ required: true, message: "Please enter stock" }]}
+                >
+                  <InputNumber<number>
+                    style={{ width: "100%" }}
+                    min={0}
+                    step={1}
+                  />
+                </Form.Item>
 
-              <Button
-                htmlType="submit"
-                type="primary"
-                size="large"
-                icon={<SaveOutlined />}
-                loading={submitting}
-                block
-              >
-                Update Product
-              </Button>
-            </Form>
-          )}
+                <Button
+                  htmlType="submit"
+                  type="primary"
+                  size="large"
+                  icon={<SaveOutlined />}
+                  loading={submitting}
+                  block
+                >
+                  Update Product
+                </Button>
+              </>
+            )}
+          </Form>
         </Card>
       </Content>
     </Layout>
