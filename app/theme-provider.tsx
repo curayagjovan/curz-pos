@@ -21,12 +21,28 @@ type ThemeProviderProps = {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [mode, setModeState] = useState<ThemeMode>("light");
+  const [hydratedFromSettings, setHydratedFromSettings] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const loadThemeMode = async () => {
+      try {
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (response.ok) {
+          const data = (await response.json()) as { themeMode?: ThemeMode };
+          if (data.themeMode === "light" || data.themeMode === "dark") {
+            setModeState(data.themeMode);
+            setHydratedFromSettings(true);
+            return;
+          }
+        }
+      } catch {
+        // Ignore and fallback to local preference.
+      }
+
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved === "light" || saved === "dark") {
         setModeState(saved);
+        setHydratedFromSettings(true);
         return;
       }
 
@@ -34,15 +50,26 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         "(prefers-color-scheme: dark)",
       ).matches;
       setModeState(prefersDark ? "dark" : "light");
-    }, 0);
+      setHydratedFromSettings(true);
+    };
 
-    return () => window.clearTimeout(timer);
+    void loadThemeMode();
   }, []);
 
   useEffect(() => {
+    if (!hydratedFromSettings) {
+      return;
+    }
+
     document.documentElement.setAttribute("data-theme", mode);
     window.localStorage.setItem(STORAGE_KEY, mode);
-  }, [mode]);
+
+    void fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ themeMode: mode }),
+    });
+  }, [mode, hydratedFromSettings]);
 
   const value = useMemo(
     () => ({

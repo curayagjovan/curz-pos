@@ -22,6 +22,7 @@ const { Header, Content } = Layout;
 type ProductFormValues = {
   sku: string;
   name: string;
+  unit?: string;
   description?: string;
   cost?: number;
   markupPercent?: number;
@@ -52,6 +53,8 @@ export default function AddProductPage() {
   const [skuEditable, setSkuEditable] = useState(false);
   const [skuManuallyEdited, setSkuManuallyEdited] = useState(false);
   const [bundleEnabled, setBundleEnabled] = useState(false);
+  const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
+  const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
   const cost = Form.useWatch("cost", form);
   const markupPercent = Form.useWatch("markupPercent", form);
   const bundleQty = Form.useWatch("bundleQty", form);
@@ -71,6 +74,29 @@ export default function AddProductPage() {
 
     return Number((baseCost * (1 + markup / 100)).toFixed(2));
   }, [cost, markupPercent]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoadingGlobalMarkup(true);
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          globalMarkupPercent?: number;
+        };
+        const markup = Number(data.globalMarkupPercent ?? 0);
+        setGlobalMarkupPercent(markup);
+        form.setFieldsValue({ markupPercent: markup });
+      } finally {
+        setLoadingGlobalMarkup(false);
+      }
+    };
+
+    void loadSettings();
+  }, [form]);
 
   useEffect(() => {
     if (calculatedPrice === null) {
@@ -115,6 +141,7 @@ export default function AddProductPage() {
       const payload = {
         sku: values.sku,
         name: values.name,
+        unit: values.unit,
         description: values.description,
         cost: values.cost ?? 0,
         markupPercent: values.markupPercent ?? 0,
@@ -190,7 +217,7 @@ export default function AddProductPage() {
               stock: 0,
               price: 0,
               cost: 0,
-              markupPercent: 0,
+              markupPercent: undefined,
               bundleQty: null,
               bundleMarkdownPercent: null,
               bundlePrice: null,
@@ -252,6 +279,10 @@ export default function AddProductPage() {
               />
             </Form.Item>
 
+            <Form.Item label="Unit" name="unit">
+              <Input placeholder="e.g. PCS, PACK, BOT" />
+            </Form.Item>
+
             <Form.Item label="Cost (Peso)" name="cost">
               <InputNumber<number>
                 style={{ width: "100%" }}
@@ -263,12 +294,29 @@ export default function AddProductPage() {
             </Form.Item>
 
             <Form.Item label="Markup (%)" name="markupPercent">
-              <InputNumber<number>
-                style={{ width: "100%" }}
-                min={0}
-                step={0.01}
-                precision={2}
-              />
+              <Space style={{ width: "100%" }}>
+                <InputNumber<number>
+                  style={{ flex: 1 }}
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  value={markupPercent}
+                  onChange={(value) =>
+                    form.setFieldValue("markupPercent", value ?? 0)
+                  }
+                />
+                {markupPercent !== globalMarkupPercent && (
+                  <Button
+                    onClick={() =>
+                      form.setFieldValue("markupPercent", globalMarkupPercent)
+                    }
+                    loading={loadingGlobalMarkup}
+                    disabled={loadingGlobalMarkup || globalMarkupPercent === 0}
+                  >
+                    Apply Global ({globalMarkupPercent.toFixed(2)}%)
+                  </Button>
+                )}
+              </Space>
             </Form.Item>
 
             <Space
