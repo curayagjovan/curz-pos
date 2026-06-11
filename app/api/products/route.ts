@@ -92,32 +92,25 @@ export async function POST(request: Request) {
         const nextSku = await getNextSequentialSku(baseForSequence);
 
         try {
-          const product = await prisma.$transaction(async (tx) => {
-            const created = await tx.product.create({
-              data: {
-                sku: nextSku,
-                name,
-                description: description || null,
-                price,
-                stock,
-                isActive: true,
+          const product = await prisma.product.create({
+            data: {
+              sku: nextSku,
+              name,
+              description: description || null,
+              price,
+              stock,
+              isActive: true,
+              inventoryMovements: {
+                create: {
+                  movementType: "RESTOCK",
+                  quantityDelta: stock,
+                  previousStock: 0,
+                  newStock: stock,
+                  referenceType: "PRODUCT_CREATE",
+                  note: `Initial stock for ${nextSku}`,
+                },
               },
-            });
-
-            await tx.inventoryMovement.create({
-              data: {
-                productId: created.id,
-                movementType: "RESTOCK",
-                quantityDelta: stock,
-                previousStock: 0,
-                newStock: stock,
-                referenceType: "PRODUCT_CREATE",
-                referenceId: created.id,
-                note: `Initial stock for ${nextSku}`,
-              },
-            });
-
-            return created;
+            },
           });
 
           return NextResponse.json(product, { status: 201 });
@@ -141,32 +134,25 @@ export async function POST(request: Request) {
       );
     }
 
-    const product = await prisma.$transaction(async (tx) => {
-      const created = await tx.product.create({
-        data: {
-          sku: rawSku,
-          name,
-          description: description || null,
-          price,
-          stock,
-          isActive: true,
+    const product = await prisma.product.create({
+      data: {
+        sku: rawSku,
+        name,
+        description: description || null,
+        price,
+        stock,
+        isActive: true,
+        inventoryMovements: {
+          create: {
+            movementType: "RESTOCK",
+            quantityDelta: stock,
+            previousStock: 0,
+            newStock: stock,
+            referenceType: "PRODUCT_CREATE",
+            note: `Initial stock for ${rawSku}`,
+          },
         },
-      });
-
-      await tx.inventoryMovement.create({
-        data: {
-          productId: created.id,
-          movementType: "RESTOCK",
-          quantityDelta: stock,
-          previousStock: 0,
-          newStock: stock,
-          referenceType: "PRODUCT_CREATE",
-          referenceId: created.id,
-          note: `Initial stock for ${rawSku}`,
-        },
-      });
-
-      return created;
+      },
     });
 
     return NextResponse.json(product, { status: 201 });

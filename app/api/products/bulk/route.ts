@@ -97,29 +97,25 @@ export async function POST(request: Request) {
           const newStock = existingBySku.stock + stock;
           const priceChanged = Number(existingBySku.price) !== price;
 
-          await prisma.$transaction(async (tx) => {
-            await tx.product.update({
-              where: { id: existingBySku.id },
-              data: {
-                name,
-                description: description || existingBySku.description,
-                stock: newStock,
-                price,
-                isActive: true,
+          await prisma.product.update({
+            where: { id: existingBySku.id },
+            data: {
+              name,
+              description: description || existingBySku.description,
+              stock: newStock,
+              price,
+              isActive: true,
+              inventoryMovements: {
+                create: {
+                  movementType: "BULK_IMPORT",
+                  quantityDelta: stock,
+                  previousStock: existingBySku.stock,
+                  newStock,
+                  referenceType: "BULK_IMPORT",
+                  note: `Bulk import update for ${targetSku}`,
+                },
               },
-            });
-
-            await tx.inventoryMovement.create({
-              data: {
-                productId: existingBySku.id,
-                movementType: "BULK_IMPORT",
-                quantityDelta: stock,
-                previousStock: existingBySku.stock,
-                newStock,
-                referenceType: "BULK_IMPORT",
-                note: `Bulk import update for ${targetSku}`,
-              },
-            });
+            },
           });
 
           results.push({
@@ -132,29 +128,25 @@ export async function POST(request: Request) {
           continue;
         }
 
-        await prisma.$transaction(async (tx) => {
-          const created = await tx.product.create({
-            data: {
-              sku: targetSku,
-              name,
-              description: description || null,
-              price,
-              stock,
-              isActive: true,
+        await prisma.product.create({
+          data: {
+            sku: targetSku,
+            name,
+            description: description || null,
+            price,
+            stock,
+            isActive: true,
+            inventoryMovements: {
+              create: {
+                movementType: "BULK_IMPORT",
+                quantityDelta: stock,
+                previousStock: 0,
+                newStock: stock,
+                referenceType: "BULK_IMPORT",
+                note: `Bulk import create for ${targetSku}`,
+              },
             },
-          });
-
-          await tx.inventoryMovement.create({
-            data: {
-              productId: created.id,
-              movementType: "BULK_IMPORT",
-              quantityDelta: stock,
-              previousStock: 0,
-              newStock: stock,
-              referenceType: "BULK_IMPORT",
-              note: `Bulk import create for ${targetSku}`,
-            },
-          });
+          },
         });
 
         results.push({
