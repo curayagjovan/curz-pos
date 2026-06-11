@@ -134,7 +134,7 @@ export async function POST(request: Request) {
           success: true,
           message: "Created",
         });
-      } catch (error) {
+      } catch {
         results.push({
           sku: rawSku || "(generated)",
           success: false,
