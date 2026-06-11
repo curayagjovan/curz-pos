@@ -25,12 +25,9 @@ import {
   DeleteOutlined,
   EditOutlined,
   MinusOutlined,
-  MoonOutlined,
   PlusOutlined,
   ShoppingCartOutlined,
-  SunOutlined,
 } from "@ant-design/icons";
-import { useThemeMode } from "./theme-provider";
 
 const { Header, Content } = Layout;
 
@@ -54,7 +51,6 @@ type CartItem = Product & { quantity: number };
 
 export default function Home() {
   const { message } = App.useApp();
-  const { mode, toggleMode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const [search, setSearch] = useState("");
@@ -63,8 +59,8 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
-  const [savingTransaction, setSavingTransaction] = useState(false);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -72,7 +68,8 @@ export default function Home() {
         setLoadingProducts(true);
         const response = await fetch("/api/products", { cache: "no-store" });
         if (!response.ok) {
-          throw new Error("Failed to load products");
+          setProducts([]);
+          return;
         }
 
         const data = (await response.json()) as ApiProduct[];
@@ -84,8 +81,7 @@ export default function Home() {
           stock: item.stock,
         }));
         setProducts(normalized);
-      } catch (error) {
-        console.error(error);
+      } catch {
         setProducts([]);
       } finally {
         setLoadingProducts(false);
@@ -187,21 +183,18 @@ export default function Home() {
     [cart],
   );
 
-  const saveTransaction = async (
-    status: "PAID" | "CANCELLED",
-    note: string,
-  ) => {
+  const submitCheckout = async () => {
     try {
-      setSavingTransaction(true);
+      setCheckingOut(true);
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status,
+          status: "PAID",
           subtotal,
           tax,
           total,
-          note,
+          note: "POS checkout",
           items: cart.map((item) => ({
             productId: item.id,
             productName: item.name,
@@ -211,16 +204,42 @@ export default function Home() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save transaction");
+      if (!hasEnoughPayment) {
+        message.error("Payment is not enough.");
+        return;
       }
-      return true;
+
+      if (!response.ok) {
+        const data = (await response.json()) as { message?: string };
+        throw new Error(data.message || "Checkout failed");
+      }
+
+      setProducts((items) => {
+        return items.map((product) => {
+          const sold = cart.find((item) => item.id === product.id);
+          if (!sold) {
+            return product;
+          }
+
+          return {
+            ...product,
+            stock: Math.max(product.stock - sold.quantity, 0),
+          };
+        });
+      });
+
+      setCart([]);
+      setCartOpen(false);
+      setPaymentAmount(null);
+      message.success(
+        `Checkout complete. Change: ₱${Math.max(change, 0).toFixed(2)}`,
+      );
     } catch (error) {
-      console.error(error);
-      message.error("Unable to save transaction");
-      return false;
+      const errorMessage =
+        error instanceof Error ? error.message : "Checkout failed";
+      message.error(errorMessage);
     } finally {
-      setSavingTransaction(false);
+      setCheckingOut(false);
     }
   };
 
@@ -331,33 +350,10 @@ export default function Home() {
       <Button
         type="primary"
         size="large"
-        loading={savingTransaction}
-        disabled={
-          cart.length === 0 || paymentAmount === null || savingTransaction
-        }
-        onClick={async () => {
-          if (!hasEnoughPayment) {
-            await saveTransaction(
-              "CANCELLED",
-              `Insufficient payment. Tendered ₱${(paymentAmount ?? 0).toFixed(2)}`,
-            );
-            message.error("Payment is not enough.");
-            return;
-          }
-
-          const isSaved = await saveTransaction(
-            "PAID",
-            `Tendered ₱${(paymentAmount ?? 0).toFixed(2)} | Change ₱${Math.max(change, 0).toFixed(2)}`,
-          );
-          if (!isSaved) {
-            return;
-          }
-
-          message.success(
-            `Checkout complete. Change: ₱${Math.max(change, 0).toFixed(2)}`,
-          );
-          setCart([]);
-          setPaymentAmount(null);
+        loading={checkingOut}
+        disabled={cart.length === 0 || paymentAmount === null || checkingOut}
+        onClick={() => {
+          void submitCheckout();
         }}
       >
         Checkout
@@ -372,10 +368,8 @@ export default function Home() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom:
-            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
-          background:
-            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
+          borderBottom: "1px solid #d8e3f2",
+          background: "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
@@ -384,22 +378,13 @@ export default function Home() {
       >
         <Typography.Title
           level={isDesktop ? 3 : 4}
-          style={{ margin: 0, color: mode === "dark" ? "#e5e7eb" : "#12325a" }}
+          style={{ margin: 0, color: "#12325a" }}
         >
           Curz POS
         </Typography.Title>
         <Space size={8}>
-          <Button
-            icon={mode === "dark" ? <MoonOutlined /> : <SunOutlined />}
-            onClick={toggleMode}
-            aria-label="Toggle dark mode"
-          />
-          <Link href="/">
-            <Button type="primary">POS</Button>
-          </Link>
-          <Link href="/transactions">
-            <Button>Transactions</Button>
-          </Link>
+          <Tag color="blue">Next.js + AntD</Tag>
+          {isDesktop ? <Tag color="cyan">Supabase Ready</Tag> : null}
         </Space>
       </Header>
       <Layout style={{ background: "transparent" }}>
@@ -521,11 +506,7 @@ export default function Home() {
           >
             <Space size={8}>
               <span>View Cart</span>
-              <Badge
-                count={cartItemCount}
-                color="#ffffff"
-                styles={{ indicator: { color: "#000" } }}
-              />
+              <Badge count={cartItemCount} color="#ffffff" />
             </Space>
           </Button>
 
