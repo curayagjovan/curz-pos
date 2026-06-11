@@ -79,14 +79,14 @@ export default function Home() {
         setProducts(normalized);
       } catch (error) {
         console.error(error);
-        message.error("Unable to load products. Please try again.");
+        setProducts([]);
       } finally {
         setLoadingProducts(false);
       }
     };
 
     void loadProducts();
-  }, [message]);
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const keyword = search.trim().toLowerCase();
