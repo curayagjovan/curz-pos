@@ -175,10 +175,13 @@ export default function Home() {
     [cart],
   );
   const tax = useMemo(() => subtotal * 0.12, [subtotal]);
-  const total = subtotal + tax;
+  const total = useMemo(
+    () => Number((subtotal + tax).toFixed(2)),
+    [subtotal, tax],
+  );
   const quickCashAmounts = [100, 200, 500, 1000];
   const change = useMemo(
-    () => (paymentAmount ?? 0) - total,
+    () => Number(((paymentAmount ?? 0) - total).toFixed(2)),
     [paymentAmount, total],
   );
   const hasEnoughPayment = cart.length > 0 && (paymentAmount ?? 0) >= total;
