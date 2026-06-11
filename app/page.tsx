@@ -31,6 +31,7 @@ import {
   ShoppingCartOutlined,
   SunOutlined,
 } from "@ant-design/icons";
+import { TAX_ENABLED, TAX_RATE, computeTax } from "@/lib/tax-config";
 
 const { Header, Content } = Layout;
 
@@ -39,6 +40,8 @@ type ApiProduct = {
   sku: string;
   name: string;
   price: number | string;
+  bundleQty: number | null;
+  bundlePrice: number | string | null;
   stock: number;
 };
 
@@ -47,10 +50,48 @@ type Product = {
   sku: string;
   name: string;
   price: number;
+  bundleQty: number | null;
+  bundlePrice: number | null;
   stock: number;
 };
 
 type CartItem = Product & { quantity: number };
+
+function getLineTotal(item: {
+  quantity: number;
+  price: number;
+  bundleQty: number | null;
+  bundlePrice: number | null;
+}) {
+  if (
+    item.bundleQty &&
+    item.bundleQty >= 2 &&
+    item.bundlePrice !== null &&
+    item.bundlePrice >= 0
+  ) {
+    const bundles = Math.floor(item.quantity / item.bundleQty);
+    const remainder = item.quantity % item.bundleQty;
+    return Number(
+      (bundles * item.bundlePrice + remainder * item.price).toFixed(2),
+    );
+  }
+
+  return Number((item.quantity * item.price).toFixed(2));
+}
+
+function isBundleApplied(item: {
+  quantity: number;
+  bundleQty: number | null;
+  bundlePrice: number | null;
+}) {
+  return (
+    item.bundleQty !== null &&
+    item.bundleQty >= 2 &&
+    item.bundlePrice !== null &&
+    item.bundlePrice >= 0 &&
+    item.quantity >= item.bundleQty
+  );
+}
 
 export default function Home() {
   const { message } = App.useApp();
@@ -82,6 +123,9 @@ export default function Home() {
           sku: item.sku,
           name: item.name,
           price: Number(item.price),
+          bundleQty: item.bundleQty,
+          bundlePrice:
+            item.bundlePrice === null ? null : Number(item.bundlePrice),
           stock: item.stock,
         }));
         setProducts(normalized);
@@ -110,6 +154,11 @@ export default function Home() {
   }, [products, search]);
 
   const addToCart = (product: Product) => {
+    if (product.stock <= 0) {
+      message.warning("This product is out of stock.");
+      return;
+    }
+
     setCart((items) => {
       const found = items.find((item) => item.id === product.id);
       if (!found) {
@@ -131,6 +180,10 @@ export default function Home() {
       return items
         .map((item) => {
           if (item.id !== productId) {
+            return item;
+          }
+
+          if (delta > 0 && item.quantity >= item.stock) {
             return item;
           }
 
@@ -171,10 +224,10 @@ export default function Home() {
   };
 
   const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => cart.reduce((sum, item) => sum + getLineTotal(item), 0),
     [cart],
   );
-  const tax = useMemo(() => subtotal * 0.12, [subtotal]);
+  const tax = useMemo(() => computeTax(subtotal), [subtotal]);
   const total = useMemo(
     () => Number((subtotal + tax).toFixed(2)),
     [subtotal, tax],
@@ -207,6 +260,8 @@ export default function Home() {
             productName: item.name,
             quantity: item.quantity,
             unitPrice: item.price,
+            bundleQty: item.bundleQty,
+            bundlePrice: item.bundlePrice,
           })),
         }),
       });
@@ -284,11 +339,22 @@ export default function Home() {
               >
                 <Typography.Text strong>{item.name}</Typography.Text>
                 <Typography.Text strong>
-                  ₱{(item.quantity * item.price).toFixed(2)}
+                  ₱{getLineTotal(item).toFixed(2)}
                 </Typography.Text>
               </div>
+              {isBundleApplied(item) ? (
+                <Tag color="green">Bundle Applied</Tag>
+              ) : null}
               <Typography.Text type="secondary">
                 {item.quantity} x ₱{item.price.toFixed(2)}
+              </Typography.Text>
+              {item.bundleQty && item.bundlePrice !== null ? (
+                <Typography.Text type="secondary">
+                  Promo: {item.bundleQty} for ₱{item.bundlePrice.toFixed(2)}
+                </Typography.Text>
+              ) : null}
+              <Typography.Text type="secondary">
+                Available stock: {item.stock}
               </Typography.Text>
               <Space>
                 <Button
@@ -301,6 +367,7 @@ export default function Home() {
                   icon={<PlusOutlined />}
                   onClick={() => updateQty(item.id, 1)}
                   size="small"
+                  disabled={item.stock <= item.quantity}
                 />
               </Space>
             </div>
@@ -310,7 +377,14 @@ export default function Home() {
 
       <Divider style={{ margin: "8px 0" }} />
       <Statistic title="Subtotal" value={subtotal} precision={2} prefix="₱" />
-      <Statistic title="Tax (12%)" value={tax} precision={2} prefix="₱" />
+      {TAX_ENABLED ? (
+        <Statistic
+          title={`Tax (${(TAX_RATE * 100).toFixed(0)}%)`}
+          value={tax}
+          precision={2}
+          prefix="₱"
+        />
+      ) : null}
       <Statistic
         title="Grand Total"
         value={total}
@@ -476,8 +550,9 @@ export default function Home() {
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => addToCart(product)}
+                        disabled={product.stock <= 0}
                       >
-                        Add
+                        {product.stock <= 0 ? "Out of Stock" : "Add"}
                       </Button>,
                       <Link key="edit" href={`/products/${product.id}/edit`}>
                         <Button icon={<EditOutlined />}>Edit</Button>
@@ -497,6 +572,12 @@ export default function Home() {
                       <Typography.Text strong>
                         ₱{product.price.toFixed(2)}
                       </Typography.Text>
+                      {product.bundleQty && product.bundlePrice !== null ? (
+                        <Typography.Text type="secondary">
+                          {product.bundleQty} for ₱
+                          {product.bundlePrice.toFixed(2)}
+                        </Typography.Text>
+                      ) : null}
                       <Typography.Text type="secondary">
                         Stock: {product.stock}
                       </Typography.Text>
@@ -527,7 +608,11 @@ export default function Home() {
           >
             <Space size={8}>
               <span>View Cart</span>
-              <Badge count={cartItemCount} color="#ffffff" />
+              <Badge
+                count={cartItemCount}
+                color="#ffffff"
+                styles={{ indicator: { color: "#000000" } }}
+              />
             </Space>
           </Button>
 

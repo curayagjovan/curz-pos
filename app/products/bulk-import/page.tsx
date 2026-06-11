@@ -180,7 +180,7 @@ export default function BulkImportPage() {
         <Space orientation="vertical" style={{ width: "100%" }} size={18}>
           {/* Upload Card */}
           <Card>
-            <Space direction="vertical" style={{ width: "100%" }} size={12}>
+            <Space orientation="vertical" style={{ width: "100%" }} size={12}>
               <Typography.Title level={5} style={{ margin: 0 }}>
                 Upload CSV File
               </Typography.Title>
@@ -216,7 +216,7 @@ export default function BulkImportPage() {
           {/* Preview Card */}
           {csvData.length > 0 && !results && (
             <Card>
-              <Space direction="vertical" style={{ width: "100%" }} size={12}>
+              <Space orientation="vertical" style={{ width: "100%" }} size={12}>
                 <Typography.Title level={5} style={{ margin: 0 }}>
                   Preview ({csvData.length} rows)
                 </Typography.Title>
@@ -246,7 +246,7 @@ export default function BulkImportPage() {
           {/* Results Card */}
           {results && (
             <Card>
-              <Space direction="vertical" style={{ width: "100%" }} size={12}>
+              <Space orientation="vertical" style={{ width: "100%" }} size={12}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} sm={8}>
                     <Card size="small" style={{ textAlign: "center" }}>

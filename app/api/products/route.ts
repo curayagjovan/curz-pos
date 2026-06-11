@@ -59,6 +59,11 @@ export async function POST(request: Request) {
       sku?: string;
       name?: string;
       description?: string;
+      cost?: number;
+      markupPercent?: number;
+      bundleQty?: number | null;
+      bundleMarkdownPercent?: number | null;
+      bundlePrice?: number | null;
       price?: number;
       stock?: number;
     };
@@ -66,11 +71,45 @@ export async function POST(request: Request) {
     const rawSku = body.sku?.trim();
     const name = body.name?.trim();
     const description = body.description?.trim();
+    const cost = Number(body.cost ?? 0);
+    const markupPercent = Number(body.markupPercent ?? 0);
+    const bundleQty =
+      body.bundleQty === null || body.bundleQty === undefined
+        ? null
+        : Number(body.bundleQty);
+    const bundleMarkdownPercent =
+      body.bundleMarkdownPercent === null ||
+      body.bundleMarkdownPercent === undefined
+        ? null
+        : Number(body.bundleMarkdownPercent);
+    const bundlePrice =
+      body.bundlePrice === null || body.bundlePrice === undefined
+        ? null
+        : Number(body.bundlePrice);
     const price = Number(body.price);
     const stock = Number(body.stock ?? 0);
 
+    const hasBundle = bundleQty !== null || bundlePrice !== null;
+
+    const hasInvalidBundle =
+      (bundleQty !== null && (Number.isNaN(bundleQty) || bundleQty < 2)) ||
+      (bundleMarkdownPercent !== null &&
+        (Number.isNaN(bundleMarkdownPercent) ||
+          bundleMarkdownPercent < 0 ||
+          bundleMarkdownPercent > 100)) ||
+      (bundlePrice !== null && (Number.isNaN(bundlePrice) || bundlePrice < 0));
+
+    const hasIncompleteBundle =
+      hasBundle && (bundleQty === null || bundlePrice === null);
+
     if (
       !name ||
+      Number.isNaN(cost) ||
+      cost < 0 ||
+      Number.isNaN(markupPercent) ||
+      markupPercent < 0 ||
+      hasInvalidBundle ||
+      hasIncompleteBundle ||
       Number.isNaN(price) ||
       price < 0 ||
       Number.isNaN(stock) ||
@@ -97,6 +136,11 @@ export async function POST(request: Request) {
               sku: nextSku,
               name,
               description: description || null,
+              cost,
+              markupPct: markupPercent,
+              bundleQty,
+              bundleMarkdownPct: bundleMarkdownPercent,
+              bundlePrice,
               price,
               stock,
               isActive: true,
@@ -139,6 +183,11 @@ export async function POST(request: Request) {
         sku: rawSku,
         name,
         description: description || null,
+        cost,
+        markupPct: markupPercent,
+        bundleQty,
+        bundleMarkdownPct: bundleMarkdownPercent,
+        bundlePrice,
         price,
         stock,
         isActive: true,

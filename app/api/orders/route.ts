@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { computeTax } from "@/lib/tax-config";
 
 type OrderItemInput = {
   productId?: string;
   productName?: string;
   quantity?: number;
   unitPrice?: number;
+  bundleQty?: number | null;
+  bundlePrice?: number | null;
 };
 
 type OrderPayload = {
@@ -25,6 +28,26 @@ function createOrderNo() {
     .toString()
     .padStart(3, "0");
   return `ORD-${stamp}-${suffix}`;
+}
+
+function computeLineTotal(
+  quantity: number,
+  unitPrice: number,
+  bundleQty: number | null,
+  bundlePrice: number | null,
+) {
+  if (
+    bundleQty !== null &&
+    bundleQty >= 2 &&
+    bundlePrice !== null &&
+    bundlePrice >= 0
+  ) {
+    const bundles = Math.floor(quantity / bundleQty);
+    const remainder = quantity % bundleQty;
+    return Number((bundles * bundlePrice + remainder * unitPrice).toFixed(2));
+  }
+
+  return Number((quantity * unitPrice).toFixed(2));
 }
 
 export async function GET() {
@@ -58,20 +81,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderPayload;
     const status = body.status ?? "PAID";
-    const subtotal = Number(body.subtotal);
-    const tax = Number(body.tax);
-    const total = Number(body.total);
     const note = body.note?.trim() || null;
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (
       !["PAID", "CANCELLED", "PENDING"].includes(status) ||
-      Number.isNaN(subtotal) ||
-      Number.isNaN(tax) ||
-      Number.isNaN(total) ||
-      subtotal < 0 ||
-      tax < 0 ||
-      total < 0 ||
       items.length === 0
     ) {
       return NextResponse.json(
@@ -111,7 +125,14 @@ export async function POST(request: Request) {
     const productIds = Array.from(itemTotalsByProduct.keys());
     const stockSnapshot = await prisma.product.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, name: true, stock: true },
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        price: true,
+        bundleQty: true,
+        bundlePrice: true,
+      },
     });
 
     const stockById = new Map(stockSnapshot.map((p) => [p.id, p]));
@@ -125,6 +146,40 @@ export async function POST(request: Request) {
       }
     }
 
+    const orderItems = items.map((item) => {
+      const productId = item.productId as string;
+      const quantity = Number(item.quantity);
+      const current = stockById.get(productId);
+
+      if (!current) {
+        throw new Error("Product not found during checkout");
+      }
+
+      const unitPrice = Number(current.price);
+      const bundlePrice =
+        current.bundlePrice === null ? null : Number(current.bundlePrice);
+      const lineTotal = computeLineTotal(
+        quantity,
+        unitPrice,
+        current.bundleQty,
+        bundlePrice,
+      );
+
+      return {
+        productId,
+        productName: item.productName as string,
+        quantity,
+        unitPrice,
+        lineTotal,
+      };
+    });
+
+    const computedSubtotal = Number(
+      orderItems.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2),
+    );
+    const computedTax = computeTax(computedSubtotal);
+    const computedTotal = Number((computedSubtotal + computedTax).toFixed(2));
+
     const orderId = crypto.randomUUID();
     const orderNo = createOrderNo();
     const operations: Prisma.PrismaPromise<unknown>[] = [
@@ -133,18 +188,12 @@ export async function POST(request: Request) {
           id: orderId,
           orderNo,
           status,
-          subtotal,
-          tax,
-          total,
+          subtotal: computedSubtotal,
+          tax: computedTax,
+          total: computedTotal,
           note,
           items: {
-            create: items.map((item) => ({
-              productId: item.productId as string,
-              productName: item.productName as string,
-              quantity: Number(item.quantity),
-              unitPrice: Number(item.unitPrice),
-              lineTotal: Number(item.quantity) * Number(item.unitPrice),
-            })),
+            create: orderItems,
           },
         },
         select: {
