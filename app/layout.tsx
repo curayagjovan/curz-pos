@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { App as AntdApp, ConfigProvider } from "antd";
+import { ThemeProvider } from "./theme-provider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -24,17 +24,7 @@ export default function RootLayout({
     <html lang="en" className={`${spaceGrotesk.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <AntdRegistry>
-          <ConfigProvider
-            theme={{
-              token: {
-                colorPrimary: "#0b6bcb",
-                borderRadius: 12,
-                fontFamily: "var(--font-space-grotesk), sans-serif",
-              },
-            }}
-          >
-            <AntdApp>{children}</AntdApp>
-          </ConfigProvider>
+          <ThemeProvider>{children}</ThemeProvider>
         </AntdRegistry>
       </body>
     </html>

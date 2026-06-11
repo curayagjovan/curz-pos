@@ -12,6 +12,7 @@ import {
   Drawer,
   Grid,
   Input,
+  InputNumber,
   Layout,
   Modal,
   Row,
@@ -24,9 +25,12 @@ import {
   DeleteOutlined,
   EditOutlined,
   MinusOutlined,
+  MoonOutlined,
   PlusOutlined,
   ShoppingCartOutlined,
+  SunOutlined,
 } from "@ant-design/icons";
+import { useThemeMode } from "./theme-provider";
 
 const { Header, Content } = Layout;
 
@@ -50,6 +54,7 @@ type CartItem = Product & { quantity: number };
 
 export default function Home() {
   const { message } = App.useApp();
+  const { mode, toggleMode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const [search, setSearch] = useState("");
@@ -58,6 +63,8 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
+  const [savingTransaction, setSavingTransaction] = useState(false);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -169,10 +176,53 @@ export default function Home() {
   );
   const tax = useMemo(() => subtotal * 0.12, [subtotal]);
   const total = subtotal + tax;
+  const quickCashAmounts = [100, 200, 500, 1000];
+  const change = useMemo(
+    () => (paymentAmount ?? 0) - total,
+    [paymentAmount, total],
+  );
+  const hasEnoughPayment = cart.length > 0 && (paymentAmount ?? 0) >= total;
   const cartItemCount = useMemo(
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart],
   );
+
+  const saveTransaction = async (
+    status: "PAID" | "CANCELLED",
+    note: string,
+  ) => {
+    try {
+      setSavingTransaction(true);
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          subtotal,
+          tax,
+          total,
+          note,
+          items: cart.map((item) => ({
+            productId: item.id,
+            productName: item.name,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save transaction");
+      }
+      return true;
+    } catch (error) {
+      console.error(error);
+      message.error("Unable to save transaction");
+      return false;
+    } finally {
+      setSavingTransaction(false);
+    }
+  };
 
   const cartContent = (
     <Space orientation="vertical" style={{ width: "100%" }} size={14}>
@@ -243,14 +293,71 @@ export default function Home() {
         styles={{ content: { color: "#0b6bcb" } }}
       />
 
+      <InputNumber<number>
+        style={{ width: "100%" }}
+        min={0}
+        step={1}
+        precision={2}
+        prefix="₱"
+        placeholder="Payment amount"
+        value={paymentAmount ?? undefined}
+        onChange={(value) => setPaymentAmount(value ?? null)}
+      />
+
+      <Space wrap>
+        <Button onClick={() => setPaymentAmount(Number(total.toFixed(2)))}>
+          Exact
+        </Button>
+        {quickCashAmounts.map((amount) => (
+          <Button key={amount} onClick={() => setPaymentAmount(amount)}>
+            ₱{amount}
+          </Button>
+        ))}
+      </Space>
+
+      <Statistic
+        title="Change"
+        value={Math.max(change, 0)}
+        precision={2}
+        prefix="₱"
+        styles={{ content: { color: change >= 0 ? "#16a34a" : "#dc2626" } }}
+      />
+      {change < 0 ? (
+        <Typography.Text type="danger">
+          Insufficient payment by ₱{Math.abs(change).toFixed(2)}
+        </Typography.Text>
+      ) : null}
+
       <Button
         type="primary"
         size="large"
-        disabled={cart.length === 0}
-        onClick={() => {
-          message.success(
-            "Starter checkout action. Connect this to your order API route.",
+        loading={savingTransaction}
+        disabled={
+          cart.length === 0 || paymentAmount === null || savingTransaction
+        }
+        onClick={async () => {
+          if (!hasEnoughPayment) {
+            await saveTransaction(
+              "CANCELLED",
+              `Insufficient payment. Tendered ₱${(paymentAmount ?? 0).toFixed(2)}`,
+            );
+            message.error("Payment is not enough.");
+            return;
+          }
+
+          const isSaved = await saveTransaction(
+            "PAID",
+            `Tendered ₱${(paymentAmount ?? 0).toFixed(2)} | Change ₱${Math.max(change, 0).toFixed(2)}`,
           );
+          if (!isSaved) {
+            return;
+          }
+
+          message.success(
+            `Checkout complete. Change: ₱${Math.max(change, 0).toFixed(2)}`,
+          );
+          setCart([]);
+          setPaymentAmount(null);
         }}
       >
         Checkout
@@ -265,8 +372,10 @@ export default function Home() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #d8e3f2",
-          background: "rgba(255,255,255,0.75)",
+          borderBottom:
+            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
+          background:
+            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
@@ -275,13 +384,22 @@ export default function Home() {
       >
         <Typography.Title
           level={isDesktop ? 3 : 4}
-          style={{ margin: 0, color: "#12325a" }}
+          style={{ margin: 0, color: mode === "dark" ? "#e5e7eb" : "#12325a" }}
         >
           Curz POS
         </Typography.Title>
         <Space size={8}>
-          <Tag color="blue">Next.js + AntD</Tag>
-          {isDesktop ? <Tag color="cyan">Supabase Ready</Tag> : null}
+          <Button
+            icon={mode === "dark" ? <MoonOutlined /> : <SunOutlined />}
+            onClick={toggleMode}
+            aria-label="Toggle dark mode"
+          />
+          <Link href="/">
+            <Button type="primary">POS</Button>
+          </Link>
+          <Link href="/transactions">
+            <Button>Transactions</Button>
+          </Link>
         </Space>
       </Header>
       <Layout style={{ background: "transparent" }}>
@@ -403,7 +521,11 @@ export default function Home() {
           >
             <Space size={8}>
               <span>View Cart</span>
-              <Badge count={cartItemCount} color="#ffffff" />
+              <Badge
+                count={cartItemCount}
+                color="#ffffff"
+                styles={{ indicator: { color: "#000" } }}
+              />
             </Space>
           </Button>
 
