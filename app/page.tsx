@@ -21,12 +21,15 @@ import {
   Tag,
   Typography,
 } from "antd";
+import { useThemeMode } from "./theme-provider";
 import {
   DeleteOutlined,
   EditOutlined,
   MinusOutlined,
+  MoonOutlined,
   PlusOutlined,
   ShoppingCartOutlined,
+  SunOutlined,
 } from "@ant-design/icons";
 
 const { Header, Content } = Layout;
@@ -51,6 +54,7 @@ type CartItem = Product & { quantity: number };
 
 export default function Home() {
   const { message } = App.useApp();
+  const { mode, toggleMode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const [search, setSearch] = useState("");
@@ -385,6 +389,11 @@ export default function Home() {
         <Space size={8}>
           <Tag color="blue">Next.js + AntD</Tag>
           {isDesktop ? <Tag color="cyan">Supabase Ready</Tag> : null}
+          <Button
+            type="text"
+            icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+            onClick={toggleMode}
+          />
         </Space>
       </Header>
       <Layout style={{ background: "transparent" }}>
