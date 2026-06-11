@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import {
+  Alert,
   App,
   Button,
   Card,
   Col,
   Layout,
+  Progress,
   Row,
   Space,
   Table,
@@ -26,9 +28,8 @@ import {
 const { Header, Content } = Layout;
 
 type CsvRow = {
-  sku?: string;
   name?: string;
-  description?: string;
+  unit?: string;
   price?: string;
   stock?: string;
 };
@@ -39,25 +40,105 @@ type ImportResult = {
   message: string;
 };
 
-const SAMPLE_CSV = `sku,name,description,price,stock
-MILK-001,Fresh Milk,2L Whole Milk,85.50,20
-BREAD-001,Whole Wheat Bread,500g Loaf,45.00,15
-BUTTER-001,Salted Butter,250g Pack,120.00,10
-EGGS-001,Brown Eggs,1 Dozen,75.00,25
-CHEESE-001,Cheddar Cheese,200g Block,150.00,12
+const SAMPLE_CSV = `name,unit,price,stock
+Fresh Milk,PACK,85.50,20
+Whole Wheat Bread,PACK,45.00,15
+Salted Butter,PACK,120.00,10
+Brown Eggs,PCS,75.00,25
+Cheddar Cheese,PACK,150.00,12
 `;
 
 export default function BulkImportPage() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const router = useRouter();
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState<
+    "normal" | "success" | "exception"
+  >("normal");
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
   const [results, setResults] = useState<ImportResult[] | null>(null);
+  const [fileHash, setFileHash] = useState<string | null>(null);
+  const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
+  const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoadingGlobalMarkup(true);
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          globalMarkupPercent?: number;
+        };
+        setGlobalMarkupPercent(Number(data.globalMarkupPercent ?? 0));
+      } finally {
+        setLoadingGlobalMarkup(false);
+      }
+    };
+
+    void loadSettings();
+  }, []);
+
+  useEffect(() => {
+    if (!submitting) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setImportProgress((current) => {
+        if (current >= 90) {
+          return current;
+        }
+        return current + 5;
+      });
+    }, 180);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [submitting]);
+
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  const checkIfFileDuplicate = (hash: string): boolean => {
+    const storedHashes = localStorage.getItem("importedFileHashes");
+    if (!storedHashes) return false;
+
+    try {
+      const hashes = JSON.parse(storedHashes) as string[];
+      return hashes.includes(hash);
+    } catch {
+      return false;
+    }
+  };
+
+  const addToImportHistory = (hash: string) => {
+    try {
+      const storedHashes = localStorage.getItem("importedFileHashes");
+      const hashes = storedHashes ? JSON.parse(storedHashes) : [];
+      if (!hashes.includes(hash)) {
+        hashes.push(hash);
+        localStorage.setItem("importedFileHashes", JSON.stringify(hashes));
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   const columns = [
-    { title: "SKU", dataIndex: "sku", key: "sku" },
     { title: "Name", dataIndex: "name", key: "name" },
-    { title: "Description", dataIndex: "description", key: "description" },
+    { title: "Unit", dataIndex: "unit", key: "unit" },
     { title: "Price (₱)", dataIndex: "price", key: "price" },
     { title: "Stock", dataIndex: "stock", key: "stock" },
   ];
@@ -76,20 +157,71 @@ export default function BulkImportPage() {
   ];
 
   const handleFileUpload = (file: File) => {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = (results.data as CsvRow[]).filter(
-          (row) => row.sku || row.name,
-        );
-        setCsvData(rows);
-        setResults(null);
-      },
-      error: (error) => {
-        message.error(`CSV parsing error: ${error.message}`);
-      },
-    });
+    void (async () => {
+      try {
+        // Calculate file hash
+        const hash = await calculateFileHash(file);
+        setFileHash(hash);
+
+        // Check if this file was already imported
+        const isDuplicate = checkIfFileDuplicate(hash);
+
+        if (isDuplicate) {
+          modal.confirm({
+            title: "Duplicate File Detected",
+            content:
+              "This file appears to have been imported before. Importing it again will add duplicate stock quantities. Do you want to continue?",
+            okText: "Continue Import",
+            cancelText: "Cancel",
+            okButtonProps: { danger: true },
+            onOk() {
+              // Continue with parse
+              Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                  const rows = (results.data as CsvRow[]).filter(
+                    (row) => row.name,
+                  );
+                  setCsvData(rows);
+                  setResults(null);
+                  setImportProgress(0);
+                  setImportStatus("normal");
+                },
+                error: (error) => {
+                  message.error(`CSV parsing error: ${error.message}`);
+                },
+              });
+            },
+            onCancel() {
+              message.info("Upload cancelled. Please select a different file.");
+              setFileHash(null);
+            },
+          });
+        } else {
+          // Parse the file normally
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              const rows = (results.data as CsvRow[]).filter((row) => row.name);
+              setCsvData(rows);
+              setResults(null);
+              setImportProgress(0);
+              setImportStatus("normal");
+            },
+            error: (error) => {
+              message.error(`CSV parsing error: ${error.message}`);
+            },
+          });
+        }
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "Failed to read file";
+        message.error(`Error processing file: ${errorMsg}`);
+        setFileHash(null);
+      }
+    })();
     return false;
   };
 
@@ -101,11 +233,22 @@ export default function BulkImportPage() {
 
     try {
       setSubmitting(true);
+      setImportStatus("normal");
+      setImportProgress(10);
+      const controller = new AbortController();
+      setAbortController(controller);
 
       const response = await fetch("/api/products/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products: csvData }),
+        body: JSON.stringify({
+          products: csvData,
+          markupPercent: 0,
+          filterType: "all",
+          filterValue: "",
+          fileHash,
+        }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -116,7 +259,15 @@ export default function BulkImportPage() {
       const data = (await response.json()) as {
         results: ImportResult[];
       };
+      setImportProgress(100);
+      setImportStatus("success");
       setResults(data.results);
+
+      // Track this file as imported
+      if (fileHash) {
+        addToImportHistory(fileHash);
+      }
+
       message.success(
         `Import complete: ${data.results.filter((r) => r.success).length} successful`,
       );
@@ -125,12 +276,30 @@ export default function BulkImportPage() {
         router.refresh();
       }, 2000);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setImportProgress(0);
+        setImportStatus("normal");
+        message.warning("Import cancelled.");
+        return;
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : "Failed to import products";
+      setImportStatus("exception");
+      setImportProgress(100);
       message.error(errorMessage);
     } finally {
+      setAbortController(null);
       setSubmitting(false);
     }
+  };
+
+  const onCancelImport = () => {
+    if (!abortController) {
+      return;
+    }
+
+    abortController.abort();
   };
 
   const downloadSample = () => {
@@ -181,19 +350,35 @@ export default function BulkImportPage() {
           {/* Upload Card */}
           <Card>
             <Space orientation="vertical" style={{ width: "100%" }} size={12}>
+              <Alert
+                type="info"
+                showIcon
+                message="Check Global Markup Before Import"
+                description={
+                  <>
+                    Current global markup is
+                    {loadingGlobalMarkup
+                      ? " loading..."
+                      : ` ${globalMarkupPercent.toFixed(2)}%`}
+                    . To change it, open the markup tool in{" "}
+                    <Link href="/settings#global-markup-tool">Settings</Link>.
+                  </>
+                }
+              />
               <Typography.Title level={5} style={{ margin: 0 }}>
                 Upload CSV File
               </Typography.Title>
               <Typography.Text type="secondary">
-                CSV must have columns: name, price, stock (sku and description
-                are optional). Existing SKU entries will add stock and refresh
-                price.
+                CSV must have columns: name, unit, price, stock. SKU and
+                description are optional. If SKU is missing, the app
+                auto-generates it.
               </Typography.Text>
 
               <Upload.Dragger
                 accept=".csv"
                 beforeUpload={handleFileUpload}
                 maxCount={1}
+                disabled={submitting}
               >
                 <CloudUploadOutlined
                   style={{ fontSize: 32, color: "#0b6bcb" }}
@@ -230,15 +415,38 @@ export default function BulkImportPage() {
                   size="small"
                 />
 
+                {(submitting || importProgress > 0) && (
+                  <Space
+                    orientation="vertical"
+                    style={{ width: "100%" }}
+                    size={6}
+                  >
+                    <Typography.Text type="secondary">
+                      {submitting ? "Importing products..." : "Import finished"}
+                    </Typography.Text>
+                    <Progress
+                      percent={importProgress}
+                      status={importStatus}
+                      strokeColor="#0b6bcb"
+                    />
+                  </Space>
+                )}
+
                 <Button
                   type="primary"
                   size="large"
                   onClick={onSubmit}
                   loading={submitting}
+                  disabled={submitting}
                   block
                 >
                   Import {csvData.length} Product(s)
                 </Button>
+                {submitting ? (
+                  <Button danger onClick={onCancelImport} block>
+                    Cancel Import
+                  </Button>
+                ) : null}
               </Space>
             </Card>
           )}

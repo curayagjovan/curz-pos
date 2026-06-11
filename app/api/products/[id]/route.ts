@@ -33,6 +33,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const body = (await request.json()) as {
       sku?: string;
       name?: string;
+      unit?: string;
       description?: string;
       cost?: number;
       markupPercent?: number;
@@ -45,6 +46,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     const sku = body.sku?.trim();
     const name = body.name?.trim();
+    const unit = body.unit?.trim();
     const description = body.description?.trim();
     const cost = Number(body.cost ?? 0);
     const markupPercent = Number(body.markupPercent ?? 0);
@@ -102,6 +104,7 @@ export async function PUT(request: Request, context: RouteContext) {
       data: {
         sku,
         name,
+        unit: unit || null,
         description: description || null,
         cost,
         markupPct: markupPercent,
@@ -110,6 +113,7 @@ export async function PUT(request: Request, context: RouteContext) {
         bundlePrice,
         price,
         stock,
+        usesGlobalMarkup: false,
       },
     });
 
@@ -151,7 +155,10 @@ export async function DELETE(_: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
 
-    await prisma.product.delete({ where: { id } });
+    await prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
 
     return NextResponse.json({ message: "Product deleted successfully" });
   } catch (error) {

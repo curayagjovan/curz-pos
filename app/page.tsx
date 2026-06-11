@@ -14,7 +14,6 @@ import {
   Input,
   InputNumber,
   Layout,
-  Modal,
   Row,
   Space,
   Statistic,
@@ -24,12 +23,11 @@ import {
 import { useThemeMode } from "./theme-provider";
 import {
   DeleteOutlined,
+  SettingOutlined,
   EditOutlined,
   MinusOutlined,
-  MoonOutlined,
   PlusOutlined,
   ShoppingCartOutlined,
-  SunOutlined,
 } from "@ant-design/icons";
 import { TAX_ENABLED, TAX_RATE, computeTax } from "@/lib/tax-config";
 
@@ -94,8 +92,8 @@ function isBundleApplied(item: {
 }
 
 export default function Home() {
-  const { message } = App.useApp();
-  const { mode, toggleMode } = useThemeMode();
+  const { message, modal } = App.useApp();
+  const { mode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const [search, setSearch] = useState("");
@@ -103,6 +101,10 @@ export default function Home() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productsLoadError, setProductsLoadError] = useState<string | null>(
+    null,
+  );
+  const [reloadToken, setReloadToken] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
@@ -111,8 +113,13 @@ export default function Home() {
     const loadProducts = async () => {
       try {
         setLoadingProducts(true);
+        setProductsLoadError(null);
         const response = await fetch("/api/products", { cache: "no-store" });
         if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as {
+            message?: string;
+          };
+          setProductsLoadError(data.message || "Unable to load products.");
           setProducts([]);
           return;
         }
@@ -130,6 +137,7 @@ export default function Home() {
         }));
         setProducts(normalized);
       } catch {
+        setProductsLoadError("Unable to load products.");
         setProducts([]);
       } finally {
         setLoadingProducts(false);
@@ -137,7 +145,7 @@ export default function Home() {
     };
 
     void loadProducts();
-  }, []);
+  }, [reloadToken]);
 
   const visibleProducts = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -194,7 +202,7 @@ export default function Home() {
   };
 
   const deleteProduct = (productId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "Delete Product",
       content: "Are you sure you want to delete this product?",
       okText: "Delete",
@@ -208,14 +216,21 @@ export default function Home() {
           });
 
           if (!response.ok) {
-            throw new Error("Failed to delete product");
+            const data = (await response.json().catch(() => ({}))) as {
+              message?: string;
+            };
+            throw new Error(data.message || "Failed to delete product");
           }
 
           setProducts((items) => items.filter((item) => item.id !== productId));
           message.success("Product deleted successfully");
         } catch (error) {
           console.error(error);
-          message.error("Unable to delete product. Please try again.");
+          message.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to delete product. Please try again.",
+          );
         } finally {
           setDeletingId(null);
         }
@@ -469,11 +484,9 @@ export default function Home() {
           Curz POS
         </Typography.Title>
         <Space size={8}>
-          <Button
-            icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-            onClick={toggleMode}
-            aria-label="Toggle dark mode"
-          />
+          <Link href="/settings">
+            <Button icon={<SettingOutlined />} aria-label="Settings" />
+          </Link>
           <Link href="/">
             <Button type="primary">POS</Button>
           </Link>
@@ -529,6 +542,40 @@ export default function Home() {
             </Card>
 
             <Row gutter={[16, 16]}>
+              {loadingProducts ? (
+                <Col xs={24}>
+                  <Typography.Text type="secondary">
+                    Loading products...
+                  </Typography.Text>
+                </Col>
+              ) : null}
+              {loadingProducts
+                ? Array.from({ length: isDesktop ? 6 : 4 }).map((_, idx) => (
+                    <Col xs={24} sm={12} xl={8} key={`loading-${idx}`}>
+                      <Card loading />
+                    </Col>
+                  ))
+                : null}
+              {!loadingProducts && productsLoadError ? (
+                <Col xs={24}>
+                  <Card>
+                    <Space
+                      orientation="vertical"
+                      style={{ width: "100%" }}
+                      size={10}
+                    >
+                      <Typography.Text type="danger">
+                        {productsLoadError}
+                      </Typography.Text>
+                      <Button
+                        onClick={() => setReloadToken((value) => value + 1)}
+                      >
+                        Retry Loading Products
+                      </Button>
+                    </Space>
+                  </Card>
+                </Col>
+              ) : null}
               {!loadingProducts && visibleProducts.length === 0 ? (
                 <Col xs={24}>
                   <Card>

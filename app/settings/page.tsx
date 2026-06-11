@@ -1,0 +1,296 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  App,
+  Button,
+  Card,
+  Col,
+  Input,
+  InputNumber,
+  Layout,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from "antd";
+import {
+  ArrowLeftOutlined,
+  MoonOutlined,
+  SunOutlined,
+} from "@ant-design/icons";
+import { useThemeMode } from "../theme-provider";
+
+const { Header, Content } = Layout;
+
+export default function SettingsPage() {
+  const { message } = App.useApp();
+  const { mode, setMode } = useThemeMode();
+  const [markupPercent, setMarkupPercent] = useState<number>(0);
+  const [markupFilterType, setMarkupFilterType] = useState<
+    "all" | "unit" | "category" | "productType"
+  >("all");
+  const [markupFilterValue, setMarkupFilterValue] = useState("");
+  const [applyingMarkup, setApplyingMarkup] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoadingSettings(true);
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load settings.");
+        }
+
+        const data = (await response.json()) as {
+          themeMode?: "light" | "dark";
+          globalMarkupPercent?: number;
+          globalMarkupFilterType?: "all" | "unit" | "category" | "productType";
+          globalMarkupFilterValue?: string;
+        };
+
+        if (data.themeMode === "light" || data.themeMode === "dark") {
+          setMode(data.themeMode);
+        }
+        setMarkupPercent(Number(data.globalMarkupPercent ?? 0));
+        setMarkupFilterType(data.globalMarkupFilterType ?? "all");
+        setMarkupFilterValue(data.globalMarkupFilterValue ?? "");
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to load settings.";
+        message.error(errorMessage);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    void loadSettings();
+  }, [message, setMode]);
+
+  const applyGlobalMarkup = async () => {
+    if (Number.isNaN(markupPercent) || markupPercent < 0) {
+      message.error("Markup must be 0 or higher.");
+      return;
+    }
+
+    if (markupFilterType !== "all" && !markupFilterValue.trim()) {
+      message.error("Please provide a filter value.");
+      return;
+    }
+
+    try {
+      setApplyingMarkup(true);
+
+      const saveResponse = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          themeMode: mode,
+          globalMarkupPercent: markupPercent,
+          globalMarkupFilterType: markupFilterType,
+          globalMarkupFilterValue: markupFilterValue,
+        }),
+      });
+
+      const saveData = (await saveResponse.json()) as { message?: string };
+      if (!saveResponse.ok) {
+        throw new Error(saveData.message || "Failed to save settings.");
+      }
+
+      const response = await fetch("/api/products/markup-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          markupPercent,
+          filterType: markupFilterType,
+          filterValue: markupFilterValue,
+        }),
+      });
+
+      const data = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to apply markup.");
+      }
+
+      message.success(data.message || "Global markup updated.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to apply markup.";
+      message.error(errorMessage);
+    } finally {
+      setApplyingMarkup(false);
+    }
+  };
+
+  return (
+    <Layout style={{ minHeight: "100vh", background: "transparent" }}>
+      <Header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #d8e3f2",
+          background: "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(8px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+          paddingInline: 16,
+        }}
+      >
+        <Space>
+          <Link href="/">
+            <Button icon={<ArrowLeftOutlined />} type="text">
+              Back
+            </Button>
+          </Link>
+          <Typography.Title level={4} style={{ margin: 0, color: "#12325a" }}>
+            Settings
+          </Typography.Title>
+        </Space>
+      </Header>
+
+      <Content
+        style={{ padding: 14, maxWidth: 900, width: "100%", margin: "0 auto" }}
+      >
+        <Space orientation="vertical" style={{ width: "100%" }} size={18}>
+          {/* App Settings */}
+          <Card>
+            <Space orientation="vertical" style={{ width: "100%" }} size={12}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                App Settings
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                Configure application-wide preferences
+              </Typography.Text>
+
+              <div style={{ paddingTop: 12 }}>
+                <Typography.Text strong>Theme</Typography.Text>
+                <div style={{ marginTop: 12 }}>
+                  <Button
+                    type={mode === "light" ? "primary" : "default"}
+                    icon={<SunOutlined />}
+                    onClick={() => setMode("light")}
+                    style={{ marginRight: 8 }}
+                    disabled={loadingSettings}
+                  >
+                    Light Mode
+                  </Button>
+                  <Button
+                    type={mode === "dark" ? "primary" : "default"}
+                    icon={<MoonOutlined />}
+                    onClick={() => setMode("dark")}
+                    disabled={loadingSettings}
+                  >
+                    Dark Mode
+                  </Button>
+                </div>
+              </div>
+            </Space>
+          </Card>
+
+          {/* Product Settings */}
+          <Card>
+            <Space orientation="vertical" style={{ width: "100%" }} size={12}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                Product Settings
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                Configure global product pricing and markup rules
+              </Typography.Text>
+
+              <div id="global-markup-tool" style={{ paddingTop: 8 }}>
+                <Typography.Paragraph strong>
+                  Global Markup Tool
+                </Typography.Paragraph>
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginBottom: 12 }}
+                >
+                  Apply markup to all products, or filter by unit, category
+                  keyword, or product type keyword.
+                </Typography.Text>
+
+                <Row gutter={[12, 12]}>
+                  <Col xs={24} md={8}>
+                    <Typography.Text type="secondary">
+                      Markup (%)
+                    </Typography.Text>
+                    <InputNumber<number>
+                      style={{ width: "100%" }}
+                      min={0}
+                      step={0.01}
+                      precision={2}
+                      value={markupPercent}
+                      onChange={(value) => setMarkupPercent(value ?? 0)}
+                      disabled={loadingSettings}
+                    />
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Typography.Text type="secondary">
+                      Filter Type
+                    </Typography.Text>
+                    <Select
+                      style={{ width: "100%" }}
+                      value={markupFilterType}
+                      onChange={(value) => setMarkupFilterType(value)}
+                      disabled={loadingSettings}
+                      options={[
+                        { label: "All Products", value: "all" },
+                        { label: "Unit", value: "unit" },
+                        { label: "Category Keyword", value: "category" },
+                        {
+                          label: "Product Type Keyword",
+                          value: "productType",
+                        },
+                      ]}
+                    />
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Typography.Text type="secondary">
+                      {markupFilterType === "unit"
+                        ? "Unit"
+                        : markupFilterType === "all"
+                          ? "Filter Value (not needed)"
+                          : "Keyword"}
+                    </Typography.Text>
+                    <Input
+                      placeholder={
+                        markupFilterType === "unit"
+                          ? "e.g. PCS"
+                          : markupFilterType === "all"
+                            ? "Not required"
+                            : "e.g. coffee"
+                      }
+                      value={markupFilterValue}
+                      onChange={(event) =>
+                        setMarkupFilterValue(event.target.value)
+                      }
+                      disabled={loadingSettings || markupFilterType === "all"}
+                    />
+                  </Col>
+                </Row>
+
+                <Button
+                  type="primary"
+                  loading={applyingMarkup}
+                  disabled={loadingSettings}
+                  onClick={() => {
+                    void applyGlobalMarkup();
+                  }}
+                  block
+                  style={{ marginTop: 16 }}
+                >
+                  Apply Global Markup
+                </Button>
+              </div>
+            </Space>
+          </Card>
+        </Space>
+      </Content>
+    </Layout>
+  );
+}

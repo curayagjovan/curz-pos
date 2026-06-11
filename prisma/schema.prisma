@@ -12,6 +12,7 @@ model Product {
   id          String   @id @default(cuid())
   sku         String   @unique
   name        String
+  unit        String?
   description String?
   cost        Decimal  @default(0) @db.Decimal(10, 2)
   markupPct   Decimal  @default(0) @db.Decimal(5, 2)
@@ -21,11 +22,22 @@ model Product {
   price       Decimal  @db.Decimal(10, 2)
   stock       Int      @default(0)
   isActive    Boolean  @default(true)
+  usesGlobalMarkup Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+}
+
+model AppSetting {
+  id                      Int      @id @default(1)
+  themeMode               String   @default("light")
+  globalMarkupPercent     Decimal  @default(0) @db.Decimal(5, 2)
+  globalMarkupFilterType  String   @default("all")
+  globalMarkupFilterValue String?  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 model Order {
@@ -75,6 +87,16 @@ model InventoryMovement {
 
   @@index([productId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+model ImportLog {
+  id          String   @id @default(cuid())
+  fileHash    String   @unique
+  rowCount    Int
+  productCount Int
+  successCount Int
+  failureCount Int
+  createdAt   DateTime @default(now())
 }
 
 enum OrderStatus {

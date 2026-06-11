@@ -23,6 +23,7 @@ const { Header, Content } = Layout;
 type ProductFormValues = {
   sku: string;
   name: string;
+  unit?: string;
   description?: string;
   cost?: number;
   markupPercent?: number;
@@ -37,6 +38,7 @@ type ApiProduct = {
   id: string;
   sku: string;
   name: string;
+  unit?: string | null;
   description?: string | null;
   cost: number | string;
   markupPct: number | string;
@@ -57,6 +59,8 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [skuEditable, setSkuEditable] = useState(false);
   const [bundleEnabled, setBundleEnabled] = useState(false);
+  const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
+  const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
   const cost = Form.useWatch("cost", form);
   const markupPercent = Form.useWatch("markupPercent", form);
   const bundleQty = Form.useWatch("bundleQty", form);
@@ -76,6 +80,33 @@ export default function EditProductPage() {
 
     return Number((baseCost * (1 + markup / 100)).toFixed(2));
   }, [cost, markupPercent]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoadingGlobalMarkup(true);
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          globalMarkupPercent?: number;
+        };
+        const markup = Number(data.globalMarkupPercent ?? 0);
+        setGlobalMarkupPercent(markup);
+        // Pre-populate with global markup value if form is empty
+        const currentMarkup = form.getFieldValue("markupPercent");
+        if (!currentMarkup || currentMarkup === 0) {
+          form.setFieldsValue({ markupPercent: markup });
+        }
+      } finally {
+        setLoadingGlobalMarkup(false);
+      }
+    };
+
+    void loadSettings();
+  }, [form]);
 
   useEffect(() => {
     if (calculatedPrice === null) {
@@ -129,6 +160,7 @@ export default function EditProductPage() {
         form.setFieldsValue({
           sku: product.sku,
           name: product.name,
+          unit: product.unit ?? "",
           description: product.description ?? "",
           cost: Number(product.cost ?? 0),
           markupPercent: Number(product.markupPct ?? 0),
@@ -162,6 +194,7 @@ export default function EditProductPage() {
       const payload = {
         sku: values.sku,
         name: values.name,
+        unit: values.unit,
         description: values.description,
         cost: values.cost ?? 0,
         markupPercent: values.markupPercent ?? 0,
@@ -275,6 +308,10 @@ export default function EditProductPage() {
                   />
                 </Form.Item>
 
+                <Form.Item label="Unit" name="unit">
+                  <Input placeholder="e.g. PCS, PACK, BOT" />
+                </Form.Item>
+
                 <Form.Item label="Cost (Peso)" name="cost">
                   <InputNumber<number>
                     style={{ width: "100%" }}
@@ -286,12 +323,34 @@ export default function EditProductPage() {
                 </Form.Item>
 
                 <Form.Item label="Markup (%)" name="markupPercent">
-                  <InputNumber<number>
-                    style={{ width: "100%" }}
-                    min={0}
-                    step={0.01}
-                    precision={2}
-                  />
+                  <Space style={{ width: "100%" }}>
+                    <InputNumber<number>
+                      style={{ flex: 1 }}
+                      min={0}
+                      step={0.01}
+                      precision={2}
+                      value={markupPercent}
+                      onChange={(value) =>
+                        form.setFieldValue("markupPercent", value ?? 0)
+                      }
+                    />
+                    {markupPercent !== globalMarkupPercent && (
+                      <Button
+                        onClick={() =>
+                          form.setFieldValue(
+                            "markupPercent",
+                            globalMarkupPercent,
+                          )
+                        }
+                        loading={loadingGlobalMarkup}
+                        disabled={
+                          loadingGlobalMarkup || globalMarkupPercent === 0
+                        }
+                      >
+                        Apply Global ({globalMarkupPercent.toFixed(2)}%)
+                      </Button>
+                    )}
+                  </Space>
                 </Form.Item>
 
                 <Space

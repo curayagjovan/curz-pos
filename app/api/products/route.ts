@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       sku?: string;
       name?: string;
+      unit?: string;
       description?: string;
       cost?: number;
       markupPercent?: number;
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
 
     const rawSku = body.sku?.trim();
     const name = body.name?.trim();
+    const unit = body.unit?.trim();
     const description = body.description?.trim();
     const cost = Number(body.cost ?? 0);
     const markupPercent = Number(body.markupPercent ?? 0);
@@ -135,6 +137,7 @@ export async function POST(request: Request) {
             data: {
               sku: nextSku,
               name,
+              unit: unit || null,
               description: description || null,
               cost,
               markupPct: markupPercent,
@@ -144,6 +147,7 @@ export async function POST(request: Request) {
               price,
               stock,
               isActive: true,
+              usesGlobalMarkup: false,
               inventoryMovements: {
                 create: {
                   movementType: "RESTOCK",
@@ -182,6 +186,7 @@ export async function POST(request: Request) {
       data: {
         sku: rawSku,
         name,
+        unit: unit || null,
         description: description || null,
         cost,
         markupPct: markupPercent,
@@ -191,6 +196,7 @@ export async function POST(request: Request) {
         price,
         stock,
         isActive: true,
+        usesGlobalMarkup: false,
         inventoryMovements: {
           create: {
             movementType: "RESTOCK",

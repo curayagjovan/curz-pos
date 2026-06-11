@@ -13,7 +13,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { SettingOutlined } from "@ant-design/icons";
 import { useThemeMode } from "../theme-provider";
 
 const { Header, Content } = Layout;
@@ -39,7 +39,7 @@ type Transaction = {
 type TransactionFilter = "ALL" | "PAID" | "CANCELLED";
 
 export default function TransactionsPage() {
-  const { mode, toggleMode } = useThemeMode();
+  const { mode } = useThemeMode();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [transactionFilter, setTransactionFilter] =
@@ -120,11 +120,9 @@ export default function TransactionsPage() {
           Curz POS
         </Typography.Title>
         <Space size={8}>
-          <Button
-            icon={mode === "dark" ? <MoonOutlined /> : <SunOutlined />}
-            onClick={toggleMode}
-            aria-label="Toggle dark mode"
-          />
+          <Link href="/settings">
+            <Button icon={<SettingOutlined />} aria-label="Settings" />
+          </Link>
           <Link href="/">
             <Button>POS</Button>
           </Link>
