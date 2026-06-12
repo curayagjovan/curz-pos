@@ -206,6 +206,13 @@ function extractSize(productName: string, unit?: string): string {
         return match[2].substring(0, 3).padStart(2, "0");
       }
 
+      if (!match[1]) {
+        if (/(?:jumbo|jmbo)/i.test(upper)) return "JMB";
+        if (/(?:mini|small)/i.test(upper)) return "SMI";
+        if (/(?:big|large)/i.test(upper)) return "BIG";
+        continue;
+      }
+
       // Return first capture group
       const size = match[1].substring(0, 3);
       return size.padStart(2, "0");

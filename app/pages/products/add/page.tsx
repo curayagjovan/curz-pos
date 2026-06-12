@@ -19,7 +19,10 @@ import {
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
 import { useCompactHeight } from "@/hooks/use-compact-height";
-import { calculateSellingPrice, calculateBundlePrice } from "@/lib/price-calculator";
+import {
+  calculateSellingPrice,
+  calculateBundlePrice,
+} from "@/lib/price-calculator";
 
 const { Header, Content } = Layout;
 
