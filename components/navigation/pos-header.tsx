@@ -53,7 +53,7 @@ export function PosHeader({
             type={activePage === "pos" ? "primary" : "default"}
             size="middle"
           >
-            POS
+            PRODUCTS
           </Button>
         </Link>
         <Link href="/pages/transactions">
