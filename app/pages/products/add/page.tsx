@@ -292,9 +292,7 @@ export default function AddProductPage() {
                       setSkuEditable(checked);
                     }}
                   />
-                  <Typography.Text type="secondary">
-                    Override
-                  </Typography.Text>
+                  <Typography.Text type="secondary">Override</Typography.Text>
                 </Space>
               }
               name="sku"

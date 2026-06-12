@@ -11,6 +11,7 @@ import {
   Card,
   Col,
   Drawer,
+  Empty,
   FloatButton,
   Grid,
   Input,
@@ -521,12 +522,28 @@ export default function Home() {
               ) : null}
               {!loadingProducts && products.length === 0 ? (
                 <Col xs={24}>
-                  <Card>
-                    <Typography.Text type="secondary">
-                      No products yet. Add products to your database and they
-                      will appear here.
-                    </Typography.Text>
-                  </Card>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      padding: "40px 20px",
+                    }}
+                  >
+                    <Empty
+                      description="No Products"
+                      style={{ marginTop: "20px" }}
+                    >
+                      <Typography.Text
+                        type="secondary"
+                        style={{ display: "block", marginBottom: "16px" }}
+                      >
+                        Add products to your database and they will appear here.
+                      </Typography.Text>
+                      <Button type="primary" href="/pages/products/add">
+                        Add Product
+                      </Button>
+                    </Empty>
+                  </div>
                 </Col>
               ) : null}
               {!loadingProducts && !productsLoadError ? (

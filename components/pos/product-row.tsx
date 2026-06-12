@@ -57,9 +57,7 @@ export function ProductRow({
         height: Math.max(safeHeight - LIST_ROW_GAP, 0),
       }}
     >
-      <Card
-        style={{ height: `${LIST_ROW_HEIGHT}px` }}
-      >
+      <Card style={{ height: `${LIST_ROW_HEIGHT}px` }}>
         <Space orientation="vertical">
           <Typography.Title level={4} style={{ margin: 0 }}>
             {product.name} <Tag>{product.sku}</Tag>

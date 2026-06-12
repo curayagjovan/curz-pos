@@ -55,35 +55,35 @@ const CATEGORY_PATTERNS: Record<string, string> = {
 };
 
 const BRAND_REPLACEMENTS: Record<string, string> = {
-  "CLOVER": "CLV",
-  "OISHI": "OIS",
+  CLOVER: "CLV",
+  OISHI: "OIS",
   "MANG JUAN": "MJN",
   "555": "555",
-  "ARIEL": "ARL",
-  "COLGATE": "CGT",
-  "NESCAFE": "NES",
-  "ZONROX": "ZNX",
-  "SILKA": "SLK",
+  ARIEL: "ARL",
+  COLGATE: "CGT",
+  NESCAFE: "NES",
+  ZONROX: "ZNX",
+  SILKA: "SLK",
   "HEAD SHOULDER": "HED",
   "CREAM SILK": "CMS",
-  "ANGEL": "ANG",
+  ANGEL: "ANG",
   "GREAT TASTE": "GRT",
-  "PEPSI": "PEP",
+  PEPSI: "PEP",
   "MOUNTAIN DEW": "MTN",
   "LUCKY ME": "LME",
-  "SUNSILK": "SUN",
-  "PALMOLIVE": "PAL",
-  "BIODERM": "BIO",
+  SUNSILK: "SUN",
+  PALMOLIVE: "PAL",
+  BIODERM: "BIO",
   "BIRCH TREE": "BRC",
-  "REBISCO": "REB",
-  "NISSIN": "NIS",
-  "SKYFLAKES": "SKY",
-  "PRESTO": "PRE",
-  "SURF": "SRF",
-  "WINGS": "WNG",
-  "JOY": "JOY",
-  "DOWNY": "DWN",
-  "GLAD": "GLD",
+  REBISCO: "REB",
+  NISSIN: "NIS",
+  SKYFLAKES: "SKY",
+  PRESTO: "PRE",
+  SURF: "SRF",
+  WINGS: "WNG",
+  JOY: "JOY",
+  DOWNY: "DWN",
+  GLAD: "GLD",
 };
 
 const VARIANT_KEYWORDS: Record<string, string> = {
@@ -104,7 +104,7 @@ const VARIANT_KEYWORDS: Record<string, string> = {
   "ORANGE|ORG": "ORA",
   "CHILI|SILI|SPICY|HOT": "SPI",
   "ORIGINAL|ORG": "ORI",
-  "PEPPERMINT": "PEP",
+  PEPPERMINT: "PEP",
   "PAPAYA|PAP": "PAP",
   "FLORAL|FLO": "FLO",
   "CARAMEL|CAR": "CAR",
@@ -117,27 +117,27 @@ const VARIANT_KEYWORDS: Record<string, string> = {
   "CONCENTRATE|CMP": "CMP",
   "LIQUID|LQD": "LQD",
   "POWDER|PWD": "PWD",
-  "BAR": "BAR",
+  BAR: "BAR",
   "JUMBO|JMBO": "JMB",
   "MEDIUM|MED": "MED",
   "SMALL|SML": "SML",
   "BIG|LARGE": "LRG",
   "REGULAR|REG": "REG",
-  "GOLD": "GLD",
-  "STANDARD": "STD",
-  "COOL": "COL",
+  GOLD: "GLD",
+  STANDARD: "STD",
+  COOL: "COL",
   "FRESH|FRES": "FRS",
 };
 
 const SIZE_PATTERNS = [
-  /(\d+)(?:g|G)(?:\s|$)/,        // 24G → 24
-  /(\d+)(?:ml|ML)(?:\s|$)/,      // 320ML → 320
-  /(\d+)(?:l|L)(?:\s|$)/,        // 1L → 1L
-  /(\d+)\/(\d+)/,                // 100/155 → 155
-  /(?:jumbo|jmbo)/i,             // JUMBO → JMB
-  /(?:mini|small)/i,             // MINI → SMI
-  /(?:big|large)/i,              // BIG → BIG
-  /(\d+)s(?:\s|$)/i,             // 12S → 12
+  /(\d+)(?:g|G)(?:\s|$)/, // 24G → 24
+  /(\d+)(?:ml|ML)(?:\s|$)/, // 320ML → 320
+  /(\d+)(?:l|L)(?:\s|$)/, // 1L → 1L
+  /(\d+)\/(\d+)/, // 100/155 → 155
+  /(?:jumbo|jmbo)/i, // JUMBO → JMB
+  /(?:mini|small)/i, // MINI → SMI
+  /(?:big|large)/i, // BIG → BIG
+  /(\d+)s(?:\s|$)/i, // 12S → 12
 ];
 
 function extractCategory(productName: string): string {
@@ -256,10 +256,11 @@ export async function generateSequentialSku(
   prismaInstance: any,
   basePrefix: string = "SKU",
 ): Promise<string> {
-  const base = basePrefix
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .substring(0, 6) || "SKU";
+  const base =
+    basePrefix
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .substring(0, 6) || "SKU";
 
   const pattern = `${base}-%`;
   const existing = await prismaInstance.product.findMany({
