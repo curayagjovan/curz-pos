@@ -539,7 +539,7 @@ export default function Home() {
                       >
                         Add products to your database and they will appear here.
                       </Typography.Text>
-                      <Button type="primary" href="/pages/products/add">
+                      <Button type="primary" href="/pages/settings/product">
                         Add Product
                       </Button>
                     </Empty>
