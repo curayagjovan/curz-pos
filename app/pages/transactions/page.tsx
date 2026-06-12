@@ -18,8 +18,8 @@ import {
   Typography,
 } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
-import { useThemeMode } from "../theme-provider";
-import { useCompactHeight } from "@/lib/use-compact-height";
+import { useThemeMode } from "@/components/providers/theme-provider";
+import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -67,7 +67,7 @@ export default function TransactionsPage() {
     useState<TransactionFilter>("ALL");
 
   useEffect(() => {
-    router.prefetch("/");
+    router.prefetch("/pages/");
   }, [router]);
 
   useEffect(() => {
@@ -174,17 +174,17 @@ export default function TransactionsPage() {
           Curz POS
         </Typography.Title>
         <Space size={8} wrap>
-          <Link href="/settings">
+          <Link href="/pages/settings">
             <Button
               icon={<SettingOutlined />}
               size={isDesktop ? "middle" : "large"}
               aria-label="Settings"
             />
           </Link>
-          <Link href="/">
+          <Link href="/pages/">
             <Button size={isDesktop ? "middle" : "large"}>POS</Button>
           </Link>
-          <Link href="/transactions">
+          <Link href="/pages/transactions">
             <Button type="primary" size={isDesktop ? "middle" : "large"}>
               Transactions
             </Button>
@@ -194,7 +194,8 @@ export default function TransactionsPage() {
 
       <Content
         style={{
-          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 1080,
           width: "100%",

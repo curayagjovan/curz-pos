@@ -26,8 +26,8 @@ import {
   CloudUploadOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
-import { useThemeMode } from "../../theme-provider";
-import { useCompactHeight } from "@/lib/use-compact-height";
+import { useThemeMode } from "@/components/providers/theme-provider";
+import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -183,7 +183,6 @@ export default function BulkImportPage() {
             cancelText: "Cancel",
             okButtonProps: { danger: true },
             onOk() {
-              // Continue with parse
               Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
@@ -280,7 +279,7 @@ export default function BulkImportPage() {
         `Import complete: ${data.results.filter((r) => r.success).length} successful`,
       );
       setTimeout(() => {
-        router.push("/");
+        router.push("/pages/");
         router.refresh();
       }, 2000);
     } catch (error) {
@@ -369,7 +368,8 @@ export default function BulkImportPage() {
 
       <Content
         style={{
-          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 900,
           width: "100%",
@@ -395,7 +395,10 @@ export default function BulkImportPage() {
                       ? " loading..."
                       : ` ${globalMarkupPercent.toFixed(2)}%`}
                     . To change it, open the markup tool in{" "}
-                    <Link href="/settings#global-markup-tool">Settings</Link>.
+                    <Link href="/pages/settings#global-markup-tool">
+                      Settings
+                    </Link>
+                    .
                   </>
                 }
               />
@@ -544,7 +547,11 @@ export default function BulkImportPage() {
                   size="small"
                 />
 
-                <Button type="primary" onClick={() => router.push("/")} block>
+                <Button
+                  type="primary"
+                  onClick={() => router.push("/pages/")}
+                  block
+                >
                   Back to POS
                 </Button>
               </Space>

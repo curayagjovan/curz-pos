@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ThemeProvider } from "./theme-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
