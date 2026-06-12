@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Form,
+  Grid,
   Input,
   InputNumber,
   Layout,
@@ -16,6 +17,8 @@ import {
   Typography,
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import { useThemeMode } from "../../theme-provider";
+import { useCompactHeight } from "@/lib/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -48,6 +51,10 @@ function createSkuFromName(name: string) {
 export default function AddProductPage() {
   const { message } = App.useApp();
   const router = useRouter();
+  const { mode } = useThemeMode();
+  const screens = Grid.useBreakpoint();
+  const isDesktop = Boolean(screens.lg);
+  const isCompactHeight = useCompactHeight();
   const [form] = Form.useForm<ProductFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [skuEditable, setSkuEditable] = useState(false);
@@ -184,29 +191,51 @@ export default function AddProductPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: "1px solid #d8e3f2",
-          background: "rgba(255,255,255,0.75)",
+          flexWrap: "wrap",
+          gap: 8,
+          borderBottom:
+            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
+          background:
+            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: 16,
+          paddingInline: isDesktop ? 16 : 12,
+          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Space>
           <Link href="/">
-            <Button icon={<ArrowLeftOutlined />} type="text">
+            <Button
+              icon={<ArrowLeftOutlined />}
+              type="text"
+              size={isDesktop ? "middle" : "large"}
+            >
               Back
             </Button>
           </Link>
-          <Typography.Title level={4} style={{ margin: 0, color: "#12325a" }}>
+          <Typography.Title
+            level={isDesktop ? 4 : 5}
+            style={{
+              margin: 0,
+              color: mode === "dark" ? "#e5e7eb" : "#12325a",
+            }}
+          >
             Add Product
           </Typography.Title>
         </Space>
       </Header>
 
       <Content
-        style={{ padding: 14, maxWidth: 720, width: "100%", margin: "0 auto" }}
+        style={{
+          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
+          maxWidth: 720,
+          width: "100%",
+          margin: "0 auto",
+        }}
       >
         <Card>
           <Form<ProductFormValues>
@@ -294,9 +323,9 @@ export default function AddProductPage() {
             </Form.Item>
 
             <Form.Item label="Markup (%)" name="markupPercent">
-              <Space style={{ width: "100%" }}>
+              <Space style={{ width: "100%" }} wrap>
                 <InputNumber<number>
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 160 }}
                   min={0}
                   step={0.01}
                   precision={2}
@@ -312,6 +341,7 @@ export default function AddProductPage() {
                     }
                     loading={loadingGlobalMarkup}
                     disabled={loadingGlobalMarkup || globalMarkupPercent === 0}
+                    style={{ width: isDesktop ? "auto" : "100%" }}
                   >
                     Apply Global ({globalMarkupPercent.toFixed(2)}%)
                   </Button>

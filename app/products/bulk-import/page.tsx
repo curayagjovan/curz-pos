@@ -10,6 +10,8 @@ import {
   Button,
   Card,
   Col,
+  FloatButton,
+  Grid,
   Layout,
   Progress,
   Row,
@@ -24,6 +26,8 @@ import {
   CloudUploadOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
+import { useThemeMode } from "../../theme-provider";
+import { useCompactHeight } from "@/lib/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -51,6 +55,10 @@ Cheddar Cheese,PACK,150.00,12
 export default function BulkImportPage() {
   const { message, modal } = App.useApp();
   const router = useRouter();
+  const { mode } = useThemeMode();
+  const screens = Grid.useBreakpoint();
+  const isDesktop = Boolean(screens.lg);
+  const isCompactHeight = useCompactHeight();
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -322,31 +330,57 @@ export default function BulkImportPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: "1px solid #d8e3f2",
-          background: "rgba(255,255,255,0.75)",
+          flexWrap: "wrap",
+          gap: 8,
+          borderBottom:
+            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
+          background:
+            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: 16,
+          paddingInline: isDesktop ? 16 : 12,
+          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Space>
           <Link href="/">
-            <Button icon={<ArrowLeftOutlined />} type="text">
+            <Button
+              icon={<ArrowLeftOutlined />}
+              type="text"
+              size={isDesktop ? "middle" : "large"}
+            >
               Back
             </Button>
           </Link>
-          <Typography.Title level={4} style={{ margin: 0, color: "#12325a" }}>
+          <Typography.Title
+            level={isDesktop ? 4 : 5}
+            style={{
+              margin: 0,
+              color: mode === "dark" ? "#e5e7eb" : "#12325a",
+            }}
+          >
             Bulk Import Products
           </Typography.Title>
         </Space>
       </Header>
 
       <Content
-        style={{ padding: 14, maxWidth: 900, width: "100%", margin: "0 auto" }}
+        style={{
+          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
+          maxWidth: 900,
+          width: "100%",
+          margin: "0 auto",
+        }}
       >
-        <Space orientation="vertical" style={{ width: "100%" }} size={18}>
+        <Space
+          orientation="vertical"
+          style={{ width: "100%" }}
+          size={isCompactHeight ? 12 : 18}
+        >
           {/* Upload Card */}
           <Card>
             <Space orientation="vertical" style={{ width: "100%" }} size={12}>
@@ -518,6 +552,14 @@ export default function BulkImportPage() {
           )}
         </Space>
       </Content>
+
+      <FloatButton.BackTop
+        visibilityHeight={300}
+        style={{
+          right: 16,
+          bottom: "calc(24px + env(safe-area-inset-bottom))",
+        }}
+      />
     </Layout>
   );
 }
