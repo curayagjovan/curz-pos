@@ -83,7 +83,7 @@ const PRODUCT_CACHE_TTL_MS = 30_000;
 const productListCache = new Map<string, ProductListCacheEntry>();
 
 export default function Home() {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const router = useRouter();
   const { mode } = useThemeMode();
   const screens = Grid.useBreakpoint();
