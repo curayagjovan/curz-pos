@@ -574,9 +574,6 @@ export default function Home() {
                           rowComponent={ProductRow}
                           rowProps={{
                             products,
-                            deletingId,
-                            addToCart,
-                            deleteProduct,
                           }}
                           onRowsRendered={({
                             stopIndex,

@@ -1,6 +1,4 @@
-import Link from "next/link";
-import { Button, Card, Space, Tag, Typography } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Card, Space, Tag, Typography } from "antd";
 import { type RowComponentProps } from "react-window";
 
 export const LIST_ROW_GAP = 32;
@@ -18,18 +16,12 @@ export type Product = {
 
 export type ProductRowProps = {
   products: Product[];
-  deletingId: string | null;
-  addToCart: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
 };
 
 export function ProductRow({
   index,
   style,
   products,
-  deletingId,
-  addToCart,
-  deleteProduct,
 }: RowComponentProps<ProductRowProps>) {
   const product = products[index];
   const parsedTop =
