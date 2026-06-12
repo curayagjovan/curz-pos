@@ -39,6 +39,8 @@ type CsvRow = {
 };
 
 type ImportResult = {
+  row: number;
+  productName: string;
   sku: string;
   success: boolean;
   message: string;
@@ -152,6 +154,8 @@ export default function BulkImportPage() {
   ];
 
   const resultColumns = [
+    { title: "Row", dataIndex: "row", key: "row", width: 72 },
+    { title: "Product", dataIndex: "productName", key: "productName" },
     { title: "SKU", dataIndex: "sku", key: "sku" },
     {
       title: "Status",
@@ -278,10 +282,6 @@ export default function BulkImportPage() {
       message.success(
         `Import complete: ${data.results.filter((r) => r.success).length} successful`,
       );
-      setTimeout(() => {
-        router.push("/pages/");
-        router.refresh();
-      }, 2000);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setImportProgress(0);
@@ -395,7 +395,7 @@ export default function BulkImportPage() {
                       ? " loading..."
                       : ` ${globalMarkupPercent.toFixed(2)}%`}
                     . To change it, open the markup tool in{" "}
-                    <Link href="/pages/settings#global-markup-tool">
+                    <Link href="/pages/settings/product#global-markup-tool">
                       Settings
                     </Link>
                     .

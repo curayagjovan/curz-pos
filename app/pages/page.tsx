@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { List as VirtualList, type RowComponentProps } from "react-window";
+import { List as VirtualList } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import {
   App,
@@ -12,6 +11,7 @@ import {
   Card,
   Col,
   Drawer,
+  Empty,
   FloatButton,
   Grid,
   Input,
@@ -19,22 +19,22 @@ import {
   Row,
   Spin,
   Space,
-  Tag,
   Typography,
 } from "antd";
 import { useThemeMode } from "@/components/providers/theme-provider";
-import {
-  DeleteOutlined,
-  SettingOutlined,
-  EditOutlined,
-  PlusOutlined,
-  ShoppingCartOutlined,
-} from "@ant-design/icons";
+import { ShoppingCartOutlined } from "@ant-design/icons";
 import { computeTax } from "@/lib/tax-config";
 import { useCompactHeight } from "@/hooks/use-compact-height";
 import { CartContent } from "@/components/pos/cart-content";
+import { PosHeader } from "@/components/navigation/pos-header";
+import {
+  ProductRow,
+  LIST_ROW_GAP,
+  LIST_ROW_HEIGHT,
+  type Product,
+} from "@/components/pos/product-row";
 
-const { Header, Content } = Layout;
+const { Content } = Layout;
 
 type ApiProduct = {
   id: string;
@@ -43,16 +43,6 @@ type ApiProduct = {
   price: number | string;
   bundleQty: number | null;
   bundlePrice: number | string | null;
-  stock: number;
-};
-
-type Product = {
-  id: string;
-  sku: string;
-  name: string;
-  price: number;
-  bundleQty: number | null;
-  bundlePrice: number | null;
   stock: number;
 };
 
@@ -81,15 +71,6 @@ function getLineTotal(item: {
 }
 
 const PAGE_SIZE = 18;
-const LIST_ROW_GAP = 12;
-const LIST_ROW_HEIGHT = 262;
-
-type ProductRowProps = {
-  products: Product[];
-  deletingId: string | null;
-  addToCart: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
-};
 
 type ProductListCacheEntry = {
   items: Product[];
@@ -101,85 +82,8 @@ type ProductListCacheEntry = {
 const PRODUCT_CACHE_TTL_MS = 30_000;
 const productListCache = new Map<string, ProductListCacheEntry>();
 
-function ProductRow({
-  index,
-  style,
-  products,
-  deletingId,
-  addToCart,
-  deleteProduct,
-}: RowComponentProps<ProductRowProps>) {
-  const product = products[index];
-  const parsedTop =
-    typeof style.top === "number"
-      ? style.top
-      : Number.parseFloat(String(style.top ?? "0"));
-  const parsedHeight =
-    typeof style.height === "number"
-      ? style.height
-      : Number.parseFloat(String(style.height ?? String(LIST_ROW_HEIGHT)));
-  const safeTop = Number.isFinite(parsedTop) ? parsedTop : 0;
-  const safeHeight = Number.isFinite(parsedHeight)
-    ? parsedHeight
-    : LIST_ROW_HEIGHT;
-
-  if (!product) {
-    return <div style={style} />;
-  }
-
-  return (
-    <div
-      style={{
-        ...style,
-        top: safeTop + LIST_ROW_GAP / 2,
-        height: Math.max(safeHeight - LIST_ROW_GAP, 0),
-      }}
-    >
-      <Card
-        title={product.name}
-        extra={<Tag>{product.sku}</Tag>}
-        actions={[
-          <Button
-            key="add"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => addToCart(product)}
-            disabled={product.stock <= 0}
-          >
-            {product.stock <= 0 ? "Out of Stock" : "Add"}
-          </Button>,
-          <Link key="edit" href={`/pages/products/${product.id}/edit`}>
-            <Button icon={<EditOutlined />}>Edit</Button>
-          </Link>,
-          <Button
-            key="delete"
-            danger
-            icon={<DeleteOutlined />}
-            loading={deletingId === product.id}
-            onClick={() => deleteProduct(product.id)}
-          >
-            Delete
-          </Button>,
-        ]}
-      >
-        <Space orientation="vertical">
-          <Typography.Text strong>₱{product.price.toFixed(2)}</Typography.Text>
-          {product.bundleQty && product.bundlePrice !== null ? (
-            <Typography.Text type="secondary">
-              {product.bundleQty} for ₱{product.bundlePrice.toFixed(2)}
-            </Typography.Text>
-          ) : null}
-          <Typography.Text type="secondary">
-            Stock: {product.stock}
-          </Typography.Text>
-        </Space>
-      </Card>
-    </div>
-  );
-}
-
 export default function Home() {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const router = useRouter();
   const { mode } = useThemeMode();
   const screens = Grid.useBreakpoint();
@@ -197,7 +101,6 @@ export default function Home() {
     null,
   );
   const [reloadToken, setReloadToken] = useState(0);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -323,31 +226,12 @@ export default function Home() {
   );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadProducts({ cursor: null, reset: true });
+    const timer = window.setTimeout(() => {
+      void loadProducts({ cursor: null, reset: true });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [reloadToken, debouncedSearch, loadProducts]);
-
-  const addToCart = (product: Product) => {
-    if (product.stock <= 0) {
-      message.warning("This product is out of stock.");
-      return;
-    }
-
-    setCart((items) => {
-      const found = items.find((item) => item.id === product.id);
-      if (!found) {
-        return [...items, { ...product, quantity: 1 }];
-      }
-
-      return items.map((item) => {
-        if (item.id !== product.id) {
-          return item;
-        }
-
-        return { ...item, quantity: Math.min(item.quantity + 1, item.stock) };
-      });
-    });
-  };
 
   const updateQty = (productId: string, delta: number) => {
     setCart((items) => {
@@ -364,43 +248,6 @@ export default function Home() {
           return { ...item, quantity: item.quantity + delta };
         })
         .filter((item) => item.quantity > 0);
-    });
-  };
-
-  const deleteProduct = (productId: string) => {
-    modal.confirm({
-      title: "Delete Product",
-      content: "Are you sure you want to delete this product?",
-      okText: "Delete",
-      okType: "danger",
-      cancelText: "Cancel",
-      onOk: async () => {
-        try {
-          setDeletingId(productId);
-          const response = await fetch(`/api/products/${productId}`, {
-            method: "DELETE",
-          });
-
-          if (!response.ok) {
-            const data = (await response.json().catch(() => ({}))) as {
-              message?: string;
-            };
-            throw new Error(data.message || "Failed to delete product");
-          }
-
-          setProducts((items) => items.filter((item) => item.id !== productId));
-          message.success("Product deleted successfully");
-        } catch (error) {
-          console.error(error);
-          message.error(
-            error instanceof Error
-              ? error.message
-              : "Unable to delete product. Please try again.",
-          );
-        } finally {
-          setDeletingId(null);
-        }
-      },
     });
   };
 
@@ -509,53 +356,7 @@ export default function Home() {
 
   return (
     <Layout style={{ minHeight: "100vh", background: "transparent" }}>
-      <Header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: isDesktop ? "nowrap" : "wrap",
-          gap: 8,
-          borderBottom:
-            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
-          background:
-            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
-          backdropFilter: "blur(8px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          paddingInline: isDesktop ? 16 : 12,
-          paddingTop: "max(env(safe-area-inset-top), 8px)",
-          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
-        }}
-      >
-        <Typography.Title
-          level={isDesktop ? 3 : 4}
-          style={{
-            margin: 0,
-            color: mode === "dark" ? "#e5e7eb" : "#12325a",
-          }}
-        >
-          Curz POS
-        </Typography.Title>
-        <Space size={8} wrap>
-          <Link href="/pages/settings">
-            <Button
-              icon={<SettingOutlined />}
-              size={isDesktop ? "middle" : "large"}
-              aria-label="Settings"
-            />
-          </Link>
-          <Link href="/pages/">
-            <Button type="primary" size={isDesktop ? "middle" : "large"}>
-              POS
-            </Button>
-          </Link>
-          <Link href="/pages/transactions">
-            <Button size={isDesktop ? "middle" : "large"}>Transactions</Button>
-          </Link>
-        </Space>
-      </Header>
+      <PosHeader mode={mode} isDesktop={isDesktop} activePage="pos" />
       <Layout style={{ background: "transparent" }}>
         <Content
           style={{
@@ -576,42 +377,25 @@ export default function Home() {
           >
             <Card>
               <Row gutter={[16, 16]} align="middle">
-                <Col xs={24} md={14}>
-                  <Typography.Title level={4} style={{ marginBottom: 4 }}>
-                    Mobile POS
-                  </Typography.Title>
-                  <Typography.Paragraph style={{ marginBottom: 0 }}>
-                    Add your products and start selling. This view is optimized
-                    for phone and tablet workflow.
-                  </Typography.Paragraph>
-                </Col>
-                <Col xs={24} md={10}>
-                  <Space
-                    orientation="vertical"
-                    style={{ width: "100%" }}
-                    size={10}
-                  >
-                    <Input.Search
-                      placeholder="Search by name or SKU"
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      allowClear
-                    />
-                    <Space style={{ width: "100%" }} size={8}>
-                      <Link href="/pages/products/add" style={{ flex: 1 }}>
-                        <Button type="default" block>
-                          Add Product
-                        </Button>
-                      </Link>
-                      <Link
-                        href="/pages/products/bulk-import"
-                        style={{ flex: 1 }}
-                      >
-                        <Button block>Bulk Import</Button>
-                      </Link>
-                    </Space>
-                  </Space>
-                </Col>
+                <Typography.Title level={4} style={{ marginBottom: 4 }}>
+                  Mobile POS
+                </Typography.Title>
+                <Typography.Paragraph style={{ marginBottom: 0 }}>
+                  Add your products and start selling. This view is optimized
+                  for phone and tablet workflow.
+                </Typography.Paragraph>
+                <Space
+                  orientation="vertical"
+                  style={{ width: "100%" }}
+                  size={10}
+                >
+                  <Input.Search
+                    placeholder="Search by name or SKU"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    allowClear
+                  />
+                </Space>
               </Row>
             </Card>
 
@@ -678,12 +462,28 @@ export default function Home() {
               ) : null}
               {!loadingProducts && products.length === 0 ? (
                 <Col xs={24}>
-                  <Card>
-                    <Typography.Text type="secondary">
-                      No products yet. Add products to your database and they
-                      will appear here.
-                    </Typography.Text>
-                  </Card>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      padding: "40px 20px",
+                    }}
+                  >
+                    <Empty
+                      description="No Products"
+                      style={{ marginTop: "20px" }}
+                    >
+                      <Typography.Text
+                        type="secondary"
+                        style={{ display: "block", marginBottom: "16px" }}
+                      >
+                        Add products to your database and they will appear here.
+                      </Typography.Text>
+                      <Button type="primary" href="/pages/settings/product">
+                        Add Product
+                      </Button>
+                    </Empty>
+                  </div>
                 </Col>
               ) : null}
               {!loadingProducts && !productsLoadError ? (
@@ -692,11 +492,6 @@ export default function Home() {
                     style={{
                       height: virtualListHeight,
                       width: "100%",
-                      borderRadius: 12,
-                      border:
-                        mode === "dark"
-                          ? "1px solid #1f2937"
-                          : "1px solid #e2e8f0",
                       overflow: "hidden",
                     }}
                   >
@@ -719,9 +514,6 @@ export default function Home() {
                           rowComponent={ProductRow}
                           rowProps={{
                             products,
-                            deletingId,
-                            addToCart,
-                            deleteProduct,
                           }}
                           onRowsRendered={({
                             stopIndex,

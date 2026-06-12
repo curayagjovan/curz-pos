@@ -1,40 +1,11 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-
-function normalizeSkuBase(value: string) {
-  return (
-    value
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "") || "PRODUCT"
-  );
-}
-
-async function getNextSequentialSku(baseInput: string) {
-  const base = normalizeSkuBase(baseInput);
-  const existing = await prisma.product.findMany({
-    where: { sku: { startsWith: `${base}-` } },
-    select: { sku: true },
-  });
-
-  let maxSequence = 0;
-  for (const item of existing) {
-    const match = item.sku.match(new RegExp(`^${base}-(\\d+)$`));
-    if (!match) {
-      continue;
-    }
-
-    const sequence = Number(match[1]);
-    if (!Number.isNaN(sequence) && sequence > maxSequence) {
-      maxSequence = sequence;
-    }
-  }
-
-  return `${base}-${String(maxSequence + 1).padStart(3, "0")}`;
-}
+import { generateSmartSku } from "@/lib/sku-generator";
+import {
+  calculateSellingPrice,
+  calculateBundlePrice,
+} from "@/lib/price-calculator";
 
 type BulkProductData = {
   sku?: string;
@@ -46,6 +17,8 @@ type BulkProductData = {
 };
 
 type BulkResult = {
+  row: number;
+  productName: string;
   sku: string;
   success: boolean;
   message: string;
@@ -133,25 +106,68 @@ export async function POST(request: Request) {
 
     console.info(`[Bulk Import] Started processing ${totalRows} row(s).`);
 
-    for (const item of products) {
+    for (const [index, item] of products.entries()) {
+      const row = index + 1;
       const rawSku = item.sku?.toString().trim();
       const name = item.name?.toString().trim();
+      const productName = name || "(missing name)";
       const unit = item.unit?.toString().trim();
       const description = item.description?.toString().trim();
       const price = Number(item.price);
       const stock = Number(item.stock ?? 0);
 
-      if (
-        !name ||
-        Number.isNaN(price) ||
-        price < 0 ||
-        Number.isNaN(stock) ||
-        stock < 0
-      ) {
+      // Detailed validation
+      if (!name) {
         results.push({
+          row,
+          productName,
           sku: rawSku || "(missing)",
           success: false,
-          message: "Invalid: name, price, and stock are required",
+          message: "Missing product name",
+        });
+        continue;
+      }
+
+      if (Number.isNaN(price)) {
+        results.push({
+          row,
+          productName,
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid price: '${item.price}' is not a number`,
+        });
+        continue;
+      }
+
+      if (price < 0) {
+        results.push({
+          row,
+          productName,
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid price: ${price} cannot be negative`,
+        });
+        continue;
+      }
+
+      if (Number.isNaN(stock)) {
+        results.push({
+          row,
+          productName,
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid stock: '${item.stock}' is not a number`,
+        });
+        continue;
+      }
+
+      if (stock < 0) {
+        results.push({
+          row,
+          productName,
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid stock: ${stock} cannot be negative`,
         });
         continue;
       }
@@ -176,9 +192,8 @@ export async function POST(request: Request) {
 
       const appliedMarkup = matchesMarkupFilter ? markupPercent : 0;
       const usesGlobalMarkup = matchesMarkupFilter;
-      const sellingPrice = Number(
-        (price * (1 + appliedMarkup / 100)).toFixed(2),
-      );
+      const sellingPrice = calculateSellingPrice(price, appliedMarkup);
+      let skuForError = rawSku || "(generated)";
 
       try {
         const existingByNameAndUnit = rawSku
@@ -229,6 +244,8 @@ export async function POST(request: Request) {
           });
 
           results.push({
+            row,
+            productName,
             sku: existingByNameAndUnit.sku,
             success: true,
             message: priceChanged
@@ -238,7 +255,20 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const targetSku = rawSku || (await getNextSequentialSku(name));
+        const targetSku = (() => {
+          if (rawSku) {
+            return rawSku;
+          }
+
+          try {
+            return generateSmartSku(name, unit);
+          } catch (error) {
+            const reason =
+              error instanceof Error ? error.message : "Unknown SKU error";
+            throw new Error(`SKU generation failed: ${reason}`);
+          }
+        })();
+        skuForError = targetSku;
 
         const existingBySku = await prisma.product.findUnique({
           where: { sku: targetSku },
@@ -282,6 +312,8 @@ export async function POST(request: Request) {
           });
 
           results.push({
+            row,
+            productName,
             sku: targetSku,
             success: true,
             message: priceChanged
@@ -317,15 +349,39 @@ export async function POST(request: Request) {
         });
 
         results.push({
+          row,
+          productName,
           sku: targetSku,
           success: true,
           message: "Created",
         });
-      } catch {
+      } catch (error) {
+        const detailedMessage = (() => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2002") {
+              return "Duplicate value violates a unique field";
+            }
+            if (error.code === "P2003") {
+              return "Related record not found (foreign key constraint)";
+            }
+            if (error.code === "P2020") {
+              return "Invalid value for a database field";
+            }
+          }
+
+          if (error instanceof Error && error.message.trim().length > 0) {
+            return error.message;
+          }
+
+          return "Database error";
+        })();
+
         results.push({
-          sku: rawSku || "(generated)",
+          row,
+          productName,
+          sku: skuForError,
           success: false,
-          message: "Database error",
+          message: detailedMessage,
         });
       } finally {
         processedRows += 1;

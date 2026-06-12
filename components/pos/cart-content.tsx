@@ -8,6 +8,7 @@ import {
 import {
   Button,
   Divider,
+  Empty,
   InputNumber,
   Space,
   Statistic,
@@ -100,7 +101,19 @@ export function CartContent({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {cart.length === 0 ? (
-          <Typography.Text type="secondary">No items yet</Typography.Text>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "20px 0",
+            }}
+          >
+            <Empty description="Cart Empty" style={{ margin: 0 }}>
+              <Typography.Text type="secondary">
+                No items added to cart yet
+              </Typography.Text>
+            </Empty>
+          </div>
         ) : (
           cart.map((item) => (
             <div
