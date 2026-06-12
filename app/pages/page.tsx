@@ -251,6 +251,32 @@ export default function Home() {
     });
   };
 
+  const addToCart = (product: Product, quantity: number) => {
+    const safeQuantity = Math.max(1, Math.floor(quantity));
+
+    setCart((items) => {
+      const existing = items.find((item) => item.id === product.id);
+      if (!existing) {
+        return [
+          ...items,
+          {
+            ...product,
+            quantity: Math.min(safeQuantity, product.stock),
+          },
+        ];
+      }
+
+      return items.map((item) => {
+        if (item.id !== product.id) {
+          return item;
+        }
+
+        const nextQuantity = Math.min(item.quantity + safeQuantity, item.stock);
+        return { ...item, quantity: nextQuantity };
+      });
+    });
+  };
+
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + getLineTotal(item), 0),
     [cart],
@@ -270,7 +296,8 @@ export default function Home() {
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart],
   );
-  const virtualListHeight = isDesktop ? 700 : 560;
+  const virtualListContainerHeight = isDesktop ? 700 : "100vh";
+  const virtualListFallbackHeight = isDesktop ? 700 : 560;
   const overscanRows = isDesktop ? 4 : 6;
 
   const requestNextPage = useCallback(() => {
@@ -372,31 +399,16 @@ export default function Home() {
         >
           <Space
             orientation="vertical"
-            size={isCompactHeight ? 12 : 18}
+            size={isCompactHeight ? 6 : 12}
             style={{ width: "100%" }}
           >
             <Card>
-              <Row gutter={[16, 16]} align="middle">
-                <Typography.Title level={4} style={{ marginBottom: 4 }}>
-                  Mobile POS
-                </Typography.Title>
-                <Typography.Paragraph style={{ marginBottom: 0 }}>
-                  Add your products and start selling. This view is optimized
-                  for phone and tablet workflow.
-                </Typography.Paragraph>
-                <Space
-                  orientation="vertical"
-                  style={{ width: "100%" }}
-                  size={10}
-                >
-                  <Input.Search
-                    placeholder="Search by name or SKU"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    allowClear
-                  />
-                </Space>
-              </Row>
+              <Input.Search
+                placeholder="Search product by name or SKU"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                allowClear
+              />
             </Card>
 
             <Row gutter={[16, 16]}>
@@ -490,7 +502,7 @@ export default function Home() {
                 <Col xs={24}>
                   <div
                     style={{
-                      height: virtualListHeight,
+                      height: virtualListContainerHeight,
                       width: "100%",
                       overflow: "hidden",
                     }}
@@ -506,7 +518,10 @@ export default function Home() {
                         <VirtualList
                           style={{
                             width: Math.max(width ?? 1, 1),
-                            height: Math.max(height ?? virtualListHeight, 1),
+                            height: Math.max(
+                              height ?? virtualListFallbackHeight,
+                              1,
+                            ),
                           }}
                           rowCount={products.length}
                           rowHeight={LIST_ROW_HEIGHT + LIST_ROW_GAP}
@@ -514,6 +529,7 @@ export default function Home() {
                           rowComponent={ProductRow}
                           rowProps={{
                             products,
+                            onAddToCart: addToCart,
                           }}
                           onRowsRendered={({
                             stopIndex,

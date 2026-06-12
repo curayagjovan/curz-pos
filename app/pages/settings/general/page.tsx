@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  App,
   Button,
   Card,
+  Col,
   FloatButton,
   Grid,
   Layout,
+  Row,
   Space,
   Typography,
 } from "antd";
@@ -24,40 +24,10 @@ import { SettingsDropdown } from "@/components/settings/settings-dropdown";
 const { Header, Content } = Layout;
 
 export default function GeneralSettingsPage() {
-  const { message } = App.useApp();
   const { mode, setMode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const isCompactHeight = useCompactHeight();
-  const [loadingSettings, setLoadingSettings] = useState(true);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setLoadingSettings(true);
-        const response = await fetch("/api/settings", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error("Failed to load settings.");
-        }
-
-        const data = (await response.json()) as {
-          themeMode?: "light" | "dark";
-        };
-
-        if (data.themeMode === "light" || data.themeMode === "dark") {
-          setMode(data.themeMode);
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to load settings.";
-        message.error(errorMessage);
-      } finally {
-        setLoadingSettings(false);
-      }
-    };
-
-    void loadSettings();
-  }, [message, setMode]);
 
   return (
     <Layout style={{ minHeight: "100vh", background: "transparent" }}>
@@ -128,29 +98,58 @@ export default function GeneralSettingsPage() {
                 Configure application-wide preferences
               </Typography.Text>
 
-              <div style={{ paddingTop: 12 }}>
-                <Typography.Text strong>Theme</Typography.Text>
-                <Space style={{ marginTop: 12 }} wrap>
-                  <Button
-                    size={isDesktop ? "middle" : "large"}
-                    type={mode === "light" ? "primary" : "default"}
-                    icon={<SunOutlined />}
-                    onClick={() => setMode("light")}
-                    disabled={loadingSettings}
+              <Card
+                size="small"
+                styles={{ body: { padding: isDesktop ? 16 : 12 } }}
+                style={{
+                  background:
+                    mode === "dark"
+                      ? "rgba(15, 23, 42, 0.45)"
+                      : "rgba(248, 250, 252, 0.9)",
+                  borderColor: mode === "dark" ? "#334155" : "#dbeafe",
+                }}
+              >
+                <Space
+                  orientation="vertical"
+                  style={{ width: "100%" }}
+                  size={10}
+                >
+                  <Typography.Text
+                    strong
+                    style={{ color: mode === "dark" ? "#e5e7eb" : "#0f172a" }}
                   >
-                    Light Mode
-                  </Button>
-                  <Button
-                    size={isDesktop ? "middle" : "large"}
-                    type={mode === "dark" ? "primary" : "default"}
-                    icon={<MoonOutlined />}
-                    onClick={() => setMode("dark")}
-                    disabled={loadingSettings}
-                  >
-                    Dark Mode
-                  </Button>
+                    Theme
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    Switch between light and dark appearance.
+                  </Typography.Text>
+
+                  <Row gutter={[10, 10]}>
+                    <Col xs={24} sm={12}>
+                      <Button
+                        size={isDesktop ? "middle" : "large"}
+                        type={mode === "light" ? "primary" : "default"}
+                        icon={<SunOutlined />}
+                        onClick={() => setMode("light")}
+                        block
+                      >
+                        Light Mode
+                      </Button>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Button
+                        size={isDesktop ? "middle" : "large"}
+                        type={mode === "dark" ? "primary" : "default"}
+                        icon={<MoonOutlined />}
+                        onClick={() => setMode("dark")}
+                        block
+                      >
+                        Dark Mode
+                      </Button>
+                    </Col>
+                  </Row>
                 </Space>
-              </div>
+              </Card>
             </Space>
           </Card>
         </Space>
