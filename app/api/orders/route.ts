@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeTax } from "@/lib/tax-config";
 
@@ -68,14 +68,16 @@ export async function GET(request: Request) {
         : Math.min(limitParam, 100);
     const skip = (page - 1) * limit;
 
-    const status =
+    const status: OrderStatus | null =
       statusParam === "PAID" ||
       statusParam === "CANCELLED" ||
       statusParam === "PENDING"
-        ? statusParam
+        ? (statusParam as OrderStatus)
         : null;
 
-    const where = status ? { status } : undefined;
+    const where: Prisma.OrderWhereInput | undefined = status
+      ? { status }
+      : undefined;
 
     if (!hasPaginationParams) {
       const orders = await prisma.order.findMany({
