@@ -19,8 +19,8 @@ import {
   Typography,
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
-import { useThemeMode } from "../../../theme-provider";
-import { useCompactHeight } from "@/lib/use-compact-height";
+import { useThemeMode } from "@/components/providers/theme-provider";
+import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -227,7 +227,7 @@ export default function EditProductPage() {
       }
 
       message.success("Product updated successfully.");
-      router.push("/");
+      router.push("/pages/");
       router.refresh();
     } catch (error) {
       const errorMessage =
@@ -261,7 +261,7 @@ export default function EditProductPage() {
         }}
       >
         <Space>
-          <Link href="/">
+          <Link href="/pages/">
             <Button
               icon={<ArrowLeftOutlined />}
               type="text"
@@ -284,7 +284,8 @@ export default function EditProductPage() {
 
       <Content
         style={{
-          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 720,
           width: "100%",

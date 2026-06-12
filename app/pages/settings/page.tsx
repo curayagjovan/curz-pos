@@ -22,8 +22,8 @@ import {
   MoonOutlined,
   SunOutlined,
 } from "@ant-design/icons";
-import { useThemeMode } from "../theme-provider";
-import { useCompactHeight } from "@/lib/use-compact-height";
+import { useThemeMode } from "@/components/providers/theme-provider";
+import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -154,7 +154,7 @@ export default function SettingsPage() {
         }}
       >
         <Space>
-          <Link href="/">
+          <Link href="/pages/">
             <Button
               icon={<ArrowLeftOutlined />}
               type="text"
@@ -177,7 +177,8 @@ export default function SettingsPage() {
 
       <Content
         style={{
-          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 900,
           width: "100%",
