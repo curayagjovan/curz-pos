@@ -17,9 +17,9 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
 import { useCompactHeight } from "@/hooks/use-compact-height";
+import { SettingsDropdown } from "@/components/settings/settings-dropdown";
 
 const { Header, Content } = Layout;
 
@@ -174,13 +174,7 @@ export default function TransactionsPage() {
           Curz POS
         </Typography.Title>
         <Space size={8} wrap>
-          <Link href="/pages/settings">
-            <Button
-              icon={<SettingOutlined />}
-              size={isDesktop ? "middle" : "large"}
-              aria-label="Settings"
-            />
-          </Link>
+          <SettingsDropdown size={isDesktop ? "middle" : "large"} />
           <Link href="/pages/">
             <Button size={isDesktop ? "middle" : "large"}>POS</Button>
           </Link>

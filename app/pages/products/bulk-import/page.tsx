@@ -395,7 +395,7 @@ export default function BulkImportPage() {
                       ? " loading..."
                       : ` ${globalMarkupPercent.toFixed(2)}%`}
                     . To change it, open the markup tool in{" "}
-                    <Link href="/pages/settings#global-markup-tool">
+                    <Link href="/pages/settings/product#global-markup-tool">
                       Settings
                     </Link>
                     .

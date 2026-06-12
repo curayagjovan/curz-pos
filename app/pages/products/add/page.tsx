@@ -23,7 +23,7 @@ import { useCompactHeight } from "@/hooks/use-compact-height";
 const { Header, Content } = Layout;
 
 type ProductFormValues = {
-  sku: string;
+  sku?: string;
   name: string;
   unit?: string;
   description?: string;
@@ -36,16 +36,22 @@ type ProductFormValues = {
   stock: number;
 };
 
-function createSkuFromName(name: string) {
-  const base = name
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+async function generateAutoSku(
+  productName: string,
+  unit?: string,
+): Promise<string> {
+  const response = await fetch("/api/sku-generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: productName, unit }),
+  });
 
-  return `${base || "PRODUCT"}-001`;
+  if (!response.ok) {
+    return "SKU-AUTO-GEN";
+  }
+
+  const data = (await response.json()) as { sku?: string };
+  return data.sku || "SKU-AUTO-GEN";
 }
 
 export default function AddProductPage() {
@@ -58,7 +64,7 @@ export default function AddProductPage() {
   const [form] = Form.useForm<ProductFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [skuEditable, setSkuEditable] = useState(false);
-  const [skuManuallyEdited, setSkuManuallyEdited] = useState(false);
+  const [autoSkuPreview, setAutoSkuPreview] = useState<string>("");
   const [bundleEnabled, setBundleEnabled] = useState(false);
   const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
   const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
@@ -67,6 +73,8 @@ export default function AddProductPage() {
   const bundleQty = Form.useWatch("bundleQty", form);
   const bundleMarkdownPercent = Form.useWatch("bundleMarkdownPercent", form);
   const priceValue = Form.useWatch("price", form);
+  const productName = Form.useWatch("name", form);
+  const productUnit = Form.useWatch("unit", form);
 
   const calculatedPrice = useMemo(() => {
     const baseCost = Number(cost ?? 0);
@@ -141,12 +149,27 @@ export default function AddProductPage() {
     form.setFieldValue("bundlePrice", nextBundlePrice);
   }, [bundleEnabled, bundleQty, bundleMarkdownPercent, priceValue, form]);
 
+  useEffect(() => {
+    if (!productName || skuEditable) {
+      return;
+    }
+
+    const generatePreview = async () => {
+      const sku = await generateAutoSku(productName, productUnit);
+      setAutoSkuPreview(sku);
+    };
+
+    void generatePreview();
+  }, [productName, productUnit, skuEditable]);
+
   const onSubmit = async (values: ProductFormValues) => {
     try {
       setSubmitting(true);
 
+      const finalSku = values.sku || autoSkuPreview || "AUTO-GEN";
+
       const payload = {
-        sku: values.sku,
+        sku: finalSku,
         name: values.name,
         unit: values.unit,
         description: values.description,
@@ -257,27 +280,28 @@ export default function AddProductPage() {
               label={
                 <Space size={8}>
                   <span>SKU</span>
+                  {!skuEditable && autoSkuPreview && (
+                    <Typography.Text type="secondary" code>
+                      {autoSkuPreview}
+                    </Typography.Text>
+                  )}
                   <Switch
                     size="small"
                     checked={skuEditable}
                     onChange={(checked) => {
                       setSkuEditable(checked);
-                      if (!checked) {
-                        setSkuManuallyEdited(false);
-                      }
                     }}
                   />
                   <Typography.Text type="secondary">
-                    Unlock edit
+                    Override
                   </Typography.Text>
                 </Space>
               }
               name="sku"
-              rules={[{ required: true, message: "Please enter SKU" }]}
             >
               <Input
-                placeholder="e.g. MILK-001"
-                onChange={() => setSkuManuallyEdited(true)}
+                placeholder="Leave empty to auto-generate (e.g., HOM-TSH-BLK-377)"
+                onChange={() => {}}
                 disabled={!skuEditable}
               />
             </Form.Item>
@@ -287,19 +311,7 @@ export default function AddProductPage() {
               name="name"
               rules={[{ required: true, message: "Please enter product name" }]}
             >
-              <Input
-                placeholder="e.g. Fresh Milk"
-                onChange={(event) => {
-                  if (skuManuallyEdited) {
-                    return;
-                  }
-
-                  form.setFieldValue(
-                    "sku",
-                    createSkuFromName(event.target.value),
-                  );
-                }}
-              />
+              <Input placeholder="e.g. Fresh Milk" />
             </Form.Item>
 
             <Form.Item label="Description" name="description">

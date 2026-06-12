@@ -1,40 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-function normalizeSkuBase(value: string) {
-  return (
-    value
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "") || "PRODUCT"
-  );
-}
-
-async function getNextSequentialSku(baseInput: string) {
-  const base = normalizeSkuBase(baseInput);
-  const existing = await prisma.product.findMany({
-    where: { sku: { startsWith: `${base}-` } },
-    select: { sku: true },
-  });
-
-  let maxSequence = 0;
-  for (const item of existing) {
-    const match = item.sku.match(new RegExp(`^${base}-(\\d+)$`));
-    if (!match) {
-      continue;
-    }
-
-    const sequence = Number(match[1]);
-    if (!Number.isNaN(sequence) && sequence > maxSequence) {
-      maxSequence = sequence;
-    }
-  }
-
-  return `${base}-${String(maxSequence + 1).padStart(3, "0")}`;
-}
+import { generateSmartSku } from "@/lib/sku-generator";
 
 type BulkProductData = {
   sku?: string;
@@ -238,7 +204,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const targetSku = rawSku || (await getNextSequentialSku(name));
+        const targetSku = rawSku || generateSmartSku(name, unit);
 
         const existingBySku = await prisma.product.findUnique({
           where: { sku: targetSku },
