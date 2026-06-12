@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
   Collapse,
   Empty,
+  FloatButton,
+  Grid,
   Layout,
+  Pagination,
   Skeleton,
   Space,
   Tag,
@@ -15,6 +19,7 @@ import {
 } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { useThemeMode } from "../theme-provider";
+import { useCompactHeight } from "@/lib/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -37,34 +42,86 @@ type Transaction = {
 };
 
 type TransactionFilter = "ALL" | "PAID" | "CANCELLED";
+const PAGE_SIZE = 10;
+
+type TransactionCacheEntry = {
+  items: Transaction[];
+  total: number;
+  updatedAt: number;
+};
+
+const TRANSACTION_CACHE_TTL_MS = 30_000;
+const transactionCache = new Map<string, TransactionCacheEntry>();
 
 export default function TransactionsPage() {
+  const router = useRouter();
   const { mode } = useThemeMode();
+  const screens = Grid.useBreakpoint();
+  const isDesktop = Boolean(screens.lg);
+  const isCompactHeight = useCompactHeight();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
   const [transactionFilter, setTransactionFilter] =
     useState<TransactionFilter>("ALL");
 
   useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
+
+  useEffect(() => {
     const loadTransactions = async () => {
       try {
+        const cacheKey = `${transactionFilter}:${currentPage}`;
+        const cached = transactionCache.get(cacheKey);
+        if (
+          cached &&
+          Date.now() - cached.updatedAt < TRANSACTION_CACHE_TTL_MS
+        ) {
+          setTransactions(cached.items);
+          setTotalTransactions(cached.total);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
-        const response = await fetch("/api/orders", { cache: "no-store" });
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(PAGE_SIZE),
+        });
+
+        if (transactionFilter !== "ALL") {
+          params.set("status", transactionFilter);
+        }
+
+        const response = await fetch(`/api/orders?${params.toString()}`);
         if (!response.ok) {
           throw new Error("Failed to load transactions");
         }
 
-        const data = (await response.json()) as ApiOrder[];
-        setTransactions(
-          data.map((order) => ({
-            id: order.id,
-            orderNo: order.orderNo,
-            status: order.status,
-            total: Number(order.total),
-            note: order.note ?? "",
-            createdAt: order.createdAt,
-          })),
-        );
+        const data = (await response.json()) as {
+          items: ApiOrder[];
+          total: number;
+        };
+
+        const normalizedItems = data.items.map((order) => ({
+          id: order.id,
+          orderNo: order.orderNo,
+          status: order.status,
+          total: Number(order.total),
+          note: order.note ?? "",
+          createdAt: order.createdAt,
+        }));
+
+        const total = Number(data.total ?? 0);
+        setTotalTransactions(total);
+        setTransactions(normalizedItems);
+        transactionCache.set(cacheKey, {
+          items: normalizedItems,
+          total,
+          updatedAt: Date.now(),
+        });
       } catch (error) {
         console.error(error);
         setTransactions([]);
@@ -74,15 +131,7 @@ export default function TransactionsPage() {
     };
 
     void loadTransactions();
-  }, []);
-
-  const filteredTransactions = useMemo(() => {
-    if (transactionFilter === "ALL") {
-      return transactions;
-    }
-
-    return transactions.filter((item) => item.status === transactionFilter);
-  }, [transactionFilter, transactions]);
+  }, [currentPage, transactionFilter]);
 
   const getStatusTag = (status: Transaction["status"]) => {
     if (status === "PAID") {
@@ -103,6 +152,8 @@ export default function TransactionsPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
           borderBottom:
             mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
           background:
@@ -111,29 +162,44 @@ export default function TransactionsPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
+          paddingInline: isDesktop ? 16 : 12,
+          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Typography.Title
-          level={4}
+          level={isDesktop ? 4 : 5}
           style={{ margin: 0, color: mode === "dark" ? "#e5e7eb" : "#12325a" }}
         >
           Curz POS
         </Typography.Title>
-        <Space size={8}>
+        <Space size={8} wrap>
           <Link href="/settings">
-            <Button icon={<SettingOutlined />} aria-label="Settings" />
+            <Button
+              icon={<SettingOutlined />}
+              size={isDesktop ? "middle" : "large"}
+              aria-label="Settings"
+            />
           </Link>
           <Link href="/">
-            <Button>POS</Button>
+            <Button size={isDesktop ? "middle" : "large"}>POS</Button>
           </Link>
           <Link href="/transactions">
-            <Button type="primary">Transactions</Button>
+            <Button type="primary" size={isDesktop ? "middle" : "large"}>
+              Transactions
+            </Button>
           </Link>
         </Space>
       </Header>
 
       <Content
-        style={{ padding: 14, maxWidth: 1080, width: "100%", margin: "0 auto" }}
+        style={{
+          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
+          maxWidth: 1080,
+          width: "100%",
+          margin: "0 auto",
+        }}
       >
         <Card>
           <Space orientation="vertical" size={12} style={{ width: "100%" }}>
@@ -142,66 +208,99 @@ export default function TransactionsPage() {
             </Typography.Title>
             <Space wrap>
               <Button
+                size={isDesktop ? "middle" : "large"}
                 type={transactionFilter === "ALL" ? "primary" : "default"}
-                onClick={() => setTransactionFilter("ALL")}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setTransactionFilter("ALL");
+                }}
               >
                 All
               </Button>
               <Button
+                size={isDesktop ? "middle" : "large"}
                 type={transactionFilter === "PAID" ? "primary" : "default"}
-                onClick={() => setTransactionFilter("PAID")}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setTransactionFilter("PAID");
+                }}
               >
                 Successful
               </Button>
               <Button
+                size={isDesktop ? "middle" : "large"}
                 type={transactionFilter === "CANCELLED" ? "primary" : "default"}
-                onClick={() => setTransactionFilter("CANCELLED")}
+                onClick={() => {
+                  setCurrentPage(1);
+                  setTransactionFilter("CANCELLED");
+                }}
               >
                 Not Successful
               </Button>
             </Space>
             {loading ? (
               <Skeleton active paragraph={{ rows: 6 }} />
-            ) : filteredTransactions.length === 0 ? (
+            ) : transactions.length === 0 ? (
               <Empty description="No transactions yet" />
             ) : (
-              <Collapse
-                items={filteredTransactions.map((item) => ({
-                  key: item.id,
-                  label: (
-                    <Space
-                      style={{ width: "100%", justifyContent: "space-between" }}
-                      wrap
-                    >
-                      <Typography.Text strong>{item.orderNo}</Typography.Text>
-                      <Space>
-                        {getStatusTag(item.status)}
-                        <Typography.Text strong>
-                          ₱{item.total.toFixed(2)}
+              <Space orientation="vertical" size={12} style={{ width: "100%" }}>
+                <Collapse
+                  items={transactions.map((item) => ({
+                    key: item.id,
+                    label: (
+                      <Space
+                        style={{
+                          width: "100%",
+                          justifyContent: "space-between",
+                        }}
+                        wrap
+                      >
+                        <Typography.Text strong>{item.orderNo}</Typography.Text>
+                        <Space>
+                          {getStatusTag(item.status)}
+                          <Typography.Text strong>
+                            ₱{item.total.toFixed(2)}
+                          </Typography.Text>
+                        </Space>
+                      </Space>
+                    ),
+                    children: (
+                      <Space
+                        orientation="vertical"
+                        size={6}
+                        style={{ width: "100%" }}
+                      >
+                        <Typography.Text type="secondary">
+                          Date: {new Date(item.createdAt).toLocaleString()}
+                        </Typography.Text>
+                        <Typography.Text>
+                          Note: {item.note || "No note"}
                         </Typography.Text>
                       </Space>
-                    </Space>
-                  ),
-                  children: (
-                    <Space
-                      orientation="vertical"
-                      size={6}
-                      style={{ width: "100%" }}
-                    >
-                      <Typography.Text type="secondary">
-                        Date: {new Date(item.createdAt).toLocaleString()}
-                      </Typography.Text>
-                      <Typography.Text>
-                        Note: {item.note || "No note"}
-                      </Typography.Text>
-                    </Space>
-                  ),
-                }))}
-              />
+                    ),
+                  }))}
+                />
+                <Pagination
+                  current={currentPage}
+                  pageSize={PAGE_SIZE}
+                  total={totalTransactions}
+                  onChange={(page) => setCurrentPage(page)}
+                  showSizeChanger={false}
+                  simple
+                />
+              </Space>
             )}
           </Space>
         </Card>
       </Content>
+
+      <FloatButton.BackTop
+        visibilityHeight={300}
+        style={{
+          right: 16,
+          bottom: "calc(24px + env(safe-area-inset-bottom))",
+        }}
+      />
     </Layout>
   );
 }

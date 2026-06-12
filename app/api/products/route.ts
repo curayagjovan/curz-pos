@@ -1,5 +1,36 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type CursorToken = {
+  name: string;
+  id: string;
+};
+
+function encodeCursorToken(token: CursorToken) {
+  return Buffer.from(JSON.stringify(token), "utf8").toString("base64url");
+}
+
+function decodeCursorToken(cursor: string): CursorToken | null {
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf8"),
+    ) as CursorToken;
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      typeof parsed.id === "string" &&
+      typeof parsed.name === "string"
+    ) {
+      return parsed;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function normalizeSkuBase(value: string) {
   return (
@@ -36,14 +67,153 @@ async function getNextSequentialSku(baseInput: string) {
   return `${base}-${String(maxSequence + 1).padStart(3, "0")}`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const query = url.searchParams.get("q")?.trim() ?? "";
+    const cursorParam = url.searchParams.get("cursor")?.trim() || null;
+    const pageParam = Number(url.searchParams.get("page") ?? "1");
+    const limitParam = Number(url.searchParams.get("limit") ?? "18");
+    const hasPaginationParams =
+      url.searchParams.has("cursor") ||
+      url.searchParams.has("page") ||
+      url.searchParams.has("limit") ||
+      url.searchParams.has("q");
+
+    const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const limit =
+      Number.isNaN(limitParam) || limitParam < 1
+        ? 18
+        : Math.min(limitParam, 60);
+    const baseWhere: Prisma.ProductWhereInput = {
+      isActive: true,
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query, mode: "insensitive" as const } },
+              { sku: { contains: query, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+
+    if (!hasPaginationParams) {
+      const products = await prisma.product.findMany({
+        where: baseWhere,
+        orderBy: { name: "asc" },
+      });
+
+      return NextResponse.json(products);
+    }
+
+    if (url.searchParams.has("page") && !url.searchParams.has("cursor")) {
+      const skip = (page - 1) * limit;
+
+      const products = await prisma.product.findMany({
+        where: baseWhere,
+        orderBy: { name: "asc" },
+        skip,
+        take: limit + 1,
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          price: true,
+          bundleQty: true,
+          bundlePrice: true,
+          stock: true,
+        },
+      });
+
+      const hasMore = products.length > limit;
+      const items = hasMore ? products.slice(0, limit) : products;
+
+      return NextResponse.json({
+        items,
+        page,
+        limit,
+        hasMore,
+      });
+    }
+
+    let cursorWhere: Prisma.ProductWhereInput = baseWhere;
+    if (cursorParam) {
+      const decoded = decodeCursorToken(cursorParam);
+      if (decoded) {
+        cursorWhere = {
+          ...baseWhere,
+          AND: [
+            {
+              OR: [
+                { name: { gt: decoded.name } },
+                {
+                  AND: [{ name: decoded.name }, { id: { gt: decoded.id } }],
+                },
+              ],
+            },
+          ],
+        };
+      } else {
+        const cursorProduct = await prisma.product.findUnique({
+          where: { id: cursorParam },
+          select: { id: true, name: true },
+        });
+
+        if (cursorProduct) {
+          cursorWhere = {
+            ...baseWhere,
+            AND: [
+              {
+                OR: [
+                  { name: { gt: cursorProduct.name } },
+                  {
+                    AND: [
+                      { name: cursorProduct.name },
+                      { id: { gt: cursorProduct.id } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+        }
+      }
+    }
+
     const products = await prisma.product.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
+      where: cursorWhere,
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: limit + 1,
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        price: true,
+        bundleQty: true,
+        bundlePrice: true,
+        stock: true,
+      },
     });
 
-    return NextResponse.json(products);
+    const hasMore = products.length > limit;
+    const items = hasMore ? products.slice(0, limit) : products;
+    const nextCursor = hasMore
+      ? (() => {
+          const last = items[items.length - 1];
+          if (!last) {
+            return null;
+          }
+
+          return encodeCursorToken({ id: last.id, name: last.name });
+        })()
+      : null;
+
+    return NextResponse.json({
+      items,
+      limit,
+      hasMore,
+      nextCursor,
+    });
   } catch (error) {
     console.error("Failed to load products", error);
     return NextResponse.json(

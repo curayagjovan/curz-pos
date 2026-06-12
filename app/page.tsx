@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { List as VirtualList, type RowComponentProps } from "react-window";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 import {
   App,
   Badge,
@@ -10,11 +13,13 @@ import {
   Col,
   Divider,
   Drawer,
+  FloatButton,
   Grid,
   Input,
   InputNumber,
   Layout,
   Row,
+  Spin,
   Space,
   Statistic,
   Tag,
@@ -30,6 +35,7 @@ import {
   ShoppingCartOutlined,
 } from "@ant-design/icons";
 import { TAX_ENABLED, TAX_RATE, computeTax } from "@/lib/tax-config";
+import { useCompactHeight } from "@/lib/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -91,13 +97,116 @@ function isBundleApplied(item: {
   );
 }
 
+const PAGE_SIZE = 18;
+const LIST_ROW_GAP = 12;
+const LIST_ROW_HEIGHT = 262;
+
+type ProductRowProps = {
+  products: Product[];
+  deletingId: string | null;
+  addToCart: (product: Product) => void;
+  deleteProduct: (productId: string) => void;
+};
+
+type ProductListCacheEntry = {
+  items: Product[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  updatedAt: number;
+};
+
+const PRODUCT_CACHE_TTL_MS = 30_000;
+const productListCache = new Map<string, ProductListCacheEntry>();
+
+function ProductRow({
+  index,
+  style,
+  products,
+  deletingId,
+  addToCart,
+  deleteProduct,
+}: RowComponentProps<ProductRowProps>) {
+  const product = products[index];
+  const parsedTop =
+    typeof style.top === "number"
+      ? style.top
+      : Number.parseFloat(String(style.top ?? "0"));
+  const parsedHeight =
+    typeof style.height === "number"
+      ? style.height
+      : Number.parseFloat(String(style.height ?? String(LIST_ROW_HEIGHT)));
+  const safeTop = Number.isFinite(parsedTop) ? parsedTop : 0;
+  const safeHeight = Number.isFinite(parsedHeight)
+    ? parsedHeight
+    : LIST_ROW_HEIGHT;
+
+  if (!product) {
+    return <div style={style} />;
+  }
+
+  return (
+    <div
+      style={{
+        ...style,
+        top: safeTop + LIST_ROW_GAP / 2,
+        height: Math.max(safeHeight - LIST_ROW_GAP, 0),
+      }}
+    >
+      <Card
+        title={product.name}
+        extra={<Tag>{product.sku}</Tag>}
+        actions={[
+          <Button
+            key="add"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => addToCart(product)}
+            disabled={product.stock <= 0}
+          >
+            {product.stock <= 0 ? "Out of Stock" : "Add"}
+          </Button>,
+          <Link key="edit" href={`/products/${product.id}/edit`}>
+            <Button icon={<EditOutlined />}>Edit</Button>
+          </Link>,
+          <Button
+            key="delete"
+            danger
+            icon={<DeleteOutlined />}
+            loading={deletingId === product.id}
+            onClick={() => deleteProduct(product.id)}
+          >
+            Delete
+          </Button>,
+        ]}
+      >
+        <Space orientation="vertical">
+          <Typography.Text strong>₱{product.price.toFixed(2)}</Typography.Text>
+          {product.bundleQty && product.bundlePrice !== null ? (
+            <Typography.Text type="secondary">
+              {product.bundleQty} for ₱{product.bundlePrice.toFixed(2)}
+            </Typography.Text>
+          ) : null}
+          <Typography.Text type="secondary">
+            Stock: {product.stock}
+          </Typography.Text>
+        </Space>
+      </Card>
+    </div>
+  );
+}
+
 export default function Home() {
   const { message, modal } = App.useApp();
+  const router = useRouter();
   const { mode } = useThemeMode();
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
+  const isCompactHeight = useCompactHeight();
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [hasMoreProducts, setHasMoreProducts] = useState(true);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -108,24 +217,74 @@ export default function Home() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const latestProductsRef = useRef<Product[]>([]);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    latestProductsRef.current = products;
+  }, [products]);
+
+  useEffect(() => {
+    router.prefetch("/transactions");
+  }, [router]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const loadProducts = useCallback(
+    async ({ cursor, reset }: { cursor: string | null; reset: boolean }) => {
       try {
-        setLoadingProducts(true);
-        setProductsLoadError(null);
-        const response = await fetch("/api/products", { cache: "no-store" });
+        const cacheKey = debouncedSearch.toLowerCase();
+        if (reset) {
+          const cached = productListCache.get(cacheKey);
+          if (cached && Date.now() - cached.updatedAt < PRODUCT_CACHE_TTL_MS) {
+            setProducts(cached.items);
+            setHasMoreProducts(cached.hasMore);
+            setNextCursor(cached.nextCursor);
+            setProductsLoadError(null);
+            setLoadingProducts(false);
+            return;
+          }
+        }
+
+        if (reset) {
+          setLoadingProducts(true);
+        }
+
+        if (!reset) {
+          setLoadingMoreProducts(true);
+        }
+
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+        });
+        if (cursor) {
+          params.set("cursor", cursor);
+        }
+        if (debouncedSearch) {
+          params.set("q", debouncedSearch);
+        }
+
+        const response = await fetch(`/api/products?${params.toString()}`);
         if (!response.ok) {
           const data = (await response.json().catch(() => ({}))) as {
             message?: string;
           };
-          setProductsLoadError(data.message || "Unable to load products.");
-          setProducts([]);
-          return;
+          throw new Error(data.message || "Unable to load products.");
         }
 
-        const data = (await response.json()) as ApiProduct[];
-        const normalized = data.map((item) => ({
+        const data = (await response.json()) as {
+          items: ApiProduct[];
+          hasMore: boolean;
+          nextCursor: string | null;
+        };
+
+        const normalized = data.items.map((item) => ({
           id: item.id,
           sku: item.sku,
           name: item.name,
@@ -135,31 +294,55 @@ export default function Home() {
             item.bundlePrice === null ? null : Number(item.bundlePrice),
           stock: item.stock,
         }));
-        setProducts(normalized);
-      } catch {
-        setProductsLoadError("Unable to load products.");
-        setProducts([]);
+
+        const mergedItems = reset
+          ? normalized
+          : (() => {
+              const seen = new Set(latestProductsRef.current.map((i) => i.id));
+              const nextItems = normalized.filter((i) => !seen.has(i.id));
+              return [...latestProductsRef.current, ...nextItems];
+            })();
+
+        setProducts((previous) => {
+          if (reset) {
+            return normalized;
+          }
+
+          const seen = new Set(previous.map((item) => item.id));
+          const nextItems = normalized.filter((item) => !seen.has(item.id));
+          return [...previous, ...nextItems];
+        });
+        setHasMoreProducts(data.hasMore);
+        setNextCursor(data.nextCursor ?? null);
+        setProductsLoadError(null);
+        productListCache.set(cacheKey, {
+          items: mergedItems,
+          hasMore: data.hasMore,
+          nextCursor: data.nextCursor ?? null,
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        const messageText =
+          error instanceof Error ? error.message : "Unable to load products.";
+        setProductsLoadError(messageText);
+        if (reset) {
+          setProducts([]);
+        }
       } finally {
-        setLoadingProducts(false);
+        if (reset) {
+          setLoadingProducts(false);
+        } else {
+          setLoadingMoreProducts(false);
+        }
       }
-    };
+    },
+    [debouncedSearch],
+  );
 
-    void loadProducts();
-  }, [reloadToken]);
-
-  const visibleProducts = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) {
-      return products;
-    }
-
-    return products.filter((item) => {
-      return (
-        item.name.toLowerCase().includes(keyword) ||
-        item.sku.toLowerCase().includes(keyword)
-      );
-    });
-  }, [products, search]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProducts({ cursor: null, reset: true });
+  }, [reloadToken, debouncedSearch, loadProducts]);
 
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
@@ -257,6 +440,27 @@ export default function Home() {
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart],
   );
+  const virtualListHeight = isDesktop ? 700 : 560;
+  const overscanRows = isDesktop ? 4 : 6;
+
+  const requestNextPage = useCallback(() => {
+    if (
+      !hasMoreProducts ||
+      !nextCursor ||
+      loadingMoreProducts ||
+      loadingProducts
+    ) {
+      return;
+    }
+
+    void loadProducts({ cursor: nextCursor, reset: false });
+  }, [
+    hasMoreProducts,
+    nextCursor,
+    loadingMoreProducts,
+    loadingProducts,
+    loadProducts,
+  ]);
 
   const submitCheckout = async () => {
     try {
@@ -464,6 +668,8 @@ export default function Home() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: isDesktop ? "nowrap" : "wrap",
+          gap: 8,
           borderBottom:
             mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
           background:
@@ -472,6 +678,9 @@ export default function Home() {
           position: "sticky",
           top: 0,
           zIndex: 2,
+          paddingInline: isDesktop ? 16 : 12,
+          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Typography.Title
@@ -483,26 +692,41 @@ export default function Home() {
         >
           Curz POS
         </Typography.Title>
-        <Space size={8}>
+        <Space size={8} wrap>
           <Link href="/settings">
-            <Button icon={<SettingOutlined />} aria-label="Settings" />
+            <Button
+              icon={<SettingOutlined />}
+              size={isDesktop ? "middle" : "large"}
+              aria-label="Settings"
+            />
           </Link>
           <Link href="/">
-            <Button type="primary">POS</Button>
+            <Button type="primary" size={isDesktop ? "middle" : "large"}>
+              POS
+            </Button>
           </Link>
           <Link href="/transactions">
-            <Button>Transactions</Button>
+            <Button size={isDesktop ? "middle" : "large"}>Transactions</Button>
           </Link>
         </Space>
       </Header>
       <Layout style={{ background: "transparent" }}>
         <Content
           style={{
-            padding: isDesktop ? 24 : 14,
-            paddingBottom: isDesktop ? 24 : 84,
+            padding: isDesktop ? 24 : isCompactHeight ? 10 : 14,
+            paddingBottom: isDesktop
+              ? 24
+              : "calc(104px + env(safe-area-inset-bottom))",
+            maxWidth: isDesktop ? 1200 : 430,
+            width: "100%",
+            margin: "0 auto",
           }}
         >
-          <Space orientation="vertical" size={18} style={{ width: "100%" }}>
+          <Space
+            orientation="vertical"
+            size={isCompactHeight ? 12 : 18}
+            style={{ width: "100%" }}
+          >
             <Card>
               <Row gutter={[16, 16]} align="middle">
                 <Col xs={24} md={14}>
@@ -568,7 +792,10 @@ export default function Home() {
                         {productsLoadError}
                       </Typography.Text>
                       <Button
-                        onClick={() => setReloadToken((value) => value + 1)}
+                        onClick={() => {
+                          setLoadingProducts(true);
+                          setReloadToken((value) => value + 1);
+                        }}
                       >
                         Retry Loading Products
                       </Button>
@@ -576,7 +803,7 @@ export default function Home() {
                   </Card>
                 </Col>
               ) : null}
-              {!loadingProducts && visibleProducts.length === 0 ? (
+              {!loadingProducts && products.length === 0 ? (
                 <Col xs={24}>
                   <Card>
                     <Typography.Text type="secondary">
@@ -586,52 +813,73 @@ export default function Home() {
                   </Card>
                 </Col>
               ) : null}
-              {visibleProducts.map((product) => (
-                <Col xs={24} sm={12} xl={8} key={product.id}>
-                  <Card
-                    title={product.name}
-                    extra={<Tag>{product.sku}</Tag>}
-                    actions={[
-                      <Button
-                        key="add"
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => addToCart(product)}
-                        disabled={product.stock <= 0}
-                      >
-                        {product.stock <= 0 ? "Out of Stock" : "Add"}
-                      </Button>,
-                      <Link key="edit" href={`/products/${product.id}/edit`}>
-                        <Button icon={<EditOutlined />}>Edit</Button>
-                      </Link>,
-                      <Button
-                        key="delete"
-                        danger
-                        icon={<DeleteOutlined />}
-                        loading={deletingId === product.id}
-                        onClick={() => deleteProduct(product.id)}
-                      >
-                        Delete
-                      </Button>,
-                    ]}
+              {!loadingProducts && !productsLoadError ? (
+                <Col xs={24}>
+                  <div
+                    style={{
+                      height: virtualListHeight,
+                      width: "100%",
+                      borderRadius: 12,
+                      border:
+                        mode === "dark"
+                          ? "1px solid #1f2937"
+                          : "1px solid #e2e8f0",
+                      overflow: "hidden",
+                    }}
                   >
-                    <Space orientation="vertical">
-                      <Typography.Text strong>
-                        ₱{product.price.toFixed(2)}
-                      </Typography.Text>
-                      {product.bundleQty && product.bundlePrice !== null ? (
-                        <Typography.Text type="secondary">
-                          {product.bundleQty} for ₱
-                          {product.bundlePrice.toFixed(2)}
-                        </Typography.Text>
-                      ) : null}
+                    <AutoSizer
+                      renderProp={({
+                        width,
+                        height,
+                      }: {
+                        width: number | undefined;
+                        height: number | undefined;
+                      }) => (
+                        <VirtualList
+                          style={{
+                            width: Math.max(width ?? 1, 1),
+                            height: Math.max(height ?? virtualListHeight, 1),
+                          }}
+                          rowCount={products.length}
+                          rowHeight={LIST_ROW_HEIGHT + LIST_ROW_GAP}
+                          overscanCount={overscanRows}
+                          rowComponent={ProductRow}
+                          rowProps={{
+                            products,
+                            deletingId,
+                            addToCart,
+                            deleteProduct,
+                          }}
+                          onRowsRendered={({
+                            stopIndex,
+                          }: {
+                            stopIndex: number;
+                          }) => {
+                            if (
+                              hasMoreProducts &&
+                              stopIndex >= products.length - 3
+                            ) {
+                              requestNextPage();
+                            }
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                </Col>
+              ) : null}
+              {loadingMoreProducts && !loadingProducts ? (
+                <Col xs={24}>
+                  <Card size="small">
+                    <Space align="center" size={10} style={{ width: "100%" }}>
+                      <Spin size="small" />
                       <Typography.Text type="secondary">
-                        Stock: {product.stock}
+                        Fetching more products...
                       </Typography.Text>
                     </Space>
                   </Card>
                 </Col>
-              ))}
+              ) : null}
             </Row>
           </Space>
         </Content>
@@ -646,7 +894,7 @@ export default function Home() {
             onClick={() => setCartOpen(true)}
             style={{
               position: "fixed",
-              bottom: 16,
+              bottom: "calc(16px + env(safe-area-inset-bottom))",
               left: 16,
               right: 16,
               zIndex: 30,
@@ -674,6 +922,16 @@ export default function Home() {
           </Drawer>
         </>
       ) : null}
+
+      <FloatButton.BackTop
+        visibilityHeight={300}
+        style={{
+          right: 16,
+          bottom: isDesktop
+            ? "calc(24px + env(safe-area-inset-bottom))"
+            : "calc(88px + env(safe-area-inset-bottom))",
+        }}
+      />
     </Layout>
   );
 }

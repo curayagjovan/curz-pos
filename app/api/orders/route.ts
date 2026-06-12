@@ -50,24 +50,79 @@ function computeLineTotal(
   return Number((quantity * unitPrice).toFixed(2));
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        orderNo: true,
-        status: true,
-        subtotal: true,
-        tax: true,
-        total: true,
-        note: true,
-        createdAt: true,
-      },
-    });
+    const url = new URL(request.url);
+    const pageParam = Number(url.searchParams.get("page") ?? "1");
+    const limitParam = Number(url.searchParams.get("limit") ?? "10");
+    const statusParam = url.searchParams.get("status");
+    const hasPaginationParams =
+      url.searchParams.has("page") ||
+      url.searchParams.has("limit") ||
+      url.searchParams.has("status");
 
-    return NextResponse.json(orders);
+    const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const limit =
+      Number.isNaN(limitParam) || limitParam < 1
+        ? 10
+        : Math.min(limitParam, 100);
+    const skip = (page - 1) * limit;
+
+    const status =
+      statusParam === "PAID" ||
+      statusParam === "CANCELLED" ||
+      statusParam === "PENDING"
+        ? statusParam
+        : null;
+
+    const where = status ? { status } : undefined;
+
+    if (!hasPaginationParams) {
+      const orders = await prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          orderNo: true,
+          status: true,
+          subtotal: true,
+          tax: true,
+          total: true,
+          note: true,
+          createdAt: true,
+        },
+      });
+
+      return NextResponse.json(orders);
+    }
+
+    const [orders, total] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          orderNo: true,
+          status: true,
+          subtotal: true,
+          tax: true,
+          total: true,
+          note: true,
+          createdAt: true,
+        },
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      items: orders,
+      total,
+      page,
+      limit,
+    });
   } catch (error) {
     console.error("Failed to load orders", error);
     return NextResponse.json(

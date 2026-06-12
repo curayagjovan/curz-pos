@@ -7,6 +7,8 @@ import {
   Button,
   Card,
   Col,
+  FloatButton,
+  Grid,
   Input,
   InputNumber,
   Layout,
@@ -21,12 +23,16 @@ import {
   SunOutlined,
 } from "@ant-design/icons";
 import { useThemeMode } from "../theme-provider";
+import { useCompactHeight } from "@/lib/use-compact-height";
 
 const { Header, Content } = Layout;
 
 export default function SettingsPage() {
   const { message } = App.useApp();
   const { mode, setMode } = useThemeMode();
+  const screens = Grid.useBreakpoint();
+  const isDesktop = Boolean(screens.lg);
+  const isCompactHeight = useCompactHeight();
   const [markupPercent, setMarkupPercent] = useState<number>(0);
   const [markupFilterType, setMarkupFilterType] = useState<
     "all" | "unit" | "category" | "productType"
@@ -132,31 +138,57 @@ export default function SettingsPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          borderBottom: "1px solid #d8e3f2",
-          background: "rgba(255,255,255,0.75)",
+          flexWrap: "wrap",
+          gap: 8,
+          borderBottom:
+            mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
+          background:
+            mode === "dark" ? "rgba(17,24,39,0.75)" : "rgba(255,255,255,0.75)",
           backdropFilter: "blur(8px)",
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: 16,
+          paddingInline: isDesktop ? 16 : 12,
+          paddingTop: "max(env(safe-area-inset-top), 8px)",
+          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Space>
           <Link href="/">
-            <Button icon={<ArrowLeftOutlined />} type="text">
+            <Button
+              icon={<ArrowLeftOutlined />}
+              type="text"
+              size={isDesktop ? "middle" : "large"}
+            >
               Back
             </Button>
           </Link>
-          <Typography.Title level={4} style={{ margin: 0, color: "#12325a" }}>
+          <Typography.Title
+            level={isDesktop ? 4 : 5}
+            style={{
+              margin: 0,
+              color: mode === "dark" ? "#e5e7eb" : "#12325a",
+            }}
+          >
             Settings
           </Typography.Title>
         </Space>
       </Header>
 
       <Content
-        style={{ padding: 14, maxWidth: 900, width: "100%", margin: "0 auto" }}
+        style={{
+          padding: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
+          maxWidth: 900,
+          width: "100%",
+          margin: "0 auto",
+        }}
       >
-        <Space orientation="vertical" style={{ width: "100%" }} size={18}>
+        <Space
+          orientation="vertical"
+          style={{ width: "100%" }}
+          size={isCompactHeight ? 12 : 18}
+        >
           {/* App Settings */}
           <Card>
             <Space orientation="vertical" style={{ width: "100%" }} size={12}>
@@ -169,17 +201,18 @@ export default function SettingsPage() {
 
               <div style={{ paddingTop: 12 }}>
                 <Typography.Text strong>Theme</Typography.Text>
-                <div style={{ marginTop: 12 }}>
+                <Space style={{ marginTop: 12 }} wrap>
                   <Button
+                    size={isDesktop ? "middle" : "large"}
                     type={mode === "light" ? "primary" : "default"}
                     icon={<SunOutlined />}
                     onClick={() => setMode("light")}
-                    style={{ marginRight: 8 }}
                     disabled={loadingSettings}
                   >
                     Light Mode
                   </Button>
                   <Button
+                    size={isDesktop ? "middle" : "large"}
                     type={mode === "dark" ? "primary" : "default"}
                     icon={<MoonOutlined />}
                     onClick={() => setMode("dark")}
@@ -187,7 +220,7 @@ export default function SettingsPage() {
                   >
                     Dark Mode
                   </Button>
-                </div>
+                </Space>
               </div>
             </Space>
           </Card>
@@ -291,6 +324,14 @@ export default function SettingsPage() {
           </Card>
         </Space>
       </Content>
+
+      <FloatButton.BackTop
+        visibilityHeight={300}
+        style={{
+          right: 16,
+          bottom: "calc(24px + env(safe-area-inset-bottom))",
+        }}
+      />
     </Layout>
   );
 }

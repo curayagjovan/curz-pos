@@ -28,6 +28,8 @@ model Product {
 
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+
+  @@index([isActive, name, id])
 }
 
 model AppSetting {
@@ -52,6 +54,8 @@ model Order {
   updatedAt  DateTime    @updatedAt
 
   items OrderItem[]
+
+  @@index([createdAt])
 }
 
 model OrderItem {
