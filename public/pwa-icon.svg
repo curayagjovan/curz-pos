@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Curz POS</title>
+  <desc id="desc">Curz POS application icon</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b6bcb" />
+      <stop offset="100%" stop-color="#12325a" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <g fill="#ffffff">
+    <path d="M137 145h249a18 18 0 0 1 17 23l-33 116a18 18 0 0 1-17 13H198l-7 25h170a17 17 0 1 1 0 34H168a17 17 0 0 1-16-22l35-122-16-51h-34a17 17 0 1 1 0-34zm81 190a24 24 0 1 1-24 24 24 24 0 0 1 24-24zm129 0a24 24 0 1 1-24 24 24 24 0 0 1 24-24z" />
+    <rect x="116" y="95" width="280" height="32" rx="16" opacity="0.9" />
+  </g>
+</svg>

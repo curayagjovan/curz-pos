@@ -6,18 +6,6 @@
   --app-text: #111827;
   --loading-bar-stroke: #0b6bcb;
   --loading-bar-trail: rgba(11, 107, 203, 0.12);
-  --app-bg:
-    radial-gradient(
-      circle at 12% 18%,
-      rgba(11, 107, 203, 0.2),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at 88% 12%,
-      rgba(225, 90, 64, 0.16),
-      transparent 20%
-    ),
-    linear-gradient(180deg, #f4f7fb 0%, #edf2f9 100%);
 }
 
 [data-theme="dark"] {
