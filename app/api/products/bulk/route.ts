@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { calculateSellingPrice, calculateBundlePrice } from "@/lib/price-calculator";
+import {
+  calculateSellingPrice,
+  calculateBundlePrice,
+} from "@/lib/price-calculator";
 
 type BulkProductData = {
   sku?: string;
@@ -108,17 +111,48 @@ export async function POST(request: Request) {
       const price = Number(item.price);
       const stock = Number(item.stock ?? 0);
 
-      if (
-        !name ||
-        Number.isNaN(price) ||
-        price < 0 ||
-        Number.isNaN(stock) ||
-        stock < 0
-      ) {
+      // Detailed validation
+      if (!name) {
         results.push({
           sku: rawSku || "(missing)",
           success: false,
-          message: "Invalid: name, price, and stock are required",
+          message: "Missing product name",
+        });
+        continue;
+      }
+
+      if (Number.isNaN(price)) {
+        results.push({
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid price: '${item.price}' is not a number`,
+        });
+        continue;
+      }
+
+      if (price < 0) {
+        results.push({
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid price: ${price} cannot be negative`,
+        });
+        continue;
+      }
+
+      if (Number.isNaN(stock)) {
+        results.push({
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid stock: '${item.stock}' is not a number`,
+        });
+        continue;
+      }
+
+      if (stock < 0) {
+        results.push({
+          sku: rawSku || name,
+          success: false,
+          message: `Invalid stock: ${stock} cannot be negative`,
         });
         continue;
       }
