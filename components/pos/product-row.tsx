@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Flex, Space, Tag, Typography } from "antd";
+import { Button, Card, Flex, Tag, Typography } from "antd";
 import { type RowComponentProps } from "react-window";
 
 export const LIST_ROW_GAP = 32;
@@ -27,6 +28,7 @@ export function ProductRow({
   products,
   onAddToCart,
 }: RowComponentProps<ProductRowProps>) {
+  const router = useRouter();
   const product = products[index];
   const [quantity, setQuantity] = useState(1);
   const parsedTop =
@@ -58,7 +60,11 @@ export function ProductRow({
         height: Math.max(safeHeight - LIST_ROW_GAP, 0),
       }}
     >
-      <Card style={{ height: `${LIST_ROW_HEIGHT}px` }}>
+      <Card
+        hoverable
+        style={{ height: `${LIST_ROW_HEIGHT}px`, cursor: "pointer" }}
+        onClick={() => router.push(`/pages/products/${product.id}`)}
+      >
         <Flex orientation="vertical" gap={8}>
           <Typography.Title level={4} style={{ margin: 0 }}>
             {product.name} <Tag>{product.sku}</Tag>
@@ -83,12 +89,14 @@ export function ProductRow({
                 borderRadius: 10,
                 padding: "6px 8px",
               }}
+              onClick={(event) => event.stopPropagation()}
             >
               <Button
                 icon={<MinusOutlined />}
-                onClick={() =>
-                  setQuantity((current) => Math.max(current - 1, 1))
-                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setQuantity((current) => Math.max(current - 1, 1));
+                }}
                 size="small"
                 disabled={isOutOfStock || selectedQuantity <= 1}
               />
@@ -100,9 +108,10 @@ export function ProductRow({
               </Typography.Text>
               <Button
                 icon={<PlusOutlined />}
-                onClick={() =>
-                  setQuantity((current) => Math.min(current + 1, maxQuantity))
-                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setQuantity((current) => Math.min(current + 1, maxQuantity));
+                }}
                 size="small"
                 disabled={isOutOfStock || selectedQuantity >= maxQuantity}
               />
@@ -111,7 +120,10 @@ export function ProductRow({
             <Button
               type="primary"
               block
-              onClick={() => onAddToCart(product, selectedQuantity)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAddToCart(product, selectedQuantity);
+              }}
               disabled={isOutOfStock}
             >
               Add to Cart
