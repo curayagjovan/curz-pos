@@ -101,7 +101,6 @@ export default function Home() {
     null,
   );
   const [reloadToken, setReloadToken] = useState(0);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -234,28 +233,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [reloadToken, debouncedSearch, loadProducts]);
 
-  const addToCart = (product: Product) => {
-    if (product.stock <= 0) {
-      message.warning("This product is out of stock.");
-      return;
-    }
-
-    setCart((items) => {
-      const found = items.find((item) => item.id === product.id);
-      if (!found) {
-        return [...items, { ...product, quantity: 1 }];
-      }
-
-      return items.map((item) => {
-        if (item.id !== product.id) {
-          return item;
-        }
-
-        return { ...item, quantity: Math.min(item.quantity + 1, item.stock) };
-      });
-    });
-  };
-
   const updateQty = (productId: string, delta: number) => {
     setCart((items) => {
       return items
@@ -271,43 +248,6 @@ export default function Home() {
           return { ...item, quantity: item.quantity + delta };
         })
         .filter((item) => item.quantity > 0);
-    });
-  };
-
-  const deleteProduct = (productId: string) => {
-    modal.confirm({
-      title: "Delete Product",
-      content: "Are you sure you want to delete this product?",
-      okText: "Delete",
-      okType: "danger",
-      cancelText: "Cancel",
-      onOk: async () => {
-        try {
-          setDeletingId(productId);
-          const response = await fetch(`/api/products/${productId}`, {
-            method: "DELETE",
-          });
-
-          if (!response.ok) {
-            const data = (await response.json().catch(() => ({}))) as {
-              message?: string;
-            };
-            throw new Error(data.message || "Failed to delete product");
-          }
-
-          setProducts((items) => items.filter((item) => item.id !== productId));
-          message.success("Product deleted successfully");
-        } catch (error) {
-          console.error(error);
-          message.error(
-            error instanceof Error
-              ? error.message
-              : "Unable to delete product. Please try again.",
-          );
-        } finally {
-          setDeletingId(null);
-        }
-      },
     });
   };
 
