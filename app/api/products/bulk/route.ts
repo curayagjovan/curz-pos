@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
+import { calculateSellingPrice, calculateBundlePrice } from "@/lib/price-calculator";
 
 type BulkProductData = {
   sku?: string;
@@ -142,9 +143,7 @@ export async function POST(request: Request) {
 
       const appliedMarkup = matchesMarkupFilter ? markupPercent : 0;
       const usesGlobalMarkup = matchesMarkupFilter;
-      const sellingPrice = Number(
-        (price * (1 + appliedMarkup / 100)).toFixed(2),
-      );
+      const sellingPrice = calculateSellingPrice(price, appliedMarkup);
 
       try {
         const existingByNameAndUnit = rawSku

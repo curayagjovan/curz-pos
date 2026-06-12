@@ -19,6 +19,7 @@ import {
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
 import { useCompactHeight } from "@/hooks/use-compact-height";
+import { calculateSellingPrice, calculateBundlePrice } from "@/lib/price-calculator";
 
 const { Header, Content } = Layout;
 
@@ -87,7 +88,7 @@ export default function AddProductPage() {
       return null;
     }
 
-    return Number((baseCost * (1 + markup / 100)).toFixed(2));
+    return calculateSellingPrice(baseCost, markup);
   }, [cost, markupPercent]);
 
   useEffect(() => {
@@ -142,10 +143,7 @@ export default function AddProductPage() {
       return;
     }
 
-    const regularTotal = qty * unitPrice;
-    const nextBundlePrice = Number(
-      (regularTotal * (1 - markdown / 100)).toFixed(2),
-    );
+    const nextBundlePrice = calculateBundlePrice(unitPrice, qty, markdown);
     form.setFieldValue("bundlePrice", nextBundlePrice);
   }, [bundleEnabled, bundleQty, bundleMarkdownPercent, priceValue, form]);
 
