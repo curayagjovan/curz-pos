@@ -171,7 +171,7 @@ export default function TransactionsPage() {
           level={isDesktop ? 4 : 5}
           style={{ margin: 0, color: mode === "dark" ? "#e5e7eb" : "#12325a" }}
         >
-          Curz POS
+          SHOPMAE
         </Typography.Title>
         <Space size={8} wrap>
           <SettingsDropdown size={isDesktop ? "middle" : "large"} />

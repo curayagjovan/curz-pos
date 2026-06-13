@@ -10,7 +10,7 @@ type MobilePageHeaderProps = {
 
 export function MobilePageHeader({
   mode,
-  title = "Curz POS",
+  title = "SHOPMAE",
 }: MobilePageHeaderProps) {
   const { token } = theme.useToken();
 

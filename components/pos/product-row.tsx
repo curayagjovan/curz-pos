@@ -108,7 +108,6 @@ export function ProductRow({
               <Typography.Paragraph
                 style={{
                   margin: 0,
-                  fontFamily: "var(--font-inter), sans-serif",
                   fontWeight: 700,
                   fontSize: 14,
                   lineHeight: 1.15,
@@ -153,7 +152,6 @@ export function ProductRow({
             <Typography.Text
               strong
               style={{
-                fontFamily: "var(--font-roboto), sans-serif",
                 fontWeight: 700,
                 fontSize: 20,
                 letterSpacing: "0.01em",

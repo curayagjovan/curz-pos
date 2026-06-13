@@ -1,7 +1,9 @@
-const CACHE_VERSION = "curz-pos-v2";
+const CACHE_VERSION = "shopmae-v3";
 const APP_SHELL = [
   "/",
+  "/pages",
   "/pages/",
+  "/offline/",
   "/offline",
   "/manifest.webmanifest",
   "/pwa-icon.svg",

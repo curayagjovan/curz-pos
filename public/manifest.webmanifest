@@ -1,11 +1,13 @@
 {
-  "name": "Curz POS",
-  "short_name": "Curz POS",
+  "name": "SHOPMAE",
+  "short_name": "SHOPMAE",
   "description": "Fast, installable point-of-sale web app.",
-  "start_url": "/pages/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
+  "id": "/",
   "background_color": "#0b1220",
   "theme_color": "#0b6bcb",
   "icons": [

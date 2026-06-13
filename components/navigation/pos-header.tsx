@@ -45,7 +45,7 @@ export function PosHeader({
           fontSize: isDesktop ? 24 : 22,
         }}
       >
-        Curz POS
+        SHOPMAE
       </Typography.Title>
       <Space size={8} wrap style={{ display: "flex", alignItems: "center" }}>
         <Link href="/pages/">
