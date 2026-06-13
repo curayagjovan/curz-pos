@@ -260,7 +260,16 @@ export function generateSmartSku(productName: string, unit?: string): string {
  * Used when smart generation is disabled or preferred
  */
 export async function generateSequentialSku(
-  prismaInstance: any,
+  prismaInstance: {
+    product: {
+      findMany: (args: {
+        where: { sku: { startsWith: string } };
+        select: { sku: true };
+        orderBy: { sku: "desc" };
+        take: number;
+      }) => Promise<Array<{ sku: string }>>;
+    };
+  },
   basePrefix: string = "SKU",
 ): Promise<string> {
   const base =
@@ -269,7 +278,6 @@ export async function generateSequentialSku(
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 6) || "SKU";
 
-  const pattern = `${base}-%`;
   const existing = await prismaInstance.product.findMany({
     where: { sku: { startsWith: `${base}-` } },
     select: { sku: true },

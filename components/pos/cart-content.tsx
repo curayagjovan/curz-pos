@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   MinusOutlined,
@@ -105,23 +105,25 @@ export function CartContent({
   const ACTION_WIDTH = 104;
   const SWIPE_THRESHOLD = 44;
 
-  useEffect(() => {
-    if (swipedItemId && !cart.some((item) => item.id === swipedItemId)) {
-      setSwipedItemId(null);
-    }
-  }, [cart, swipedItemId]);
+  const activeSwipedItemId = useMemo(
+    () =>
+      swipedItemId && cart.some((item) => item.id === swipedItemId)
+        ? swipedItemId
+        : null,
+    [cart, swipedItemId],
+  );
 
   const handleTouchStart = (
     itemId: string,
     clientX: number,
     clientY: number,
   ) => {
-    if (swipedItemId && swipedItemId !== itemId) {
+    if (activeSwipedItemId && activeSwipedItemId !== itemId) {
       setSwipedItemId(null);
     }
 
     setDragItemId(itemId);
-    setDragOffset(swipedItemId === itemId ? -ACTION_WIDTH : 0);
+    setDragOffset(activeSwipedItemId === itemId ? -ACTION_WIDTH : 0);
     touchStartXRef.current = clientX;
     touchStartYRef.current = clientY;
     isSwipingRef.current = false;
@@ -152,7 +154,7 @@ export function CartContent({
 
     preventDefault();
 
-    const baseOffset = swipedItemId === itemId ? -ACTION_WIDTH : 0;
+    const baseOffset = activeSwipedItemId === itemId ? -ACTION_WIDTH : 0;
     const nextOffset = Math.min(
       0,
       Math.max(-ACTION_WIDTH, baseOffset + deltaX),
@@ -177,7 +179,7 @@ export function CartContent({
     if (isSwipingRef.current) {
       const shouldOpen = dragOffset <= -SWIPE_THRESHOLD;
       setSwipedItemId(shouldOpen ? itemId : null);
-    } else if (deltaX >= SWIPE_THRESHOLD || swipedItemId === itemId) {
+    } else if (deltaX >= SWIPE_THRESHOLD || activeSwipedItemId === itemId) {
       setSwipedItemId(null);
     }
 
@@ -264,7 +266,7 @@ export function CartContent({
                   flexDirection: "column",
                   gap: 8,
                   background: isDark ? "#111827" : "#ffffff",
-                  transform: `translateX(${dragItemId === item.id ? dragOffset : swipedItemId === item.id ? -ACTION_WIDTH : 0}px)`,
+                  transform: `translateX(${dragItemId === item.id ? dragOffset : activeSwipedItemId === item.id ? -ACTION_WIDTH : 0}px)`,
                   transition:
                     dragItemId === item.id ? "none" : "transform 180ms ease",
                   touchAction: "pan-y",
