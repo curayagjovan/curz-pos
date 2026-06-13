@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button, Layout, Space, Typography } from "antd";
 import { SettingsDropdown } from "@/components/settings/settings-dropdown";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 const { Header } = Layout;
 
@@ -64,6 +65,7 @@ export function PosHeader({
             Transactions
           </Button>
         </Link>
+        <InstallAppButton size="middle" />
         <SettingsDropdown size="middle" />
       </Space>
     </Header>

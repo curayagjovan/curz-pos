@@ -1,5 +1,6 @@
 import { Affix, Flex, Layout, Typography, theme } from "antd";
 import { SettingsDropdown } from "@/components/settings/settings-dropdown";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 const { Header } = Layout;
 
@@ -40,7 +41,10 @@ export function MobilePageHeader({
           >
             {title}
           </Typography.Title>
-          <SettingsDropdown size="middle" />
+          <Flex align="center" gap={8}>
+            <InstallAppButton size="middle" />
+            <SettingsDropdown size="middle" />
+          </Flex>
         </Flex>
       </Header>
     </Affix>
