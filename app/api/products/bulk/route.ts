@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { calculateSellingPrice } from "@/lib/price-calculator";
+import {
+  calculateSellingPrice,
+  calculateBundlePrice,
+} from "@/lib/price-calculator";
 
 type BulkProductData = {
   sku?: string;

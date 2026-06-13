@@ -15,12 +15,12 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@ionic/core": "^8.7.7",
-    "@ionic/react": "^8.7.7",
+    "@ant-design/icons": "^6.2.5",
+    "@ant-design/nextjs-registry": "^1.3.0",
     "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.108.1",
     "@types/papaparse": "^5.5.2",
-    "ionicons": "^8.0.13",
+    "antd": "^6.4.3",
     "next": "16.2.9",
     "papaparse": "^5.5.3",
     "react": "19.2.4",

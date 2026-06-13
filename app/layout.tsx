@@ -1,23 +1,25 @@
-import type { Metadata, Viewport } from "next";
-import "@ionic/react/css/core.css";
-import "@ionic/react/css/normalize.css";
-import "@ionic/react/css/structure.css";
-import "@ionic/react/css/typography.css";
-import "@ionic/react/css/padding.css";
-import "@ionic/react/css/float-elements.css";
-import "@ionic/react/css/text-alignment.css";
-import "@ionic/react/css/text-transformation.css";
-import "@ionic/react/css/flex-utils.css";
-import "@ionic/react/css/display.css";
+import type { Metadata } from "next";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Curz POS Ionic",
-  description: "Fresh Ionic frontend shell.",
-};
-
-export const viewport: Viewport = {
+  title: "SHOPMAE",
+  description:
+    "SHOPMAE point-of-sale app built with Next.js, Ant Design, Prisma, and Supabase.",
+  applicationName: "SHOPMAE",
+  manifest: "/manifest.webmanifest",
   themeColor: "#0b6bcb",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SHOPMAE",
+  },
+  icons: {
+    icon: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
@@ -26,8 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body>
+        <AntdRegistry>
+          <ThemeProvider>{children}</ThemeProvider>
+        </AntdRegistry>
+        <RegisterServiceWorker />
+      </body>
     </html>
   );
 }

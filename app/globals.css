@@ -1,45 +1,12 @@
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-}
-
-:root {
-  --ion-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --ion-color-primary: #2563eb;
-  --ion-color-primary-rgb: 37, 99, 235;
-  --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: #2057cf;
-  --ion-color-primary-tint: #3b72ed;
 }
 
 html,
 body {
   margin: 0;
+  padding: 0;
   min-height: 100%;
-  background: #f5f7fb;
-}
-
-.hello-world-content {
-  --background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
-}
-
-.hello-world-shell {
-  min-height: 100%;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  gap: 0.5rem;
-  padding: 2rem;
-}
-
-.hello-world-shell h1 {
-  margin: 0;
-  font-size: clamp(2rem, 7vw, 3.5rem);
-  color: #0f172a;
-}
-
-.hello-world-shell p {
-  margin: 0;
-  color: #334155;
-  font-size: 1.05rem;
 }
