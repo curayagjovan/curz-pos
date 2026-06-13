@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateSmartSku, generateSequentialSku } from "@/lib/sku-generator";
+import { generateSmartSku } from "@/lib/sku-generator";
 
 type CursorToken = {
   name: string;

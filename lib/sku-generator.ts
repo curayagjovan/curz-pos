@@ -255,12 +255,23 @@ export function generateSmartSku(productName: string, unit?: string): string {
   return `${parsed.category}-${parsed.brand}-${parsed.variant}-${parsed.size}`;
 }
 
+type SequentialSkuPrismaClient = {
+  product: {
+    findMany: (args: {
+      where: { sku: { startsWith: string } };
+      select: { sku: true };
+      orderBy: { sku: "asc" | "desc" };
+      take: number;
+    }) => Promise<Array<{ sku: string }>>;
+  };
+};
+
 /**
  * Generate a sequential fallback SKU
  * Used when smart generation is disabled or preferred
  */
 export async function generateSequentialSku(
-  prismaInstance: any,
+  prismaInstance: SequentialSkuPrismaClient,
   basePrefix: string = "SKU",
 ): Promise<string> {
   const base =
@@ -269,7 +280,6 @@ export async function generateSequentialSku(
       .replace(/[^A-Z0-9]/g, "")
       .substring(0, 6) || "SKU";
 
-  const pattern = `${base}-%`;
   const existing = await prismaInstance.product.findMany({
     where: { sku: { startsWith: `${base}-` } },
     select: { sku: true },

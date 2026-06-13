@@ -3,7 +3,7 @@
 A modern POS starter built with:
 
 - Next.js (App Router) + React
-- Ant Design
+- Ionic Framework (migration in progress)
 - Prisma ORM
 - Supabase (Postgres + optional auth/data APIs)
 - Vercel deployment
