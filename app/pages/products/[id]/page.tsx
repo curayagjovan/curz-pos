@@ -8,8 +8,6 @@ import {
   Button,
   Card,
   Descriptions,
-  FloatButton,
-  Grid,
   Layout,
   Skeleton,
   Space,
@@ -22,7 +20,6 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -48,9 +45,6 @@ export default function ProductDetailsPage() {
   const params = useParams<{ id: string }>();
   const productId = params.id;
   const { mode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
-  const isCompactHeight = useCompactHeight();
   const [product, setProduct] = useState<ApiProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -138,23 +132,19 @@ export default function ProductDetailsPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: isDesktop ? 16 : 12,
+          paddingInline: 12,
           paddingTop: "max(env(safe-area-inset-top), 8px)",
-          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
+          minHeight: "calc(56px + env(safe-area-inset-top))",
         }}
       >
         <Space>
           <Link href="/pages/">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              type="text"
-              size={isDesktop ? "middle" : "large"}
-            >
+            <Button icon={<ArrowLeftOutlined />} type="text" size="large">
               Back
             </Button>
           </Link>
           <Typography.Title
-            level={isDesktop ? 4 : 5}
+            level={5}
             style={{
               margin: 0,
               color: mode === "dark" ? "#e5e7eb" : "#12325a",
@@ -167,8 +157,8 @@ export default function ProductDetailsPage() {
 
       <Content
         style={{
-          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
-          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: 12,
+          paddingInline: 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 820,
           width: "100%",
@@ -198,7 +188,7 @@ export default function ProductDetailsPage() {
                 <Descriptions
                   bordered
                   column={1}
-                  size={isDesktop ? "default" : "small"}
+                  size="small"
                   items={[
                     {
                       key: "price",
@@ -254,19 +244,12 @@ export default function ProductDetailsPage() {
                   ]}
                 />
 
-                <Space
-                  direction={isDesktop ? "horizontal" : "vertical"}
-                  style={{ width: "100%" }}
-                >
+                <Space direction="vertical" style={{ width: "100%" }}>
                   <Link
                     href={`/pages/products/${product.id}/edit`}
-                    style={{ width: isDesktop ? "auto" : "100%" }}
+                    style={{ width: "100%" }}
                   >
-                    <Button
-                      type="primary"
-                      icon={<EditOutlined />}
-                      block={!isDesktop}
-                    >
+                    <Button type="primary" icon={<EditOutlined />} block>
                       Edit Product
                     </Button>
                   </Link>
@@ -275,7 +258,7 @@ export default function ProductDetailsPage() {
                     icon={<DeleteOutlined />}
                     onClick={handleDelete}
                     loading={deleting}
-                    block={!isDesktop}
+                    block
                   >
                     Delete Product
                   </Button>
@@ -289,14 +272,6 @@ export default function ProductDetailsPage() {
           </Card>
         </Space>
       </Content>
-
-      <FloatButton.BackTop
-        visibilityHeight={300}
-        style={{
-          right: 16,
-          bottom: "calc(24px + env(safe-area-inset-bottom))",
-        }}
-      />
     </Layout>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button, Modal, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 
@@ -36,24 +36,56 @@ function isStandaloneMode() {
   );
 }
 
+function subscribeStandaloneMode(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const mediaQuery = window.matchMedia("(display-mode: standalone)");
+  const onChange = () => onStoreChange();
+
+  if (typeof mediaQuery.addEventListener === "function") {
+    mediaQuery.addEventListener("change", onChange);
+  } else {
+    mediaQuery.addListener(onChange);
+  }
+
+  window.addEventListener("appinstalled", onChange);
+
+  return () => {
+    if (typeof mediaQuery.removeEventListener === "function") {
+      mediaQuery.removeEventListener("change", onChange);
+    } else {
+      mediaQuery.removeListener(onChange);
+    }
+    window.removeEventListener("appinstalled", onChange);
+  };
+}
+
 export function InstallAppButton({ size = "middle" }: InstallAppButtonProps) {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHelp, setShowIosHelp] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const hasMounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const isStandalone = useSyncExternalStore(
+    subscribeStandaloneMode,
+    isStandaloneMode,
+    () => false,
+  );
 
-  const isiOS = useMemo(isIosDevice, []);
+  const isiOS = useMemo(() => isIosDevice(), []);
 
   useEffect(() => {
-    setInstalled(isStandaloneMode());
-
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
     };
 
     const onAppInstalled = () => {
-      setInstalled(true);
       setDeferredPrompt(null);
     };
 
@@ -66,7 +98,11 @@ export function InstallAppButton({ size = "middle" }: InstallAppButtonProps) {
     };
   }, []);
 
-  if (installed) {
+  if (!hasMounted) {
+    return null;
+  }
+
+  if (isStandalone) {
     return null;
   }
 
@@ -83,7 +119,8 @@ export function InstallAppButton({ size = "middle" }: InstallAppButtonProps) {
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
-      setInstalled(true);
+      setDeferredPrompt(null);
+      return;
     }
     setDeferredPrompt(null);
   };

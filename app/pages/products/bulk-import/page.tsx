@@ -10,8 +10,6 @@ import {
   Button,
   Card,
   Col,
-  FloatButton,
-  Grid,
   Layout,
   Progress,
   Row,
@@ -27,7 +25,6 @@ import {
   DownloadOutlined,
 } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 
@@ -58,9 +55,6 @@ export default function BulkImportPage() {
   const { message, modal } = App.useApp();
   const router = useRouter();
   const { mode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
-  const isCompactHeight = useCompactHeight();
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -339,23 +333,19 @@ export default function BulkImportPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: isDesktop ? 16 : 12,
+          paddingInline: 12,
           paddingTop: "max(env(safe-area-inset-top), 8px)",
-          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
+          minHeight: "calc(56px + env(safe-area-inset-top))",
         }}
       >
         <Space>
           <Link href="/">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              type="text"
-              size={isDesktop ? "middle" : "large"}
-            >
+            <Button icon={<ArrowLeftOutlined />} type="text" size="large">
               Back
             </Button>
           </Link>
           <Typography.Title
-            level={isDesktop ? 4 : 5}
+            level={5}
             style={{
               margin: 0,
               color: mode === "dark" ? "#e5e7eb" : "#12325a",
@@ -368,19 +358,15 @@ export default function BulkImportPage() {
 
       <Content
         style={{
-          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
-          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: 12,
+          paddingInline: 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 900,
           width: "100%",
           margin: "0 auto",
         }}
       >
-        <Space
-          orientation="vertical"
-          style={{ width: "100%" }}
-          size={isCompactHeight ? 12 : 18}
-        >
+        <Space orientation="vertical" style={{ width: "100%" }} size={18}>
           {/* Upload Card */}
           <Card>
             <Space orientation="vertical" style={{ width: "100%" }} size={12}>
@@ -559,14 +545,6 @@ export default function BulkImportPage() {
           )}
         </Space>
       </Content>
-
-      <FloatButton.BackTop
-        visibilityHeight={300}
-        style={{
-          right: 16,
-          bottom: "calc(24px + env(safe-area-inset-bottom))",
-        }}
-      />
     </Layout>
   );
 }

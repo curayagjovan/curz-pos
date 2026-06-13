@@ -33,6 +33,7 @@ export function SettingsDropdown({ size = "middle" }: SettingsDropdownProps) {
       }}
     >
       <Button
+        type="text"
         icon={<SettingOutlined />}
         size={size}
         aria-label="Settings menu"

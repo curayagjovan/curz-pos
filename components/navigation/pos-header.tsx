@@ -9,25 +9,20 @@ const { Header } = Layout;
 
 type PosHeaderProps = {
   mode: "light" | "dark";
-  isDesktop: boolean;
   activePage?: "pos" | "transactions";
 };
 
-export function PosHeader({
-  mode,
-  isDesktop,
-  activePage = "pos",
-}: PosHeaderProps) {
+export function PosHeader({ mode, activePage = "pos" }: PosHeaderProps) {
   return (
     <Header
       style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        flexWrap: isDesktop ? "nowrap" : "wrap",
+        flexWrap: "wrap",
         gap: 8,
         height: "auto",
-        padding: `8px ${isDesktop ? 16 : 12}px`,
+        padding: "8px 12px",
         borderBottom:
           mode === "dark" ? "1px solid #1f2937" : "1px solid #d8e3f2",
         background:
@@ -43,7 +38,7 @@ export function PosHeader({
         style={{
           margin: 0,
           color: mode === "dark" ? "#e5e7eb" : "#12325a",
-          fontSize: isDesktop ? 24 : 22,
+          fontSize: 22,
         }}
       >
         Curz POS

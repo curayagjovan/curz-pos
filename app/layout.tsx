@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Roboto } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider, theme as antdTheme } from "antd";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { PosCartProvider } from "@/components/providers/pos-cart-provider";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
@@ -23,7 +24,6 @@ export const metadata: Metadata = {
     "Point-of-sale starter built with Next.js, Ant Design, Prisma, and Supabase.",
   applicationName: "Curz POS",
   manifest: "/manifest.webmanifest",
-  themeColor: "#0b6bcb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -33,6 +33,10 @@ export const metadata: Metadata = {
     icon: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b6bcb",
 };
 
 export default function RootLayout({
@@ -57,7 +61,7 @@ export default function RootLayout({
             }}
           >
             <ThemeProvider>
-              {children}
+              <PosCartProvider>{children}</PosCartProvider>
               <RegisterServiceWorker />
             </ThemeProvider>
           </ConfigProvider>

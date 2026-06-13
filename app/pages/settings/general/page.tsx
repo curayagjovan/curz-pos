@@ -1,33 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Button,
-  Card,
-  Col,
-  FloatButton,
-  Grid,
-  Layout,
-  Row,
-  Space,
-  Typography,
-} from "antd";
+import { Button, Card, Col, Layout, Row, Space, Typography } from "antd";
 import {
   ArrowLeftOutlined,
   MoonOutlined,
   SunOutlined,
 } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
 import { SettingsDropdown } from "@/components/settings/settings-dropdown";
 
 const { Header, Content } = Layout;
 
 export default function GeneralSettingsPage() {
   const { mode, setMode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
-  const isCompactHeight = useCompactHeight();
 
   return (
     <Layout style={{ minHeight: "100vh", background: "transparent" }}>
@@ -46,23 +32,19 @@ export default function GeneralSettingsPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: isDesktop ? 16 : 12,
+          paddingInline: 12,
           paddingTop: "max(env(safe-area-inset-top), 8px)",
-          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
+          minHeight: "calc(56px + env(safe-area-inset-top))",
         }}
       >
         <Space>
           <Link href="/pages/">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              type="text"
-              size={isDesktop ? "middle" : "large"}
-            >
+            <Button icon={<ArrowLeftOutlined />} type="text" size="large">
               Back
             </Button>
           </Link>
           <Typography.Title
-            level={isDesktop ? 4 : 5}
+            level={5}
             style={{
               margin: 0,
               color: mode === "dark" ? "#e5e7eb" : "#12325a",
@@ -71,24 +53,20 @@ export default function GeneralSettingsPage() {
             General Settings
           </Typography.Title>
         </Space>
-        <SettingsDropdown size={isDesktop ? "middle" : "large"} />
+        <SettingsDropdown size="large" />
       </Header>
 
       <Content
         style={{
-          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
-          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: 12,
+          paddingInline: 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 900,
           width: "100%",
           margin: "0 auto",
         }}
       >
-        <Space
-          orientation="vertical"
-          style={{ width: "100%" }}
-          size={isCompactHeight ? 12 : 18}
-        >
+        <Space orientation="vertical" style={{ width: "100%" }} size={18}>
           <Card>
             <Space orientation="vertical" style={{ width: "100%" }} size={12}>
               <Typography.Title level={5} style={{ margin: 0 }}>
@@ -100,7 +78,7 @@ export default function GeneralSettingsPage() {
 
               <Card
                 size="small"
-                styles={{ body: { padding: isDesktop ? 16 : 12 } }}
+                styles={{ body: { padding: 12 } }}
                 style={{
                   background:
                     mode === "dark"
@@ -127,7 +105,7 @@ export default function GeneralSettingsPage() {
                   <Row gutter={[10, 10]}>
                     <Col xs={24} sm={12}>
                       <Button
-                        size={isDesktop ? "middle" : "large"}
+                        size="large"
                         type={mode === "light" ? "primary" : "default"}
                         icon={<SunOutlined />}
                         onClick={() => setMode("light")}
@@ -138,7 +116,7 @@ export default function GeneralSettingsPage() {
                     </Col>
                     <Col xs={24} sm={12}>
                       <Button
-                        size={isDesktop ? "middle" : "large"}
+                        size="large"
                         type={mode === "dark" ? "primary" : "default"}
                         icon={<MoonOutlined />}
                         onClick={() => setMode("dark")}
@@ -154,14 +132,6 @@ export default function GeneralSettingsPage() {
           </Card>
         </Space>
       </Content>
-
-      <FloatButton.BackTop
-        visibilityHeight={300}
-        style={{
-          right: 16,
-          bottom: "calc(24px + env(safe-area-inset-bottom))",
-        }}
-      />
     </Layout>
   );
 }

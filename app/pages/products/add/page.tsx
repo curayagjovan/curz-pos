@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   Form,
-  Grid,
   Input,
   InputNumber,
   Layout,
@@ -18,7 +17,6 @@ import {
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
 import {
   calculateSellingPrice,
   calculateBundlePrice,
@@ -62,9 +60,6 @@ export default function AddProductPage() {
   const { message } = App.useApp();
   const router = useRouter();
   const { mode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
-  const isCompactHeight = useCompactHeight();
   const [form] = Form.useForm<ProductFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [skuEditable, setSkuEditable] = useState(false);
@@ -225,23 +220,19 @@ export default function AddProductPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: isDesktop ? 16 : 12,
+          paddingInline: 12,
           paddingTop: "max(env(safe-area-inset-top), 8px)",
-          minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
+          minHeight: "calc(56px + env(safe-area-inset-top))",
         }}
       >
         <Space>
           <Link href="/pages/">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              type="text"
-              size={isDesktop ? "middle" : "large"}
-            >
+            <Button icon={<ArrowLeftOutlined />} type="text" size="large">
               Back
             </Button>
           </Link>
           <Typography.Title
-            level={isDesktop ? 4 : 5}
+            level={5}
             style={{
               margin: 0,
               color: mode === "dark" ? "#e5e7eb" : "#12325a",
@@ -254,8 +245,8 @@ export default function AddProductPage() {
 
       <Content
         style={{
-          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
-          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: 12,
+          paddingInline: 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
           maxWidth: 720,
           width: "100%",
@@ -353,7 +344,7 @@ export default function AddProductPage() {
                     }
                     loading={loadingGlobalMarkup}
                     disabled={loadingGlobalMarkup || globalMarkupPercent === 0}
-                    style={{ width: isDesktop ? "auto" : "100%" }}
+                    style={{ width: "100%" }}
                   >
                     Apply Global ({globalMarkupPercent.toFixed(2)}%)
                   </Button>
