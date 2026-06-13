@@ -22,23 +22,23 @@ import {
   Space,
   Typography,
 } from "antd";
-import { useThemeMode } from "@/components/providers/theme-provider";
+import { useThemeMode } from "@/app/components/providers/theme-provider";
 import {
   ShoppingCartOutlined,
   AppstoreOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
 import { computeTax } from "@/lib/tax-config";
-import { useCompactHeight } from "@/hooks/use-compact-height";
-import { CartContent } from "@/components/pos/cart-content";
-import { PosHeader } from "@/components/navigation/pos-header";
-import { MobilePageHeader } from "@/components/navigation/mobile-page-header";
+import { useCompactHeight } from "@/app/hooks/use-compact-height";
+import { CartContent } from "@/app/components/pos/cart-content";
+import { PosHeader } from "@/app/components/navigation/pos-header";
+import { MobilePageHeader } from "@/app/components/navigation/mobile-page-header";
 import {
   ProductRow,
   LIST_ROW_GAP,
   LIST_ROW_HEIGHT,
   type Product,
-} from "@/components/pos/product-row";
+} from "@/app/components/pos/product-row";
 
 const { Content } = Layout;
 

@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Space, Tag, Typography } from "antd";
 import { type RowComponentProps } from "react-window";
-import { useThemeMode } from "@/components/providers/theme-provider";
+import { useThemeMode } from "@/app/components/providers/theme-provider";
 
 export const LIST_ROW_GAP = 10;
 export const LIST_ROW_HEIGHT = 154;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button, Layout, Space, Typography } from "antd";
-import { SettingsDropdown } from "@/components/settings/settings-dropdown";
+import { SettingsDropdown } from "@/app/components/settings/settings-dropdown";
 
 const { Header } = Layout;
 

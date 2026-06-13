@@ -1,5 +1,5 @@
 import { Affix, Flex, Layout, Typography, theme } from "antd";
-import { SettingsDropdown } from "@/components/settings/settings-dropdown";
+import { SettingsDropdown } from "@/app/components/settings/settings-dropdown";
 
 const { Header } = Layout;
 

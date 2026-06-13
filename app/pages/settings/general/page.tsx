@@ -17,9 +17,9 @@ import {
   MoonOutlined,
   SunOutlined,
 } from "@ant-design/icons";
-import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
-import { SettingsDropdown } from "@/components/settings/settings-dropdown";
+import { useThemeMode } from "@/app/components/providers/theme-provider";
+import { useCompactHeight } from "@/app/hooks/use-compact-height";
+import { SettingsDropdown } from "@/app/components/settings/settings-dropdown";
 
 const { Header, Content } = Layout;
 

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+import { ThemeProvider } from "@/app/components/providers/theme-provider";
+import { RegisterServiceWorker } from "@/app/components/pwa/register-sw";
 import "./globals.css";
 
 export const metadata: Metadata = {

@@ -26,8 +26,8 @@ import {
   CloudUploadOutlined,
   DownloadOutlined,
 } from "@ant-design/icons";
-import { useThemeMode } from "@/components/providers/theme-provider";
-import { useCompactHeight } from "@/hooks/use-compact-height";
+import { useThemeMode } from "@/app/components/providers/theme-provider";
+import { useCompactHeight } from "@/app/hooks/use-compact-height";
 
 const { Header, Content } = Layout;
 

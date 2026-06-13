@@ -18,7 +18,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { useThemeMode } from "@/components/providers/theme-provider";
+import { useThemeMode } from "@/app/components/providers/theme-provider";
 import { TAX_ENABLED, TAX_RATE } from "@/lib/tax-config";
 
 export type CartItem = {
