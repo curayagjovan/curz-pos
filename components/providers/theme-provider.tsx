@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { App as AntdApp, ConfigProvider, theme } from "antd";
 
 type ThemeMode = "light" | "dark";
 
@@ -24,21 +23,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [hydratedFromSettings, setHydratedFromSettings] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 768px)");
-    const update = () => setIsMobile(mediaQuery.matches);
-
-    update();
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", update);
-      return () => mediaQuery.removeEventListener("change", update);
-    }
-
-    mediaQuery.addListener(update);
-    return () => mediaQuery.removeListener(update);
-  }, []);
-
+  // Load theme mode on mount
   useEffect(() => {
     const loadThemeMode = async () => {
       try {
@@ -98,35 +83,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     [mode],
   );
 
-  const token = useMemo(
-    () => ({
-      colorPrimary: "#0b6bcb",
-      borderRadius: 12,
-      fontFamily: "var(--font-inter), sans-serif",
-      fontSize: isMobile ? 13 : 14,
-      fontSizeSM: isMobile ? 12 : 13,
-      fontSizeLG: isMobile ? 15 : 16,
-      lineHeight: isMobile ? 1.4 : 1.5,
-      lineHeightSM: isMobile ? 1.35 : 1.4,
-      lineHeightLG: isMobile ? 1.45 : 1.55,
-      controlHeight: isMobile ? 36 : 40,
-      controlHeightSM: isMobile ? 30 : 32,
-      controlHeightLG: isMobile ? 42 : 48,
-    }),
-    [isMobile],
-  );
-
   return (
     <ThemeModeContext.Provider value={value}>
-      <ConfigProvider
-        theme={{
-          algorithm:
-            mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token,
-        }}
-      >
-        <AntdApp>{children}</AntdApp>
-      </ConfigProvider>
+      {children}
     </ThemeModeContext.Provider>
   );
 }

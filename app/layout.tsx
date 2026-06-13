@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Roboto } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ConfigProvider, theme as antdTheme } from "antd";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
@@ -46,9 +47,21 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AntdRegistry>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ConfigProvider
+            theme={{
+              algorithm: antdTheme.defaultAlgorithm,
+              token: {
+                colorPrimary: "#0b6bcb",
+                borderRadius: 12,
+              },
+            }}
+          >
+            <ThemeProvider>
+              {children}
+              <RegisterServiceWorker />
+            </ThemeProvider>
+          </ConfigProvider>
         </AntdRegistry>
-        <RegisterServiceWorker />
       </body>
     </html>
   );
