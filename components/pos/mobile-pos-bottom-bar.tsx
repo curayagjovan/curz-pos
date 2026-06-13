@@ -110,7 +110,7 @@ export function MobilePosBottomBar({
         style={{
           zIndex: 35,
           width: "calc(100% - 24px)",
-          margin: "0 12px calc(8px + env(safe-area-inset-bottom))",
+          margin: "0 12px calc(14px + env(safe-area-inset-bottom))",
           borderRadius: 999,
           paddingInline: 0,
         }}

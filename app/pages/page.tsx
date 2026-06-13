@@ -398,7 +398,7 @@ export default function Home() {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "transparent" }}>
+    <Layout>
       <PosPageWrapper
         mode={mode}
         activeTab={activeTab}
