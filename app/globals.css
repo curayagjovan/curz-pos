@@ -456,7 +456,12 @@ a {
   .mobile-pos-bottom-card.ant-card::before,
   .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios
     .ant-tabs-tab.ant-tabs-tab-active
-    .mobile-pos-tab-icon {
+    .mobile-pos-tab-icon,
+  .mobile-pos-search-affix.mobile-pos-search-affix--visible,
+  .mobile-pos-search-affix.mobile-pos-search-affix--visible
+    .mobile-pos-search-input.ant-input-affix-wrapper,
+  .mobile-pos-search-affix.mobile-pos-search-affix--visible
+    .mobile-pos-search-count {
     animation: none;
   }
 }
@@ -528,6 +533,16 @@ a {
 }
 
 .mobile-pos-search-affix {
+  overflow: hidden;
+  max-height: 120px;
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  transform-origin: top center;
+  transition:
+    max-height 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding-top 220ms ease;
   padding-inline: 2px;
   background: linear-gradient(
     180deg,
@@ -544,6 +559,83 @@ a {
     rgba(2, 6, 23, 0.75) 72%,
     transparent 100%
   );
+}
+
+.mobile-pos-search-affix.mobile-pos-search-affix--hidden {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-10px) scaleY(0.96);
+  padding-top: 0 !important;
+  pointer-events: none;
+}
+
+.mobile-pos-search-affix.mobile-pos-search-affix--visible {
+  max-height: 120px;
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+  animation: mobileSearchAffixReveal 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-pos-search-affix.mobile-pos-search-affix--visible
+  .mobile-pos-search-input.ant-input-affix-wrapper {
+  animation: mobileSearchFieldReveal 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-pos-search-affix.mobile-pos-search-affix--visible
+  .mobile-pos-search-count {
+  animation: mobileSearchMetaReveal 320ms ease 70ms both;
+}
+
+@keyframes mobileSearchAffixReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scaleY(0.94);
+    filter: blur(4px);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1.02);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes mobileSearchFieldReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+    filter: blur(3px);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.01);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes mobileSearchMetaReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mobile-pos-search-wrap {
@@ -602,21 +694,76 @@ a {
 }
 
 .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios .ant-tabs-nav-list {
+  position: relative;
+  isolation: isolate;
   gap: 6px;
 }
 
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios .ant-tabs-nav-list::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: calc((100% - 12px) / 3);
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 6px 16px rgba(15, 23, 42, 0.12);
+  transform: translateX(calc(var(--mobile-tab-active-index, 0) * (100% + 6px)));
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 260ms ease,
+    box-shadow 260ms ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios .ant-tabs-tab {
+  position: relative;
+  z-index: 1;
   border-radius: 999px;
   padding: 6px 0 8px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios .mobile-pos-tab-icon,
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios .mobile-pos-tab-text {
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 260ms ease,
+    filter 260ms ease;
 }
 
 .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios
   .ant-tabs-tab.ant-tabs-tab-active {
-  background: rgba(148, 163, 184, 0.2);
+  background: transparent !important;
+}
+
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios
+  .ant-tabs-tab.ant-tabs-tab-active
+  .mobile-pos-tab-icon {
+  transform: translateY(-1px) scale(1.06);
+}
+
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios
+  .ant-tabs-tab.ant-tabs-tab-active
+  .mobile-pos-tab-text {
+  transform: translateY(0.5px);
 }
 
 .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios-dark .ant-tabs-tab {
   border-top: 0 !important;
+}
+
+.mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios-dark
+  .ant-tabs-nav-list::before {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 8px 18px rgba(2, 6, 23, 0.32);
 }
 
 .mobile-pos-bottom-tabs.mobile-pos-bottom-tabs--ios-dark

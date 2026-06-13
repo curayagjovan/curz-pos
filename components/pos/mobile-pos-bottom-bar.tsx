@@ -23,6 +23,9 @@ export function MobilePosBottomBar({
   activeTab = "products",
   onTabChange,
 }: MobilePosBottomBarProps) {
+  const shellBackground = mode === "dark" ? "#111827" : "#f8fafc";
+  const activeIndex =
+    activeTab === "products" ? 0 : activeTab === "cart" ? 1 : 2;
   const [transitioningKey, setTransitioningKey] = useState<BottomTabKey | null>(
     null,
   );
@@ -97,7 +100,7 @@ export function MobilePosBottomBar({
       className={`mobile-pos-bottom-affix-shell ${
         mode === "dark" ? "mobile-pos-bottom-affix-shell--dark" : ""
       }`}
-      style={{ width: "100%" }}
+      style={{ width: "100%", background: shellBackground }}
     >
       <Card
         className={`mobile-pos-bottom-card ${
@@ -116,6 +119,9 @@ export function MobilePosBottomBar({
           className={`mobile-pos-bottom-tabs mobile-pos-bottom-tabs--ios ${
             mode === "dark" ? "mobile-pos-bottom-tabs--ios-dark" : ""
           }`}
+          style={{
+            ["--mobile-tab-active-index" as string]: activeIndex,
+          }}
           activeKey={activeTab}
           centered
           animated={false}

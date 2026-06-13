@@ -75,23 +75,23 @@ export function MobilePageHeader({
             <SettingsDropdown size="middle" />
           </Flex>
         </Flex>
-        {searchCardProps ? (
-          <div
-            className={`mobile-pos-search-affix ${
-              mode === "dark" ? "mobile-pos-search-affix--dark" : ""
-            }`}
-            style={{
-              paddingTop: 8,
-            }}
-          >
+        <div
+          className={`mobile-pos-search-affix ${
+            mode === "dark" ? "mobile-pos-search-affix--dark" : ""
+          } ${searchCardProps ? "mobile-pos-search-affix--visible" : "mobile-pos-search-affix--hidden"}`}
+          style={{
+            paddingTop: 8,
+          }}
+        >
+          {searchCardProps ? (
             <ProductsSearchCard
               mode={mode}
               search={searchCardProps.search}
               productsCount={searchCardProps.productsCount}
               onSearchChange={searchCardProps.onSearchChange}
             />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </Card>
     </Affix>
   );
