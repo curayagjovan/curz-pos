@@ -1,16 +1,21 @@
-import { Affix, Flex, Layout, Typography, theme } from "antd";
-import { SettingsDropdown } from "@/app/components/settings/settings-dropdown";
+import { Affix, Flex, Input, Layout, Typography, theme } from "antd";
 
 const { Header } = Layout;
 
 type MobilePageHeaderProps = {
   mode: "light" | "dark";
   title?: string;
+  showSearch?: boolean;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 };
 
 export function MobilePageHeader({
   mode,
   title = "SHOPMAE",
+  showSearch = false,
+  searchValue = "",
+  onSearchChange,
 }: MobilePageHeaderProps) {
   const { token } = theme.useToken();
 
@@ -22,14 +27,19 @@ export function MobilePageHeader({
           lineHeight: "normal",
           paddingInline: 14,
           paddingTop: "calc(8px + env(safe-area-inset-top))",
-          paddingBottom: 10,
+          paddingBottom: showSearch ? 10 : 10,
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
           background:
             mode === "dark" ? "rgba(17,24,39,0.92)" : token.colorBgElevated,
           backdropFilter: "blur(10px)",
         }}
       >
-        <Flex align="center" justify="space-between">
+        <Flex
+          align="center"
+          justify="flex-start"
+          gap={12}
+          vertical={showSearch}
+        >
           <Typography.Title
             level={4}
             style={{
@@ -40,7 +50,28 @@ export function MobilePageHeader({
           >
             {title}
           </Typography.Title>
-          <SettingsDropdown size="middle" />
+          {showSearch && (
+            <div
+              style={{
+                width: "100%",
+                opacity: showSearch ? 1 : 0,
+                height: showSearch ? "auto" : 0,
+                overflow: "hidden",
+                transition: "opacity 200ms ease, height 200ms ease",
+              }}
+            >
+              <Input.Search
+                placeholder="Search by name or SKU…"
+                value={searchValue}
+                onChange={(event) => onSearchChange?.(event.target.value)}
+                allowClear
+                size="large"
+                style={{
+                  width: "100%",
+                }}
+              />
+            </div>
+          )}
         </Flex>
       </Header>
     </Affix>
