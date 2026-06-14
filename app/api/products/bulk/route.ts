@@ -78,12 +78,37 @@ function findAvailableSkuFromSet(
   throw new Error("Unable to generate a unique SKU");
 }
 
+function validateNumericField(value: unknown, fieldName: string): number {
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    throw new Error(
+      `Invalid ${fieldName}: '${value}' cannot be converted to a number`,
+    );
+  }
+  if (!Number.isFinite(num)) {
+    throw new Error(`Invalid ${fieldName}: '${value}' is not a finite number`);
+  }
+  return num;
+}
+
 export async function POST(request: Request) {
   let importJobId: string | undefined;
 
   try {
     const requestStartedAt = Date.now();
-    const body = (await request.json()) as BulkMarkupPayload;
+
+    let body: BulkMarkupPayload;
+    try {
+      body = (await request.json()) as BulkMarkupPayload;
+    } catch (parseError) {
+      const parseMessage =
+        parseError instanceof SyntaxError
+          ? `Invalid JSON: ${parseError.message}`
+          : "Failed to parse request body";
+      console.error(`[Bulk Import] Parse error: ${parseMessage}`);
+      return NextResponse.json({ message: parseMessage }, { status: 400 });
+    }
+
     const { products, fileHash, jobId } = body;
     importJobId = jobId;
     const prismaWithAppSetting = prisma as PrismaWithAppSettingDelegate;
@@ -276,6 +301,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // Preload all suffix variants (e.g. SKU-02, SKU-03) to avoid per-row DB calls for collision detection
+    if (rawSkusToLookup.size > 0) {
+      const suffixVariants = await prisma.product.findMany({
+        where: {
+          OR: Array.from(rawSkusToLookup).map((sku) => ({
+            sku: { startsWith: `${sku}-` },
+          })),
+        },
+        select: { sku: true },
+      });
+      for (const row of suffixVariants) {
+        reservedSkus.add(row.sku);
+      }
+    }
+
     const preloadFinishedAt = Date.now();
     const processingStartedAt = Date.now();
 
@@ -287,11 +327,15 @@ export async function POST(request: Request) {
         processedRows: 0,
         successCount: 0,
         failureCount: 0,
-        message: "Import in progress",
+        message: "Planning import operations",
       });
     }
 
-    console.info(`[Bulk Import] Started processing ${totalRows} row(s).`);
+    console.info(`[Bulk Import] Planning ${totalRows} row(s).`);
+
+    // --- Planning phase: resolve all SKUs and build DB ops in-memory (no DB calls) ---
+    type DbOpFn = () => Promise<unknown>;
+    const plannedDbOps: Array<{ resultIndex: number; fn: DbOpFn }> = [];
 
     for (const [index, item] of products.entries()) {
       const row = index + 1;
@@ -303,7 +347,6 @@ export async function POST(request: Request) {
       const price = Number(item.price);
       const stock = Number(item.stock ?? 0);
 
-      // Detailed validation
       if (!name) {
         results.push({
           row,
@@ -314,7 +357,6 @@ export async function POST(request: Request) {
         });
         continue;
       }
-
       if (Number.isNaN(price)) {
         results.push({
           row,
@@ -325,7 +367,6 @@ export async function POST(request: Request) {
         });
         continue;
       }
-
       if (price < 0) {
         results.push({
           row,
@@ -336,7 +377,6 @@ export async function POST(request: Request) {
         });
         continue;
       }
-
       if (Number.isNaN(stock)) {
         results.push({
           row,
@@ -347,7 +387,6 @@ export async function POST(request: Request) {
         });
         continue;
       }
-
       if (stock < 0) {
         results.push({
           row,
@@ -360,18 +399,10 @@ export async function POST(request: Request) {
       }
 
       const matchesMarkupFilter = (() => {
-        if (markupPercent <= 0) {
-          return false;
-        }
-
-        if (filterType === "all") {
-          return true;
-        }
-
-        if (filterType === "unit") {
+        if (markupPercent <= 0) return false;
+        if (filterType === "all") return true;
+        if (filterType === "unit")
           return (unit ?? "").toLowerCase() === filterValue.toLowerCase();
-        }
-
         const keyword = filterValue.toLowerCase();
         const haystack = `${name} ${description ?? ""}`.toLowerCase();
         return haystack.includes(keyword);
@@ -380,7 +411,7 @@ export async function POST(request: Request) {
       const appliedMarkup = matchesMarkupFilter ? markupPercent : 0;
       const usesGlobalMarkup = matchesMarkupFilter;
       const sellingPrice = calculateSellingPrice(price, appliedMarkup);
-      let skuForError = rawSku || "(generated)";
+      const skuForError = rawSku || "(generated)";
 
       try {
         const existingByNameAndUnit = rawSku
@@ -402,33 +433,6 @@ export async function POST(request: Request) {
             ? existingByNameAndUnit.stock
             : existingByNameAndUnit.stock + stock;
 
-          await prisma.product.update({
-            where: { id: existingByNameAndUnit.id },
-            data: {
-              name,
-              unit: unit || undefined,
-              description: description || existingByNameAndUnit.description,
-              cost: hasSameCost ? undefined : price,
-              markupPct: nextMarkup,
-              stock: newStock,
-              price: nextPrice,
-              usesGlobalMarkup,
-              isActive: true,
-              ...(!isDuplicateFile && {
-                inventoryMovements: {
-                  create: {
-                    movementType: "BULK_IMPORT",
-                    quantityDelta: stock,
-                    previousStock: existingByNameAndUnit.stock,
-                    newStock,
-                    referenceType: "BULK_IMPORT",
-                    note: `Bulk import update for ${existingByNameAndUnit.sku}`,
-                  },
-                },
-              }),
-            },
-          });
-
           const updatedSnapshot: ProductSnapshot = {
             ...existingByNameAndUnit,
             name,
@@ -445,6 +449,7 @@ export async function POST(request: Request) {
             updatedSnapshot,
           );
 
+          const resultIndex = results.length;
           results.push({
             row,
             productName,
@@ -456,14 +461,45 @@ export async function POST(request: Request) {
                 ? `Updated: stock +${stock}, price changed`
                 : `Updated: stock +${stock}`,
           });
+
+          const productId = existingByNameAndUnit.id;
+          const prevStock = existingByNameAndUnit.stock;
+          const existingDescription = existingByNameAndUnit.description;
+          plannedDbOps.push({
+            resultIndex,
+            fn: () =>
+              prisma.product.update({
+                where: { id: productId },
+                data: {
+                  name,
+                  unit: unit || undefined,
+                  description: description || existingDescription,
+                  cost: hasSameCost ? undefined : price,
+                  markupPct: nextMarkup,
+                  stock: newStock,
+                  price: nextPrice,
+                  usesGlobalMarkup,
+                  isActive: true,
+                  ...(!isDuplicateFile && {
+                    inventoryMovements: {
+                      create: {
+                        movementType: "BULK_IMPORT",
+                        quantityDelta: stock,
+                        previousStock: prevStock,
+                        newStock,
+                        referenceType: "BULK_IMPORT",
+                        note: `Bulk import update for ${existingByNameAndUnit.sku}`,
+                      },
+                    },
+                  }),
+                },
+              }),
+          });
           continue;
         }
 
         const targetSku = (() => {
-          if (rawSku) {
-            return rawSku;
-          }
-
+          if (rawSku) return rawSku;
           try {
             return generateSmartSku(name, unit);
           } catch (error) {
@@ -472,7 +508,6 @@ export async function POST(request: Request) {
             throw new Error(`SKU generation failed: ${reason}`);
           }
         })();
-        skuForError = targetSku;
 
         const existingBySku = existingProductBySku.get(targetSku);
 
@@ -482,49 +517,11 @@ export async function POST(request: Request) {
             name.trim().toLowerCase();
 
           if (!sameProductName) {
-            if (reservedSkus.has(targetSku)) {
-              const relatedSkus = await prisma.product.findMany({
-                where: {
-                  sku: { startsWith: `${targetSku}-` },
-                },
-                select: { sku: true },
-              });
-
-              for (const relatedSku of relatedSkus) {
-                reservedSkus.add(relatedSku.sku);
-              }
-            }
-
             const uniqueSku = findAvailableSkuFromSet(targetSku, reservedSkus);
-
-            const createdProduct = await prisma.product.create({
-              data: {
-                sku: uniqueSku,
-                name,
-                unit: unit || null,
-                description: description || null,
-                cost: price,
-                markupPct: appliedMarkup,
-                price: sellingPrice,
-                stock,
-                usesGlobalMarkup,
-                isActive: true,
-                inventoryMovements: {
-                  create: {
-                    movementType: "BULK_IMPORT",
-                    quantityDelta: stock,
-                    previousStock: 0,
-                    newStock: stock,
-                    referenceType: "BULK_IMPORT",
-                    note: `Bulk import create for ${uniqueSku} (SKU adjusted from ${targetSku})`,
-                  },
-                },
-              },
-              select: { id: true },
-            });
+            reservedSkus.add(uniqueSku);
 
             const createdSnapshot: ProductSnapshot = {
-              id: createdProduct.id,
+              id: `pending-${uniqueSku}`,
               sku: uniqueSku,
               name,
               unit: unit || null,
@@ -534,19 +531,49 @@ export async function POST(request: Request) {
               price: new Prisma.Decimal(sellingPrice),
               stock,
             };
-            reservedSkus.add(uniqueSku);
             existingProductBySku.set(uniqueSku, createdSnapshot);
             existingProductByNameUnit.set(
               toNameUnitKey(name, unit),
               createdSnapshot,
             );
 
+            const resultIndex = results.length;
             results.push({
               row,
               productName,
               sku: uniqueSku,
               success: true,
               message: `Created with adjusted SKU (collision on ${targetSku})`,
+            });
+
+            plannedDbOps.push({
+              resultIndex,
+              fn: () =>
+                prisma.product.create({
+                  data: {
+                    sku: uniqueSku,
+                    name,
+                    unit: unit || null,
+                    description: description || null,
+                    cost: price,
+                    markupPct: appliedMarkup,
+                    price: sellingPrice,
+                    stock,
+                    usesGlobalMarkup,
+                    isActive: true,
+                    inventoryMovements: {
+                      create: {
+                        movementType: "BULK_IMPORT",
+                        quantityDelta: stock,
+                        previousStock: 0,
+                        newStock: stock,
+                        referenceType: "BULK_IMPORT",
+                        note: `Bulk import create for ${uniqueSku} (SKU adjusted from ${targetSku})`,
+                      },
+                    },
+                  },
+                  select: { id: true },
+                }),
             });
             continue;
           }
@@ -563,20 +590,6 @@ export async function POST(request: Request) {
               : sellingPrice;
             const priceChangedBySku =
               Number(existingBySku.price) !== nextPriceBySku;
-
-            await prisma.product.update({
-              where: { id: existingBySku.id },
-              data: {
-                name,
-                unit: unit || undefined,
-                description: description || existingBySku.description,
-                cost: hasSameCostBySku ? undefined : price,
-                markupPct: nextMarkupBySku,
-                price: nextPriceBySku,
-                usesGlobalMarkup,
-                isActive: true,
-              },
-            });
 
             const updatedSnapshot: ProductSnapshot = {
               ...existingBySku,
@@ -596,12 +609,33 @@ export async function POST(request: Request) {
               updatedSnapshot,
             );
 
+            const resultIndex = results.length;
             results.push({
               row,
               productName,
               sku: existingBySku.sku,
               success: true,
               message: `Updated (stock unchanged)${priceChangedBySku ? ", price changed" : ""}`,
+            });
+
+            const productId = existingBySku.id;
+            const existingDescriptionBySku = existingBySku.description;
+            plannedDbOps.push({
+              resultIndex,
+              fn: () =>
+                prisma.product.update({
+                  where: { id: productId },
+                  data: {
+                    name,
+                    unit: unit || undefined,
+                    description: description || existingDescriptionBySku,
+                    cost: hasSameCostBySku ? undefined : price,
+                    markupPct: nextMarkupBySku,
+                    price: nextPriceBySku,
+                    usesGlobalMarkup,
+                    isActive: true,
+                  },
+                }),
             });
             continue;
           }
@@ -618,31 +652,6 @@ export async function POST(request: Request) {
           const priceChangedBySku =
             Number(existingBySku.price) !== nextPriceBySku;
           const newStockBySku = existingBySku.stock + stock;
-
-          await prisma.product.update({
-            where: { id: existingBySku.id },
-            data: {
-              name,
-              unit: unit || undefined,
-              description: description || existingBySku.description,
-              cost: hasSameCostBySku ? undefined : price,
-              markupPct: nextMarkupBySku,
-              stock: newStockBySku,
-              price: nextPriceBySku,
-              usesGlobalMarkup,
-              isActive: true,
-              inventoryMovements: {
-                create: {
-                  movementType: "BULK_IMPORT",
-                  quantityDelta: stock,
-                  previousStock: existingBySku.stock,
-                  newStock: newStockBySku,
-                  referenceType: "BULK_IMPORT",
-                  note: `Bulk import update for ${targetSku}`,
-                },
-              },
-            },
-          });
 
           const updatedSnapshot: ProductSnapshot = {
             ...existingBySku,
@@ -662,6 +671,7 @@ export async function POST(request: Request) {
             updatedSnapshot,
           );
 
+          const resultIndex = results.length;
           results.push({
             row,
             productName,
@@ -671,37 +681,45 @@ export async function POST(request: Request) {
               ? `Updated: stock +${stock}, price changed`
               : `Updated: stock +${stock}`,
           });
+
+          const productId = existingBySku.id;
+          const prevStockBySku = existingBySku.stock;
+          const existingDescriptionBySku = existingBySku.description;
+          plannedDbOps.push({
+            resultIndex,
+            fn: () =>
+              prisma.product.update({
+                where: { id: productId },
+                data: {
+                  name,
+                  unit: unit || undefined,
+                  description: description || existingDescriptionBySku,
+                  cost: hasSameCostBySku ? undefined : price,
+                  markupPct: nextMarkupBySku,
+                  stock: newStockBySku,
+                  price: nextPriceBySku,
+                  usesGlobalMarkup,
+                  isActive: true,
+                  inventoryMovements: {
+                    create: {
+                      movementType: "BULK_IMPORT",
+                      quantityDelta: stock,
+                      previousStock: prevStockBySku,
+                      newStock: newStockBySku,
+                      referenceType: "BULK_IMPORT",
+                      note: `Bulk import update for ${targetSku}`,
+                    },
+                  },
+                },
+              }),
+          });
           continue;
         }
 
-        const createdProduct = await prisma.product.create({
-          data: {
-            sku: targetSku,
-            name,
-            unit: unit || null,
-            description: description || null,
-            cost: price,
-            markupPct: appliedMarkup,
-            price: sellingPrice,
-            stock,
-            usesGlobalMarkup,
-            isActive: true,
-            inventoryMovements: {
-              create: {
-                movementType: "BULK_IMPORT",
-                quantityDelta: stock,
-                previousStock: 0,
-                newStock: stock,
-                referenceType: "BULK_IMPORT",
-                note: `Bulk import create for ${targetSku}`,
-              },
-            },
-          },
-          select: { id: true },
-        });
-
+        // New product
+        reservedSkus.add(targetSku);
         const createdSnapshot: ProductSnapshot = {
-          id: createdProduct.id,
+          id: `pending-${targetSku}`,
           sku: targetSku,
           name,
           unit: unit || null,
@@ -711,13 +729,13 @@ export async function POST(request: Request) {
           price: new Prisma.Decimal(sellingPrice),
           stock,
         };
-        reservedSkus.add(targetSku);
         existingProductBySku.set(targetSku, createdSnapshot);
         existingProductByNameUnit.set(
           toNameUnitKey(name, unit),
           createdSnapshot,
         );
 
+        const resultIndex = results.length;
         results.push({
           row,
           productName,
@@ -725,27 +743,50 @@ export async function POST(request: Request) {
           success: true,
           message: "Created",
         });
+
+        plannedDbOps.push({
+          resultIndex,
+          fn: () =>
+            prisma.product.create({
+              data: {
+                sku: targetSku,
+                name,
+                unit: unit || null,
+                description: description || null,
+                cost: price,
+                markupPct: appliedMarkup,
+                price: sellingPrice,
+                stock,
+                usesGlobalMarkup,
+                isActive: true,
+                inventoryMovements: {
+                  create: {
+                    movementType: "BULK_IMPORT",
+                    quantityDelta: stock,
+                    previousStock: 0,
+                    newStock: stock,
+                    referenceType: "BULK_IMPORT",
+                    note: `Bulk import create for ${targetSku}`,
+                  },
+                },
+              },
+              select: { id: true },
+            }),
+        });
       } catch (error) {
         const detailedMessage = (() => {
           if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2002") {
+            if (error.code === "P2002")
               return "Duplicate value violates a unique field";
-            }
-            if (error.code === "P2003") {
+            if (error.code === "P2003")
               return "Related record not found (foreign key constraint)";
-            }
-            if (error.code === "P2020") {
+            if (error.code === "P2020")
               return "Invalid value for a database field";
-            }
           }
-
-          if (error instanceof Error && error.message.trim().length > 0) {
+          if (error instanceof Error && error.message.trim().length > 0)
             return error.message;
-          }
-
           return "Database error";
         })();
-
         results.push({
           row,
           productName,
@@ -753,40 +794,65 @@ export async function POST(request: Request) {
           success: false,
           message: detailedMessage,
         });
-      } finally {
-        const latestResult = results[results.length - 1];
-        if (latestResult?.row === row) {
-          if (latestResult.success) {
-            successSoFar += 1;
-          } else {
-            failureSoFar += 1;
-          }
-        }
-
-        processedRows += 1;
-
-        if (jobId) {
-          setImportProgress(jobId, {
-            status: "running",
-            phase: "processing",
-            totalRows,
-            processedRows,
-            successCount: successSoFar,
-            failureCount: failureSoFar,
-            message: `Processed ${processedRows}/${totalRows}`,
-          });
-        }
-
-        if (processedRows % 25 === 0 || processedRows === totalRows) {
-          console.info(
-            `[Bulk Import] Processed ${processedRows}/${totalRows} row(s) | Success: ${successSoFar} | Failed: ${failureSoFar}`,
-          );
-        }
       }
     }
 
-    const successCount = successSoFar;
-    const failureCount = failureSoFar;
+    console.info(
+      `[Bulk Import] Planning done. Executing ${plannedDbOps.length} DB ops in parallel.`,
+    );
+
+    // --- Execution phase: run DB ops in parallel chunks to avoid connection pool exhaustion ---
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < plannedDbOps.length; i += CHUNK_SIZE) {
+      const chunk = plannedDbOps.slice(i, i + CHUNK_SIZE);
+      await Promise.allSettled(
+        chunk.map(async ({ resultIndex, fn }) => {
+          try {
+            await fn();
+          } catch (error) {
+            results[resultIndex].success = false;
+            results[resultIndex].message = (() => {
+              if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === "P2002")
+                  return "Duplicate value violates a unique field";
+                if (error.code === "P2003")
+                  return "Related record not found (foreign key constraint)";
+                if (error.code === "P2020")
+                  return "Invalid value for a database field";
+              }
+              if (error instanceof Error && error.message.trim().length > 0)
+                return error.message;
+              return "Database error";
+            })();
+          }
+        }),
+      );
+
+      processedRows += chunk.length;
+      successSoFar = results
+        .slice(0, processedRows)
+        .filter((r) => r.success).length;
+      failureSoFar = processedRows - successSoFar;
+
+      if (jobId) {
+        setImportProgress(jobId, {
+          status: "running",
+          phase: "processing",
+          totalRows,
+          processedRows,
+          successCount: successSoFar,
+          failureCount: failureSoFar,
+          message: `Processed ${processedRows}/${totalRows}`,
+        });
+      }
+
+      console.info(
+        `[Bulk Import] Processed ${processedRows}/${totalRows} | Success: ${successSoFar} | Failed: ${failureSoFar}`,
+      );
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.filter((r) => !r.success).length;
     const processingFinishedAt = Date.now();
 
     console.info(
@@ -873,19 +939,45 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Failed to bulk import products", error);
+    const errorName =
+      error instanceof Error ? error.constructor.name : typeof error;
+    const errorMessage =
+      error instanceof Error && error.message.trim().length > 0
+        ? error.message
+        : "Unknown error";
+
+    console.error(`[Bulk Import] Error (${errorName}):`, errorMessage);
+    if (error instanceof Error) {
+      console.error("[Bulk Import] Stack:", error.stack);
+    }
 
     try {
-      const errorMessage =
-        error instanceof Error && error.message.trim().length > 0
-          ? error.message
-          : "Unable to process bulk import";
+      const userFacingMessage = (() => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === "P2002") {
+            return "Duplicate SKU or product already exists. Please check your data.";
+          }
+          if (error.code === "P2003") {
+            return "Product reference error. Some related products may not exist.";
+          }
+          if (error.code === "P2020") {
+            return "Invalid data format for a database field. Check price and stock values are numbers.";
+          }
+          return `Database error (${error.code}): ${error.message}`;
+        }
+
+        if (error instanceof SyntaxError) {
+          return "Invalid request format. Please ensure the CSV is properly formatted.";
+        }
+
+        return errorMessage || "Unable to process bulk import";
+      })();
 
       if (importJobId) {
         setImportProgress(importJobId, {
           status: "failed",
           phase: "failed",
-          message: errorMessage,
+          message: userFacingMessage,
         });
       }
     } catch {
