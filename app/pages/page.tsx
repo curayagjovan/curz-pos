@@ -97,6 +97,32 @@ const productListCache = new Map<string, ProductListCacheEntry>();
 const TRANSACTION_CACHE_TTL_MS = 30_000;
 const transactionCache = new Map<string, TransactionCacheEntry>();
 const TRANSACTION_PAGE_SIZE = 10;
+const PRODUCT_LOAD_RETRY_DELAYS_MS = [400, 900, 1600] as const;
+
+function delayWithAbort(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(timeoutId);
+      reject(new DOMException("Request aborted", "AbortError"));
+    };
+
+    if (!signal) {
+      return;
+    }
+
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 function isBottomNavTab(value: string | null): value is BottomNavTabKey {
   return (
@@ -542,27 +568,72 @@ export default function Home() {
           params.set("q", debouncedSearch);
         }
 
-        const response = await fetch(`/api/products?${params.toString()}`, {
-          cache: "no-store",
-          signal: abortController?.signal,
-        });
-
-        if (requestId !== latestProductsRequestIdRef.current) {
-          return;
-        }
-
-        if (!response.ok) {
-          const data = (await response.json().catch(() => ({}))) as {
-            message?: string;
-          };
-          throw new Error(data.message || "Unable to load products.");
-        }
-
-        const data = (await response.json()) as {
+        let data: {
           items: ApiProduct[];
           hasMore: boolean;
           nextCursor: string | null;
-        };
+        } | null = null;
+
+        for (
+          let attempt = 0;
+          attempt <= PRODUCT_LOAD_RETRY_DELAYS_MS.length;
+          attempt += 1
+        ) {
+          try {
+            const response = await fetch(`/api/products?${params.toString()}`, {
+              cache: "no-store",
+              signal: abortController?.signal,
+            });
+
+            if (requestId !== latestProductsRequestIdRef.current) {
+              return;
+            }
+
+            if (!response.ok) {
+              const responseData = (await response
+                .json()
+                .catch(() => ({}))) as {
+                message?: string;
+              };
+              throw new Error(
+                responseData.message || "Unable to load products.",
+              );
+            }
+
+            data = (await response.json()) as {
+              items: ApiProduct[];
+              hasMore: boolean;
+              nextCursor: string | null;
+            };
+            break;
+          } catch (error) {
+            if (requestId !== latestProductsRequestIdRef.current) {
+              return;
+            }
+
+            if (error instanceof DOMException && error.name === "AbortError") {
+              throw error;
+            }
+
+            const shouldRetry =
+              reset &&
+              cursor === null &&
+              attempt < PRODUCT_LOAD_RETRY_DELAYS_MS.length;
+
+            if (!shouldRetry) {
+              throw error;
+            }
+
+            await delayWithAbort(
+              PRODUCT_LOAD_RETRY_DELAYS_MS[attempt],
+              abortController?.signal,
+            );
+          }
+        }
+
+        if (!data) {
+          throw new Error("Unable to load products.");
+        }
 
         const normalized = data.items.map((item) => ({
           id: item.id,
@@ -617,7 +688,7 @@ export default function Home() {
         const messageText =
           error instanceof Error ? error.message : "Unable to load products.";
         setProductsLoadError(messageText);
-        if (reset) {
+        if (reset && latestProductsRef.current.length === 0) {
           setProducts([]);
         }
       } finally {
