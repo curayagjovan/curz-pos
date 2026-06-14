@@ -114,6 +114,8 @@ export default function Home() {
     null,
   );
   const latestProductsRef = useRef<Product[]>([]);
+  const latestProductsRequestIdRef = useRef(0);
+  const resetLoadAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     latestProductsRef.current = products;
@@ -133,11 +135,24 @@ export default function Home() {
 
   const loadProducts = useCallback(
     async ({ cursor, reset }: { cursor: string | null; reset: boolean }) => {
+      const requestId = latestProductsRequestIdRef.current + 1;
+      latestProductsRequestIdRef.current = requestId;
+
+      const abortController = reset ? new AbortController() : null;
+      if (reset) {
+        resetLoadAbortRef.current?.abort();
+        resetLoadAbortRef.current = abortController;
+      }
+
       try {
         const cacheKey = debouncedSearch.toLowerCase();
         if (reset) {
           const cached = productListCache.get(cacheKey);
           if (cached && Date.now() - cached.updatedAt < PRODUCT_CACHE_TTL_MS) {
+            if (requestId !== latestProductsRequestIdRef.current) {
+              return;
+            }
+
             setProducts(cached.items);
             setHasMoreProducts(cached.hasMore);
             setNextCursor(cached.nextCursor);
@@ -165,7 +180,15 @@ export default function Home() {
           params.set("q", debouncedSearch);
         }
 
-        const response = await fetch(`/api/products?${params.toString()}`);
+        const response = await fetch(`/api/products?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortController?.signal,
+        });
+
+        if (requestId !== latestProductsRequestIdRef.current) {
+          return;
+        }
+
         if (!response.ok) {
           const data = (await response.json().catch(() => ({}))) as {
             message?: string;
@@ -189,6 +212,10 @@ export default function Home() {
             item.bundlePrice === null ? null : Number(item.bundlePrice),
           stock: item.stock,
         }));
+
+        if (requestId !== latestProductsRequestIdRef.current) {
+          return;
+        }
 
         const mergedItems = reset
           ? normalized
@@ -217,6 +244,14 @@ export default function Home() {
           updatedAt: Date.now(),
         });
       } catch (error) {
+        if (requestId !== latestProductsRequestIdRef.current) {
+          return;
+        }
+
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         const messageText =
           error instanceof Error ? error.message : "Unable to load products.";
         setProductsLoadError(messageText);
@@ -224,6 +259,14 @@ export default function Home() {
           setProducts([]);
         }
       } finally {
+        if (requestId !== latestProductsRequestIdRef.current) {
+          return;
+        }
+
+        if (reset && resetLoadAbortRef.current === abortController) {
+          resetLoadAbortRef.current = null;
+        }
+
         if (reset) {
           setLoadingProducts(false);
         } else {
@@ -538,7 +581,9 @@ export default function Home() {
                   </Card>
                 </Col>
               ) : null}
-              {!loadingProducts && products.length === 0 ? (
+              {!loadingProducts &&
+              !productsLoadError &&
+              products.length === 0 ? (
                 <Col xs={24}>
                   <div
                     style={{
