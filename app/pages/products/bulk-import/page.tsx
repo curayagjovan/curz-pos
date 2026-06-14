@@ -252,7 +252,7 @@ export default function BulkImportPage() {
           modal.confirm({
             title: "Duplicate File Detected",
             content:
-              "This file appears to have been imported before. Importing it again will add duplicate stock quantities. Do you want to continue?",
+              "This file appears to have been imported before. Re-importing will not increase stock quantities, but it can still update product details. Do you want to continue?",
             okText: "Continue Import",
             cancelText: "Cancel",
             okButtonProps: { danger: true },
