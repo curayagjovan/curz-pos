@@ -530,9 +530,10 @@ export async function POST(request: Request) {
           if (!sameProductName) {
             const uniqueSku = findAvailableSkuFromSet(targetSku, reservedSkus);
             reservedSkus.add(uniqueSku);
+            const pendingProductId = crypto.randomUUID();
 
             const createdSnapshot: ProductSnapshot = {
-              id: `pending-${uniqueSku}`,
+              id: pendingProductId,
               sku: uniqueSku,
               name,
               unit: unit || null,
@@ -562,6 +563,7 @@ export async function POST(request: Request) {
               fn: () =>
                 bulkPrisma.product.create({
                   data: {
+                    id: pendingProductId,
                     sku: uniqueSku,
                     name,
                     unit: unit || null,
@@ -729,8 +731,9 @@ export async function POST(request: Request) {
 
         // New product
         reservedSkus.add(targetSku);
+        const pendingProductId = crypto.randomUUID();
         const createdSnapshot: ProductSnapshot = {
-          id: `pending-${targetSku}`,
+          id: pendingProductId,
           sku: targetSku,
           name,
           unit: unit || null,
@@ -760,6 +763,7 @@ export async function POST(request: Request) {
           fn: () =>
             bulkPrisma.product.create({
               data: {
+                id: pendingProductId,
                 sku: targetSku,
                 name,
                 unit: unit || null,
@@ -812,8 +816,9 @@ export async function POST(request: Request) {
       `[Bulk Import] Planning done. Executing ${plannedDbOps.length} DB ops in parallel.`,
     );
 
-    // --- Execution phase: run DB ops in parallel chunks to avoid connection pool exhaustion ---
-    const CHUNK_SIZE = 10;
+    // --- Execution phase: run DB ops in-order so later updates can safely target products
+    // created earlier in the same import request.
+    const CHUNK_SIZE = 1;
     for (let i = 0; i < plannedDbOps.length; i += CHUNK_SIZE) {
       const chunk = plannedDbOps.slice(i, i + CHUNK_SIZE);
       await Promise.allSettled(
