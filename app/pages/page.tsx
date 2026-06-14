@@ -14,7 +14,6 @@ import {
   Drawer,
   Empty,
   FloatButton,
-  Grid,
   Input,
   Layout,
   Row,
@@ -31,7 +30,6 @@ import {
 import { computeTax } from "@/lib/tax-config";
 import { useCompactHeight } from "@/app/hooks/use-compact-height";
 import { CartContent } from "@/app/components/pos/cart-content";
-import { PosHeader } from "@/app/components/navigation/pos-header";
 import { MobilePageHeader } from "@/app/components/navigation/mobile-page-header";
 import {
   ProductRow,
@@ -39,6 +37,8 @@ import {
   LIST_ROW_HEIGHT,
   type Product,
 } from "@/app/components/pos/product-row";
+import { ProductViewDrawer } from "@/app/components/products/product-view-drawer";
+import { ProductEditDrawer } from "@/app/components/products/product-edit-drawer";
 
 const { Content } = Layout;
 
@@ -92,8 +92,6 @@ export default function Home() {
   const { message } = App.useApp();
   const router = useRouter();
   const { mode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
   const isCompactHeight = useCompactHeight();
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
@@ -110,6 +108,11 @@ export default function Home() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    null,
+  );
   const latestProductsRef = useRef<Product[]>([]);
 
   useEffect(() => {
@@ -302,13 +305,11 @@ export default function Home() {
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart],
   );
-  const virtualListContainerHeight = isDesktop
-    ? 700
-    : isCompactHeight
-      ? "calc(100vh - 182px)"
-      : "calc(100vh - 208px)";
-  const virtualListFallbackHeight = isDesktop ? 700 : 560;
-  const overscanRows = isDesktop ? 5 : 8;
+  const virtualListContainerHeight = isCompactHeight
+    ? "calc(100vh - 182px)"
+    : "calc(100vh - 208px)";
+  const virtualListFallbackHeight = 560;
+  const overscanRows = 8;
 
   const requestNextPage = useCallback(() => {
     if (
@@ -393,20 +394,14 @@ export default function Home() {
 
   return (
     <Layout style={{ minHeight: "100vh", background: "transparent" }}>
-      {isDesktop ? (
-        <PosHeader mode={mode} isDesktop={isDesktop} activePage="pos" />
-      ) : (
-        <MobilePageHeader mode={mode} />
-      )}
+      <MobilePageHeader mode={mode} />
       <Layout style={{ background: "transparent" }}>
         <Content
           style={{
-            paddingTop: isDesktop ? 24 : isCompactHeight ? 10 : 14,
-            paddingInline: isDesktop ? 24 : isCompactHeight ? 10 : 14,
-            paddingBottom: isDesktop
-              ? 24
-              : "calc(132px + env(safe-area-inset-bottom))",
-            maxWidth: isDesktop ? 1200 : 900,
+            paddingTop: isCompactHeight ? 10 : 14,
+            paddingInline: isCompactHeight ? 10 : 14,
+            paddingBottom: "calc(132px + env(safe-area-inset-bottom))",
+            maxWidth: "100%",
             width: "100%",
             margin: "0 auto",
           }}
@@ -418,7 +413,7 @@ export default function Home() {
           >
             <Card
               style={{
-                borderRadius: isDesktop ? 18 : 16,
+                borderRadius: 16,
                 border:
                   mode === "dark" ? "1px solid #273244" : "1px solid #d0dff4",
                 background:
@@ -432,7 +427,7 @@ export default function Home() {
               }}
               styles={{
                 body: {
-                  padding: isDesktop ? 20 : isCompactHeight ? 12 : 16,
+                  padding: isCompactHeight ? 12 : 16,
                 },
               }}
             >
@@ -446,7 +441,7 @@ export default function Home() {
                 >
                   <Typography.Text
                     style={{
-                      fontSize: isDesktop ? 15 : 13,
+                      fontSize: 13,
                       fontWeight: 700,
                       color: mode === "dark" ? "#e2e8f0" : "#1a3055",
                       letterSpacing: "0.01em",
@@ -482,7 +477,7 @@ export default function Home() {
               </Space>
             </Card>
 
-            <Row gutter={[isDesktop ? 16 : 10, isDesktop ? 16 : 10]}>
+            <Row gutter={[10, 10]}>
               {loadingProducts ? (
                 <Col xs={24}>
                   <Card
@@ -514,7 +509,7 @@ export default function Home() {
                 </Col>
               ) : null}
               {loadingProducts
-                ? Array.from({ length: isDesktop ? 6 : 4 }).map((_, idx) => (
+                ? Array.from({ length: 4 }).map((_, idx) => (
                     <Col xs={24} sm={12} xl={8} key={`loading-${idx}`}>
                       <Card loading />
                     </Col>
@@ -576,7 +571,7 @@ export default function Home() {
                       height: virtualListContainerHeight,
                       width: "100%",
                       overflow: "hidden",
-                      borderRadius: isDesktop ? 18 : 14,
+                      borderRadius: 14,
                       border:
                         mode === "dark"
                           ? "1px solid rgba(51, 65, 85, 0.9)"
@@ -585,7 +580,7 @@ export default function Home() {
                         mode === "dark"
                           ? "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(15,23,42,0.52))"
                           : "linear-gradient(180deg, rgba(250,252,255,0.9), rgba(242,247,255,0.9))",
-                      padding: isDesktop ? 10 : 6,
+                      padding: 6,
                     }}
                   >
                     <AutoSizer
@@ -611,6 +606,10 @@ export default function Home() {
                           rowProps={{
                             products,
                             onAddToCart: addToCart,
+                            onViewProduct: (productId: string) => {
+                              setSelectedProductId(productId);
+                              setViewDrawerOpen(true);
+                            },
                           }}
                           onRowsRendered={({
                             stopIndex,
@@ -647,155 +646,184 @@ export default function Home() {
         </Content>
       </Layout>
 
-      {!isDesktop ? (
-        <>
+      <>
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 30,
+            display: "flex",
+            justifyContent: "center",
+            paddingInline: 14,
+            paddingTop: 36,
+            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+            background:
+              mode === "dark"
+                ? "linear-gradient(to top, rgba(10,16,30,0.92) 56%, transparent)"
+                : "linear-gradient(to top, rgba(240,247,255,0.9) 56%, transparent)",
+          }}
+        >
           <div
             style={{
-              position: "fixed",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              zIndex: 30,
-              display: "flex",
-              justifyContent: "center",
-              paddingInline: 14,
-              paddingTop: 36,
-              paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+              position: "relative",
+              width: "100%",
+              maxWidth: 560,
+              borderRadius: 24,
+              border:
+                mode === "dark"
+                  ? "1px solid rgba(71,85,105,0.75)"
+                  : "1px solid rgba(191,219,254,0.85)",
               background:
                 mode === "dark"
-                  ? "linear-gradient(to top, rgba(10,16,30,0.92) 56%, transparent)"
-                  : "linear-gradient(to top, rgba(240,247,255,0.9) 56%, transparent)",
+                  ? "linear-gradient(180deg, rgba(15,23,42,0.9), rgba(15,23,42,0.82))"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,252,255,0.94))",
+              backdropFilter: "blur(14px)",
+              boxShadow:
+                mode === "dark"
+                  ? "0 14px 30px rgba(2, 6, 23, 0.45)"
+                  : "0 14px 34px rgba(30,58,138,0.16)",
+              padding: "9px 10px 8px",
             }}
           >
             <div
               style={{
-                position: "relative",
-                width: "100%",
-                maxWidth: 560,
-                borderRadius: 24,
-                border:
-                  mode === "dark"
-                    ? "1px solid rgba(71,85,105,0.75)"
-                    : "1px solid rgba(191,219,254,0.85)",
-                background:
-                  mode === "dark"
-                    ? "linear-gradient(180deg, rgba(15,23,42,0.9), rgba(15,23,42,0.82))"
-                    : "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,252,255,0.94))",
-                backdropFilter: "blur(14px)",
-                boxShadow:
-                  mode === "dark"
-                    ? "0 14px 30px rgba(2, 6, 23, 0.45)"
-                    : "0 14px 34px rgba(30,58,138,0.16)",
-                padding: "9px 10px 8px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                alignItems: "center",
+                columnGap: 94,
               }}
             >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  alignItems: "center",
-                  columnGap: 94,
-                }}
-              >
-                <Link href="/pages/" style={{ display: "block" }}>
-                  <Button
-                    type="text"
-                    block
-                    icon={<AppstoreOutlined />}
-                    style={{
-                      height: 44,
-                      borderRadius: 12,
-                      color: mode === "dark" ? "#93c5fd" : "#1d4ed8",
-                      fontWeight: 700,
-                      fontSize: 12,
-                    }}
-                  >
-                    Products
-                  </Button>
-                </Link>
-                <Link href="/pages/transactions" style={{ display: "block" }}>
-                  <Button
-                    type="text"
-                    block
-                    icon={<FileTextOutlined />}
-                    style={{
-                      height: 44,
-                      borderRadius: 12,
-                      color: mode === "dark" ? "#cbd5e1" : "#475569",
-                      fontWeight: 600,
-                      fontSize: 12,
-                    }}
-                  >
-                    Transactions
-                  </Button>
-                </Link>
-              </div>
-
-              <Button
-                type="primary"
-                shape="circle"
-                icon={<ShoppingCartOutlined />}
-                onClick={() => setCartOpen(true)}
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: -24,
-                  transform: "translateX(-50%)",
-                  width: 64,
-                  height: 64,
-                  border:
-                    mode === "dark"
-                      ? "4px solid rgba(15,23,42,0.95)"
-                      : "4px solid rgba(255,255,255,0.98)",
-                  background: "linear-gradient(145deg, #60a5fa, #2563eb)",
-                  boxShadow:
-                    "0 14px 30px rgba(37, 99, 235, 0.48), 0 4px 10px rgba(37, 99, 235, 0.34)",
-                }}
-              >
-                <Badge
-                  count={cartItemCount}
-                  color="#ffffff"
-                  overflowCount={99}
-                  offset={[10, -8]}
-                  styles={{ indicator: { color: "#1e3a8a", fontWeight: 700 } }}
-                />
-              </Button>
+              <Link href="/pages/" style={{ display: "block" }}>
+                <Button
+                  type="text"
+                  block
+                  icon={<AppstoreOutlined />}
+                  style={{
+                    height: 44,
+                    borderRadius: 12,
+                    color: mode === "dark" ? "#93c5fd" : "#1d4ed8",
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  Products
+                </Button>
+              </Link>
+              <Link href="/pages/transactions" style={{ display: "block" }}>
+                <Button
+                  type="text"
+                  block
+                  icon={<FileTextOutlined />}
+                  style={{
+                    height: 44,
+                    borderRadius: 12,
+                    color: mode === "dark" ? "#cbd5e1" : "#475569",
+                    fontWeight: 600,
+                    fontSize: 12,
+                  }}
+                >
+                  Transactions
+                </Button>
+              </Link>
             </div>
-          </div>
 
-          <Drawer
-            title="Cart"
-            open={cartOpen}
-            onClose={() => setCartOpen(false)}
-            placement="bottom"
-            size="78vh"
-          >
-            <CartContent
-              cart={cart}
-              subtotal={subtotal}
-              tax={tax}
-              total={total}
-              paymentAmount={paymentAmount}
-              setPaymentAmount={setPaymentAmount}
-              quickCashAmounts={quickCashAmounts}
-              change={change}
-              checkingOut={checkingOut}
-              updateQty={updateQty}
-              onCheckout={() => {
-                void submitCheckout();
+            <Button
+              type="primary"
+              shape="circle"
+              icon={<ShoppingCartOutlined />}
+              onClick={() => setCartOpen(true)}
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: -24,
+                transform: "translateX(-50%)",
+                width: 64,
+                height: 64,
+                border:
+                  mode === "dark"
+                    ? "4px solid rgba(15,23,42,0.95)"
+                    : "4px solid rgba(255,255,255,0.98)",
+                background: "linear-gradient(145deg, #60a5fa, #2563eb)",
+                boxShadow:
+                  "0 14px 30px rgba(37, 99, 235, 0.48), 0 4px 10px rgba(37, 99, 235, 0.34)",
               }}
-            />
-          </Drawer>
-        </>
-      ) : null}
+            >
+              <Badge
+                count={cartItemCount}
+                color="#ffffff"
+                overflowCount={99}
+                offset={[10, -8]}
+                styles={{ indicator: { color: "#1e3a8a", fontWeight: 700 } }}
+              />
+            </Button>
+          </div>
+        </div>
+
+        <Drawer
+          title="Cart"
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          placement="bottom"
+          size="78vh"
+        >
+          <CartContent
+            cart={cart}
+            subtotal={subtotal}
+            tax={tax}
+            total={total}
+            paymentAmount={paymentAmount}
+            setPaymentAmount={setPaymentAmount}
+            quickCashAmounts={quickCashAmounts}
+            change={change}
+            checkingOut={checkingOut}
+            updateQty={updateQty}
+            onCheckout={() => {
+              void submitCheckout();
+            }}
+          />
+        </Drawer>
+      </>
+
+      <ProductViewDrawer
+        open={viewDrawerOpen && !editDrawerOpen}
+        productId={selectedProductId}
+        onClose={() => {
+          setViewDrawerOpen(false);
+          setSelectedProductId(null);
+        }}
+        onEdit={() => {
+          setViewDrawerOpen(false);
+          setEditDrawerOpen(true);
+        }}
+        onProductDeleted={() => {
+          setViewDrawerOpen(false);
+          setSelectedProductId(null);
+          setReloadToken((prev) => prev + 1);
+        }}
+      />
+
+      <ProductEditDrawer
+        open={editDrawerOpen}
+        productId={selectedProductId}
+        onClose={() => {
+          setEditDrawerOpen(false);
+          setViewDrawerOpen(true);
+        }}
+        onProductUpdated={() => {
+          setEditDrawerOpen(false);
+          setViewDrawerOpen(false);
+          setSelectedProductId(null);
+          setReloadToken((prev) => prev + 1);
+        }}
+      />
 
       <FloatButton.BackTop
         visibilityHeight={300}
         style={{
           right: 16,
-          bottom: isDesktop
-            ? "calc(24px + env(safe-area-inset-bottom))"
-            : "calc(118px + env(safe-area-inset-bottom))",
+          bottom: "calc(118px + env(safe-area-inset-bottom))",
         }}
       />
     </Layout>

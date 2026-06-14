@@ -181,7 +181,11 @@ export default function ProductDetailsPage() {
               <Skeleton active paragraph={{ rows: 8 }} />
             ) : product ? (
               <Space orientation="vertical" style={{ width: "100%" }} size={16}>
-                <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                <Space
+                  orientation="vertical"
+                  size={4}
+                  style={{ width: "100%" }}
+                >
                   <Space wrap>
                     <Typography.Title level={3} style={{ margin: 0 }}>
                       {product.name}

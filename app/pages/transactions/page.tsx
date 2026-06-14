@@ -9,7 +9,6 @@ import {
   Collapse,
   Empty,
   FloatButton,
-  Grid,
   Layout,
   Pagination,
   Skeleton,
@@ -56,8 +55,6 @@ const transactionCache = new Map<string, TransactionCacheEntry>();
 export default function TransactionsPage() {
   const router = useRouter();
   const { mode } = useThemeMode();
-  const screens = Grid.useBreakpoint();
-  const isDesktop = Boolean(screens.lg);
   const isCompactHeight = useCompactHeight();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,24 +159,24 @@ export default function TransactionsPage() {
           position: "sticky",
           top: 0,
           zIndex: 2,
-          paddingInline: isDesktop ? 16 : 12,
+          paddingInline: 12,
           paddingTop: "max(env(safe-area-inset-top), 8px)",
           minHeight: `calc(${isCompactHeight ? 48 : 56}px + env(safe-area-inset-top))`,
         }}
       >
         <Typography.Title
-          level={isDesktop ? 4 : 5}
+          level={5}
           style={{ margin: 0, color: mode === "dark" ? "#e5e7eb" : "#12325a" }}
         >
           SHOPMAE
         </Typography.Title>
         <Space size={8} wrap>
-          <SettingsDropdown size={isDesktop ? "middle" : "large"} />
+          <SettingsDropdown size="large" />
           <Link href="/pages/">
-            <Button size={isDesktop ? "middle" : "large"}>POS</Button>
+            <Button size="large">POS</Button>
           </Link>
           <Link href="/pages/transactions">
-            <Button type="primary" size={isDesktop ? "middle" : "large"}>
+            <Button type="primary" size="large">
               Transactions
             </Button>
           </Link>
@@ -188,10 +185,10 @@ export default function TransactionsPage() {
 
       <Content
         style={{
-          paddingTop: isDesktop ? 18 : isCompactHeight ? 10 : 12,
-          paddingInline: isDesktop ? 18 : isCompactHeight ? 10 : 12,
+          paddingTop: isCompactHeight ? 10 : 12,
+          paddingInline: isCompactHeight ? 10 : 12,
           paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
-          maxWidth: 1080,
+          maxWidth: "100%",
           width: "100%",
           margin: "0 auto",
         }}
@@ -203,7 +200,7 @@ export default function TransactionsPage() {
             </Typography.Title>
             <Space wrap>
               <Button
-                size={isDesktop ? "middle" : "large"}
+                size="large"
                 type={transactionFilter === "ALL" ? "primary" : "default"}
                 onClick={() => {
                   setCurrentPage(1);
@@ -213,7 +210,7 @@ export default function TransactionsPage() {
                 All
               </Button>
               <Button
-                size={isDesktop ? "middle" : "large"}
+                size="large"
                 type={transactionFilter === "PAID" ? "primary" : "default"}
                 onClick={() => {
                   setCurrentPage(1);
@@ -223,7 +220,7 @@ export default function TransactionsPage() {
                 Successful
               </Button>
               <Button
-                size={isDesktop ? "middle" : "large"}
+                size="large"
                 type={transactionFilter === "CANCELLED" ? "primary" : "default"}
                 onClick={() => {
                   setCurrentPage(1);

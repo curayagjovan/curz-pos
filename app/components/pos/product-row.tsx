@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Space, Tag, Typography } from "antd";
 import { type RowComponentProps } from "react-window";
@@ -21,6 +20,7 @@ export type Product = {
 export type ProductRowProps = {
   products: Product[];
   onAddToCart: (product: Product, quantity: number) => void;
+  onViewProduct?: (productId: string) => void;
 };
 
 export function ProductRow({
@@ -28,8 +28,8 @@ export function ProductRow({
   style,
   products,
   onAddToCart,
+  onViewProduct,
 }: RowComponentProps<ProductRowProps>) {
-  const router = useRouter();
   const { mode } = useThemeMode();
   const product = products[index];
   const [quantity, setQuantity] = useState(1);
@@ -86,7 +86,7 @@ export function ProductRow({
             : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,255,0.94) 100%)",
         }}
         styles={{ body: { padding: 10, height: "100%" } }}
-        onClick={() => router.push(`/pages/products/${product.id}`)}
+        onClick={() => onViewProduct?.(product.id)}
       >
         <div
           style={{

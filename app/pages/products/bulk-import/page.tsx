@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
@@ -46,6 +46,36 @@ type ImportResult = {
   message: string;
 };
 
+type ImportTiming = {
+  setupMs: number;
+  preloadMs: number;
+  processingMs: number;
+  loggingMs: number;
+  totalMs: number;
+};
+
+type ImportPhase =
+  | "pending"
+  | "setup"
+  | "preload"
+  | "processing"
+  | "logging"
+  | "completed"
+  | "failed";
+
+type ImportProgressPayload = {
+  jobId: string;
+  status: "pending" | "running" | "completed" | "failed";
+  phase: ImportPhase;
+  totalRows: number;
+  processedRows: number;
+  successCount: number;
+  failureCount: number;
+  message?: string;
+  durationMs?: number;
+  timing?: ImportTiming;
+};
+
 const SAMPLE_CSV = `name,unit,price,stock
 Fresh Milk,PACK,85.50,20
 Whole Wheat Bread,PACK,45.00,15
@@ -70,6 +100,16 @@ export default function BulkImportPage() {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const [results, setResults] = useState<ImportResult[] | null>(null);
+  const progressStreamRef = useRef<EventSource | null>(null);
+  const [importElapsedMs, setImportElapsedMs] = useState(0);
+  const [importStartedAt, setImportStartedAt] = useState<number | null>(null);
+  const [serverDurationMs, setServerDurationMs] = useState<number | null>(null);
+  const [timingBreakdown, setTimingBreakdown] = useState<ImportTiming | null>(
+    null,
+  );
+  const [importPhase, setImportPhase] = useState<ImportPhase>("pending");
+  const [processedRows, setProcessedRows] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
   const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
@@ -96,23 +136,53 @@ export default function BulkImportPage() {
   }, []);
 
   useEffect(() => {
-    if (!submitting) {
+    if (!submitting || importStartedAt === null) {
       return;
     }
 
     const timer = window.setInterval(() => {
-      setImportProgress((current) => {
-        if (current >= 90) {
-          return current;
-        }
-        return current + 5;
-      });
-    }, 180);
+      setImportElapsedMs(Date.now() - importStartedAt);
+    }, 120);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [submitting]);
+  }, [submitting, importStartedAt]);
+
+  const formatDuration = (milliseconds: number) => {
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+      return "0.00s";
+    }
+
+    return `${(milliseconds / 1000).toFixed(2)}s`;
+  };
+
+  const getPhaseTag = (phase: ImportPhase) => {
+    if (phase === "setup") return { color: "blue", label: "Setup" };
+    if (phase === "preload") return { color: "purple", label: "Preload" };
+    if (phase === "processing") {
+      return { color: "processing", label: "Processing" };
+    }
+    if (phase === "logging") return { color: "gold", label: "Logging" };
+    if (phase === "completed") return { color: "green", label: "Completed" };
+    if (phase === "failed") return { color: "red", label: "Failed" };
+    return { color: "default", label: "Pending" };
+  };
+
+  const closeProgressStream = () => {
+    if (!progressStreamRef.current) {
+      return;
+    }
+
+    progressStreamRef.current.close();
+    progressStreamRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      closeProgressStream();
+    };
+  }, []);
 
   const calculateFileHash = async (file: File): Promise<string> => {
     const buffer = await file.arrayBuffer();
@@ -198,6 +268,12 @@ export default function BulkImportPage() {
                   setResults(null);
                   setImportProgress(0);
                   setImportStatus("normal");
+                  setImportElapsedMs(0);
+                  setServerDurationMs(null);
+                  setTimingBreakdown(null);
+                  setImportPhase("pending");
+                  setProcessedRows(0);
+                  setTotalRows(rows.length);
                 },
                 error: (error) => {
                   message.error(`CSV parsing error: ${error.message}`);
@@ -220,6 +296,12 @@ export default function BulkImportPage() {
               setResults(null);
               setImportProgress(0);
               setImportStatus("normal");
+              setImportElapsedMs(0);
+              setServerDurationMs(null);
+              setTimingBreakdown(null);
+              setImportPhase("pending");
+              setProcessedRows(0);
+              setTotalRows(rows.length);
             },
             error: (error) => {
               message.error(`CSV parsing error: ${error.message}`);
@@ -243,9 +325,71 @@ export default function BulkImportPage() {
     }
 
     try {
+      const startedAt = Date.now();
+      const jobId = crypto.randomUUID();
       setSubmitting(true);
       setImportStatus("normal");
-      setImportProgress(10);
+      setImportProgress(0);
+      setImportStartedAt(startedAt);
+      setImportElapsedMs(0);
+      setServerDurationMs(null);
+      setTimingBreakdown(null);
+      setImportPhase("setup");
+      setProcessedRows(0);
+      setTotalRows(csvData.length);
+
+      closeProgressStream();
+
+      if (typeof EventSource !== "undefined") {
+        const stream = new EventSource(
+          `/api/products/bulk/progress?jobId=${encodeURIComponent(jobId)}`,
+        );
+
+        stream.addEventListener("progress", (event) => {
+          const payload = JSON.parse(
+            (event as MessageEvent).data,
+          ) as ImportProgressPayload;
+          const nextTotal = payload.totalRows || csvData.length;
+          const nextProcessed = Math.min(payload.processedRows, nextTotal);
+          setTotalRows(nextTotal);
+          setProcessedRows(nextProcessed);
+          setImportPhase(payload.phase ?? "pending");
+
+          if (payload.durationMs !== undefined) {
+            setServerDurationMs(payload.durationMs);
+          }
+
+          if (payload.timing) {
+            setTimingBreakdown(payload.timing);
+          }
+
+          if (nextTotal > 0) {
+            const ratio = Math.round((nextProcessed / nextTotal) * 100);
+            setImportProgress(
+              payload.status === "completed" ? 100 : Math.min(99, ratio),
+            );
+          }
+
+          if (payload.status === "failed") {
+            setImportStatus("exception");
+          }
+        });
+
+        stream.addEventListener("done", () => {
+          closeProgressStream();
+        });
+
+        stream.addEventListener("timeout", () => {
+          closeProgressStream();
+        });
+
+        stream.onerror = () => {
+          closeProgressStream();
+        };
+
+        progressStreamRef.current = stream;
+      }
+
       const controller = new AbortController();
       setAbortController(controller);
 
@@ -258,6 +402,7 @@ export default function BulkImportPage() {
           filterType: "all",
           filterValue: "",
           fileHash,
+          jobId,
         }),
         signal: controller.signal,
       });
@@ -269,10 +414,18 @@ export default function BulkImportPage() {
 
       const data = (await response.json()) as {
         results: ImportResult[];
+        durationMs?: number;
+        timing?: ImportTiming;
       };
       setImportProgress(100);
       setImportStatus("success");
       setResults(data.results);
+      setImportElapsedMs(Date.now() - startedAt);
+      setServerDurationMs(data.durationMs ?? null);
+      setTimingBreakdown(data.timing ?? null);
+      setImportPhase("completed");
+      setProcessedRows(data.results.length);
+      setTotalRows(data.results.length);
 
       // Track this file as imported
       if (fileHash) {
@@ -286,6 +439,11 @@ export default function BulkImportPage() {
       if (error instanceof DOMException && error.name === "AbortError") {
         setImportProgress(0);
         setImportStatus("normal");
+        setImportStartedAt(null);
+        setImportElapsedMs(0);
+        setImportPhase("pending");
+        setProcessedRows(0);
+        setTotalRows(0);
         message.warning("Import cancelled.");
         return;
       }
@@ -293,11 +451,14 @@ export default function BulkImportPage() {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to import products";
       setImportStatus("exception");
+      setImportPhase("failed");
       setImportProgress(100);
       message.error(errorMessage);
     } finally {
       setAbortController(null);
       setSubmitting(false);
+      setImportStartedAt(null);
+      closeProgressStream();
     }
   };
 
@@ -461,6 +622,22 @@ export default function BulkImportPage() {
                     <Typography.Text type="secondary">
                       {submitting ? "Importing products..." : "Import finished"}
                     </Typography.Text>
+                    <Typography.Text type="secondary">
+                      Elapsed: {formatDuration(importElapsedMs)}
+                      {!submitting && serverDurationMs !== null
+                        ? ` • Server: ${formatDuration(serverDurationMs)}`
+                        : ""}
+                    </Typography.Text>
+                    <Typography.Text type="secondary">
+                      Progress: {processedRows}/
+                      {Math.max(totalRows, csvData.length)} rows
+                    </Typography.Text>
+                    <Space size={6}>
+                      <Typography.Text type="secondary">Phase:</Typography.Text>
+                      <Tag color={getPhaseTag(importPhase).color}>
+                        {getPhaseTag(importPhase).label}
+                      </Tag>
+                    </Space>
                     <Progress
                       percent={importProgress}
                       status={importStatus}
@@ -493,7 +670,7 @@ export default function BulkImportPage() {
             <Card>
               <Space orientation="vertical" style={{ width: "100%" }} size={12}>
                 <Row gutter={[16, 16]}>
-                  <Col xs={24} sm={8}>
+                  <Col xs={12} sm={6}>
                     <Card size="small" style={{ textAlign: "center" }}>
                       <Typography.Text strong>Success</Typography.Text>
                       <Typography.Title
@@ -507,7 +684,7 @@ export default function BulkImportPage() {
                       </Typography.Title>
                     </Card>
                   </Col>
-                  <Col xs={24} sm={8}>
+                  <Col xs={12} sm={6}>
                     <Card size="small" style={{ textAlign: "center" }}>
                       <Typography.Text strong>Failed</Typography.Text>
                       <Typography.Title
@@ -521,7 +698,7 @@ export default function BulkImportPage() {
                       </Typography.Title>
                     </Card>
                   </Col>
-                  <Col xs={24} sm={8}>
+                  <Col xs={12} sm={6}>
                     <Card size="small" style={{ textAlign: "center" }}>
                       <Typography.Text strong>Total</Typography.Text>
                       <Typography.Title
@@ -535,7 +712,30 @@ export default function BulkImportPage() {
                       </Typography.Title>
                     </Card>
                   </Col>
+                  <Col xs={12} sm={6}>
+                    <Card size="small" style={{ textAlign: "center" }}>
+                      <Typography.Text strong>Duration</Typography.Text>
+                      <Typography.Title
+                        level={4}
+                        style={{
+                          margin: "8px 0 0",
+                          color: "#0b6bcb",
+                        }}
+                      >
+                        {formatDuration(serverDurationMs ?? importElapsedMs)}
+                      </Typography.Title>
+                    </Card>
+                  </Col>
                 </Row>
+
+                {timingBreakdown && (
+                  <Typography.Text type="secondary">
+                    Breakdown: setup {formatDuration(timingBreakdown.setupMs)} •
+                    preload {formatDuration(timingBreakdown.preloadMs)} •
+                    processing {formatDuration(timingBreakdown.processingMs)} •
+                    logging {formatDuration(timingBreakdown.loggingMs)}
+                  </Typography.Text>
+                )}
 
                 <Table
                   columns={resultColumns}
