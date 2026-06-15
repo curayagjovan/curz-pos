@@ -24,7 +24,6 @@ export async function POST(request: Request) {
 
     const where: Prisma.ProductWhereInput = {
       isActive: true,
-      usesGlobalMarkup: true,
     };
 
     if (filterType === "unit") {
