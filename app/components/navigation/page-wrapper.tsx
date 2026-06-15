@@ -14,6 +14,7 @@ type PageWrapperProps = {
   children: ReactNode;
   contentStyle?: CSSProperties;
   isCompactHeight?: boolean;
+  cartItemCount?: number;
   activeTab: BottomNavTabKey;
   onTabChange: (tab: BottomNavTabKey) => void;
   showSearch?: boolean;
@@ -36,6 +37,7 @@ export function PageWrapper({
   children,
   contentStyle,
   isCompactHeight = false,
+  cartItemCount = 0,
   activeTab,
   onTabChange,
   showSearch = false,
@@ -71,6 +73,7 @@ export function PageWrapper({
       <BottomNav
         activeTab={activeTab}
         isCompactHeight={isCompactHeight}
+        cartItemCount={cartItemCount}
         onTabChange={onTabChange}
       />
     </Layout>

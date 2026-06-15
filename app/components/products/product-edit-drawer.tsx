@@ -8,19 +8,18 @@ import {
   Form,
   Input,
   InputNumber,
+  Select,
   Skeleton,
   Space,
   Switch,
 } from "antd";
+import { STANDARD_UNITS, UNIT_LABELS } from "@/lib/units";
 import { SaveOutlined } from "@ant-design/icons";
 
 type ProductFormValues = {
   sku: string;
   name: string;
   unit?: string;
-  jarCost?: number;
-  piecesPerJar?: number;
-  jarsInStock?: number;
   description?: string;
   cost?: number;
   markupPercent?: number;
@@ -69,16 +68,9 @@ export function ProductEditDrawer({
 
   const cost = Form.useWatch("cost", form);
   const markupPercent = Form.useWatch("markupPercent", form);
-  const unitValue = Form.useWatch("unit", form);
-  const jarCost = Form.useWatch("jarCost", form);
-  const piecesPerJar = Form.useWatch("piecesPerJar", form);
-  const jarsInStock = Form.useWatch("jarsInStock", form);
   const bundleQty = Form.useWatch("bundleQty", form);
   const bundleMarkdownPercent = Form.useWatch("bundleMarkdownPercent", form);
   const priceValue = Form.useWatch("price", form);
-  const normalizedUnit = (unitValue ?? "").trim().toUpperCase();
-  const isContainerUnit = normalizedUnit === "JAR" || normalizedUnit === "CASE";
-  const containerLabel = normalizedUnit === "CASE" ? "Case" : "Jar";
 
   const calculatedPrice = useMemo(() => {
     const baseCost = Number(cost ?? 0);
@@ -122,42 +114,6 @@ export function ProductEditDrawer({
 
     form.setFieldValue("price", calculatedPrice);
   }, [calculatedPrice, form]);
-
-  useEffect(() => {
-    if (!isContainerUnit) {
-      return;
-    }
-
-    const totalJarCost = Number(jarCost ?? 0);
-    const pieces = Number(piecesPerJar ?? 0);
-
-    if (
-      Number.isNaN(totalJarCost) ||
-      totalJarCost <= 0 ||
-      Number.isNaN(pieces) ||
-      pieces <= 0
-    ) {
-      return;
-    }
-
-    const pieceCost = Number((totalJarCost / pieces).toFixed(2));
-    form.setFieldValue("cost", pieceCost);
-  }, [isContainerUnit, jarCost, piecesPerJar, form]);
-
-  useEffect(() => {
-    if (!isContainerUnit) {
-      return;
-    }
-
-    const pieces = Number(piecesPerJar ?? 0);
-    const jars = Number(jarsInStock ?? 0);
-
-    if (Number.isNaN(pieces) || pieces <= 0 || Number.isNaN(jars) || jars < 0) {
-      return;
-    }
-
-    form.setFieldValue("stock", Math.round(jars * pieces));
-  }, [isContainerUnit, jarsInStock, piecesPerJar, form]);
 
   useEffect(() => {
     if (!bundleEnabled) {
@@ -212,8 +168,6 @@ export function ProductEditDrawer({
           sku: product.sku,
           name: product.name,
           unit: product.unit ?? "",
-          jarCost: Number(product.cost ?? 0),
-          jarsInStock: product.stock,
           description: product.description ?? "",
           cost: Number(product.cost ?? 0),
           markupPercent: Number(product.markupPct ?? 0),
@@ -262,39 +216,10 @@ export function ProductEditDrawer({
         return;
       }
 
-      if (isContainerUnit) {
-        const totalJarCost = Number(values.jarCost ?? 0);
-        const pieces = Number(values.piecesPerJar ?? 0);
-        const jars = Number(values.jarsInStock ?? 0);
-
-        if (
-          Number.isNaN(totalJarCost) ||
-          totalJarCost <= 0 ||
-          Number.isNaN(pieces) ||
-          pieces <= 0 ||
-          Number.isNaN(jars) ||
-          jars < 0
-        ) {
-          message.error(
-            "For JAR/CASE items, container cost, pieces per container, and containers in stock are required.",
-          );
-          return;
-        }
-      }
-
-      const computedStock = isContainerUnit
-        ? Math.round(
-            Number(values.jarsInStock ?? 0) * Number(values.piecesPerJar ?? 0),
-          )
-        : values.stock;
-      const computedUnit = isContainerUnit
-        ? "PCS"
-        : (values.unit?.trim() ?? "");
-
       const payload = {
         sku: values.sku,
         name: values.name,
-        unit: computedUnit,
+        unit: values.unit?.trim() ?? "",
         description: values.description,
         cost: values.cost ?? 0,
         markupPercent: values.markupPercent ?? 0,
@@ -302,7 +227,7 @@ export function ProductEditDrawer({
         bundleMarkdownPercent: normalizedBundleMarkdownPercent,
         bundlePrice: normalizedBundlePrice,
         price: values.price,
-        stock: computedStock,
+        stock: values.stock,
       };
 
       const response = await fetch(`/api/products/${productId}`, {
@@ -384,79 +309,15 @@ export function ProductEditDrawer({
           </Form.Item>
 
           <Form.Item label="Unit" name="unit">
-            <Input placeholder="e.g., pcs, box, kg" />
+            <Select
+              placeholder="Select a unit"
+              allowClear
+              options={STANDARD_UNITS.map((unit) => ({
+                value: unit,
+                label: UNIT_LABELS[unit],
+              }))}
+            />
           </Form.Item>
-
-          {isContainerUnit ? (
-            <>
-              <Form.Item
-                label={`${containerLabel} Cost`}
-                name="jarCost"
-                rules={[
-                  {
-                    required: true,
-                    message: `${containerLabel} cost is required`,
-                  },
-                  {
-                    pattern: /^\d+(\.\d{1,2})?$/,
-                    message: `Invalid ${containerLabel.toLowerCase()} cost`,
-                  },
-                ]}
-              >
-                <InputNumber
-                  prefix="₱"
-                  placeholder={`Total cost per ${containerLabel.toLowerCase()}`}
-                  min={0}
-                  step={0.01}
-                  precision={2}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={`Pieces Per ${containerLabel}`}
-                name="piecesPerJar"
-                rules={[
-                  {
-                    required: true,
-                    message: `Pieces per ${containerLabel.toLowerCase()} is required`,
-                  },
-                  {
-                    pattern: /^\d+$/,
-                    message: "Must be a whole number",
-                  },
-                ]}
-              >
-                <InputNumber
-                  placeholder="e.g., 12"
-                  min={1}
-                  step={1}
-                  precision={0}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={`${containerLabel}s In Stock`}
-                name="jarsInStock"
-                rules={[
-                  {
-                    required: true,
-                    message: `${containerLabel}s in stock is required`,
-                  },
-                  {
-                    pattern: /^\d+$/,
-                    message: "Must be a whole number",
-                  },
-                ]}
-              >
-                <InputNumber
-                  placeholder="e.g., 5"
-                  min={0}
-                  step={1}
-                  precision={0}
-                />
-              </Form.Item>
-            </>
-          ) : null}
 
           <Form.Item label="Description" name="description">
             <Input.TextArea
@@ -475,7 +336,6 @@ export function ProductEditDrawer({
           >
             <InputNumber
               prefix="₱"
-              disabled={isContainerUnit}
               placeholder="0.00"
               min={0}
               step={0.01}
@@ -522,13 +382,7 @@ export function ProductEditDrawer({
             name="stock"
             rules={[{ required: true, message: "Stock is required" }]}
           >
-            <InputNumber
-              placeholder="0"
-              min={0}
-              step={1}
-              precision={0}
-              disabled={isContainerUnit}
-            />
+            <InputNumber placeholder="0" min={0} step={1} precision={0} />
           </Form.Item>
 
           <Form.Item label="Enable Bundle Pricing">

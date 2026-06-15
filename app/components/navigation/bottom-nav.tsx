@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs, theme } from "antd";
+import { Badge, Tabs, theme } from "antd";
 import {
   AppstoreFilled,
   ShoppingFilled,
@@ -43,17 +43,19 @@ const TAB_ITEMS: TabItem[] = [
 type BottomNavProps = {
   activeTab: BottomNavTabKey;
   isCompactHeight?: boolean;
+  cartItemCount?: number;
   onTabChange: (tab: BottomNavTabKey) => void;
 };
 
 export function BottomNav({
   activeTab,
   isCompactHeight = false,
+  cartItemCount = 0,
   onTabChange,
 }: BottomNavProps) {
   const { mode } = useThemeMode();
   const { token } = theme.useToken();
-  const navTopPadding = isCompactHeight ? 10 : 0;
+  const navTopPadding = 0;
   const navBottomPadding = isCompactHeight
     ? "calc(30px + env(safe-area-inset-bottom))"
     : "calc(23px + env(safe-area-inset-bottom))";
@@ -80,6 +82,7 @@ export function BottomNav({
           backdropFilter: "blur(10px)",
           paddingTop: navTopPadding,
           paddingBottom: navBottomPadding,
+          overflow: "visible",
           display: "flex",
           justifyContent: "center",
         }}
@@ -101,7 +104,26 @@ export function BottomNav({
                     lineHeight: 1,
                   }}
                 >
-                  {item.icon}
+                  {item.key === "cart" && cartItemCount > 0 ? (
+                    <Badge
+                      count={cartItemCount}
+                      size="small"
+                      offset={[8, -10]}
+                      styles={{
+                        indicator: {
+                          fontSize: 10,
+                          minWidth: 16,
+                          height: 16,
+                          lineHeight: "16px",
+                          padding: "0 4px",
+                        },
+                      }}
+                    >
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
                 </span>
               ),
             }))}
@@ -150,6 +172,11 @@ export function BottomNav({
         }
         .bottom-nav-tabs .ant-tabs-tab-btn .anticon {
           font-size: ${iconSize}px;
+        }
+        .bottom-nav-tabs .ant-tabs-nav-wrap,
+        .bottom-nav-tabs .ant-tabs-nav-list,
+        .bottom-nav-tabs .ant-tabs-tab-btn {
+          overflow: visible !important;
         }
         .bottom-nav-tabs .ant-tabs-ink-bar {
           top: 0 !important;

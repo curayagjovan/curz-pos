@@ -12,10 +12,12 @@ import {
   Input,
   InputNumber,
   Layout,
+  Select,
   Space,
   Switch,
   Typography,
 } from "antd";
+import { STANDARD_UNITS, UNIT_LABELS } from "@/lib/units";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/app/components/providers/theme-provider";
 import { useCompactHeight } from "@/app/hooks/use-compact-height";
@@ -321,7 +323,14 @@ export default function AddProductPage() {
             </Form.Item>
 
             <Form.Item label="Unit" name="unit">
-              <Input placeholder="e.g. PCS, PACK, BOT" />
+              <Select
+                placeholder="Select a unit"
+                allowClear
+                options={STANDARD_UNITS.map((unit) => ({
+                  value: unit,
+                  label: UNIT_LABELS[unit],
+                }))}
+              />
             </Form.Item>
 
             <Form.Item label="Cost (Peso)" name="cost">

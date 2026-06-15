@@ -986,6 +986,7 @@ export default function Home() {
                 : "Products"
         }
         isCompactHeight={isCompactHeight}
+        cartItemCount={cartItemCount}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         showSearch={activeTab === "products"}

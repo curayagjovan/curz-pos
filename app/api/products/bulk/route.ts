@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { calculateSellingPrice } from "@/lib/price-calculator";
 import { setImportProgress } from "@/lib/import-progress-store";
+import { normalizeUnit } from "@/lib/units";
 
 // Use direct DB connection for bulk imports to reduce pooled-connection issues.
 const prisma = new PrismaClient({
@@ -351,7 +352,9 @@ export async function POST(request: Request) {
       const rawSku = item.sku?.toString().trim();
       const name = item.name?.toString().trim();
       const productName = name || "(missing name)";
-      const unit = item.unit?.toString().trim();
+      const rawUnit = item.unit?.toString().trim();
+      const normalizedUnitInfo = normalizeUnit(rawUnit);
+      const unit = normalizedUnitInfo.unit;
       const description = item.description?.toString().trim();
       const price = Number(item.price);
       const stock = Number(item.stock ?? 0);
