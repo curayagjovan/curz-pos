@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { calculateSellingPrice } from "@/lib/price-calculator";
 import { setImportProgress } from "@/lib/import-progress-store";
 
 // Use direct DB connection for bulk imports to reduce pooled-connection issues.
-const bulkPrisma = new PrismaClient({
+const prisma = new PrismaClient({
   datasources: {
     db: {
       url: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
@@ -121,8 +120,8 @@ export async function POST(request: Request) {
 
     const { products, fileHash, jobId } = body;
     importJobId = jobId;
-    const bulkPrismaWithAppSetting = bulkPrisma as PrismaWithAppSettingDelegate;
-    const appSettings = await bulkPrismaWithAppSetting.appSetting.findUnique({
+    const prismaWithAppSetting = prisma as PrismaWithAppSettingDelegate;
+    const appSettings = await prismaWithAppSetting.appSetting.findUnique({
       where: { id: 1 },
     });
     const fallbackMarkup = Number(body.markupPercent ?? 0);
@@ -139,7 +138,7 @@ export async function POST(request: Request) {
     // Detect re-import: allow processing but skip stock additions
     let isDuplicateFile = false;
     if (fileHash) {
-      const recentImport = await bulkPrisma.importLog.findUnique({
+      const recentImport = await prisma.importLog.findUnique({
         where: { fileHash },
       });
 
@@ -258,7 +257,7 @@ export async function POST(request: Request) {
 
     const [existingBySkuList, existingByNameCandidates] = await Promise.all([
       rawSkusToLookup.size > 0
-        ? bulkPrisma.product.findMany({
+        ? prisma.product.findMany({
             where: {
               sku: { in: Array.from(rawSkusToLookup) },
             },
@@ -276,7 +275,7 @@ export async function POST(request: Request) {
           })
         : Promise.resolve([] as ProductSnapshot[]),
       namesToLookup.size > 0
-        ? bulkPrisma.product.findMany({
+        ? prisma.product.findMany({
             where: {
               OR: Array.from(namesToLookup).map((name) => ({
                 name: { equals: name, mode: "insensitive" },
@@ -313,7 +312,7 @@ export async function POST(request: Request) {
 
     // Preload all suffix variants (e.g. SKU-02, SKU-03) to avoid per-row DB calls for collision detection
     if (rawSkusToLookup.size > 0) {
-      const suffixVariants = await bulkPrisma.product.findMany({
+      const suffixVariants = await prisma.product.findMany({
         where: {
           OR: Array.from(rawSkusToLookup).map((sku) => ({
             sku: { startsWith: `${sku}-` },
@@ -478,7 +477,7 @@ export async function POST(request: Request) {
           plannedDbOps.push({
             resultIndex,
             fn: () =>
-              bulkPrisma.product.update({
+              prisma.product.update({
                 where: { id: productId },
                 data: {
                   name,
@@ -560,7 +559,7 @@ export async function POST(request: Request) {
             plannedDbOps.push({
               resultIndex,
               fn: () =>
-                bulkPrisma.product.create({
+                prisma.product.create({
                   data: {
                     id: pendingProductId,
                     sku: uniqueSku,
@@ -635,7 +634,7 @@ export async function POST(request: Request) {
             plannedDbOps.push({
               resultIndex,
               fn: () =>
-                bulkPrisma.product.update({
+                prisma.product.update({
                   where: { id: productId },
                   data: {
                     name,
@@ -700,7 +699,7 @@ export async function POST(request: Request) {
           plannedDbOps.push({
             resultIndex,
             fn: () =>
-              bulkPrisma.product.update({
+              prisma.product.update({
                 where: { id: productId },
                 data: {
                   name,
@@ -760,7 +759,7 @@ export async function POST(request: Request) {
         plannedDbOps.push({
           resultIndex,
           fn: () =>
-            bulkPrisma.product.create({
+            prisma.product.create({
               data: {
                 id: pendingProductId,
                 sku: targetSku,
@@ -890,7 +889,7 @@ export async function POST(request: Request) {
 
     // Log this import for duplicate detection
     if (fileHash) {
-      await bulkPrisma.importLog.upsert({
+      await prisma.importLog.upsert({
         where: { fileHash },
         update: {
           rowCount: totalRows,

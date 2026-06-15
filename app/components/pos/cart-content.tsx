@@ -2,12 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import {
-  MinusOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  ShoppingCartOutlined,
-} from "@ant-design/icons";
+import { MinusOutlined, PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import {
   Button,
   Divider,
@@ -190,13 +185,6 @@ export function CartContent({
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }} size={14}>
-      <Space align="center">
-        <ShoppingCartOutlined style={{ fontSize: 18, color: "#0b6bcb" }} />
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Cart
-        </Typography.Title>
-      </Space>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {cart.length === 0 ? (
           <div
@@ -207,9 +195,7 @@ export function CartContent({
             }}
           >
             <Empty description="Cart Empty" style={{ margin: 0 }}>
-              <Typography.Text type="secondary">
-                No items added to cart yet
-              </Typography.Text>
+              <Typography.Text type="secondary">No items yet</Typography.Text>
             </Empty>
           </div>
         ) : (

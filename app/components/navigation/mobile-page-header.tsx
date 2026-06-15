@@ -12,7 +12,7 @@ type MobilePageHeaderProps = {
 
 export function MobilePageHeader({
   mode,
-  title = "SHOPMAE",
+  title = "",
   showSearch = false,
   searchValue = "",
   onSearchChange,
@@ -43,7 +43,7 @@ export function MobilePageHeader({
         }}
       >
         <Flex
-          align="center"
+          align="flex-start"
           justify="flex-start"
           gap={12}
           vertical={showSearch}
@@ -53,6 +53,8 @@ export function MobilePageHeader({
             style={{
               margin: 0,
               fontSize: 24,
+              width: "100%",
+              textAlign: "left",
               color: token.colorTextHeading,
             }}
           >

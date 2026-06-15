@@ -983,7 +983,7 @@ export default function Home() {
               ? "Cart"
               : activeTab === "settings"
                 ? "Settings"
-                : "SHOPMAE"
+                : "Products"
         }
         isCompactHeight={isCompactHeight}
         activeTab={activeTab}

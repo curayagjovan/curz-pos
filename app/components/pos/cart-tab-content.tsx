@@ -49,22 +49,13 @@ export function CartTabContent({
       }}
     >
       <Space orientation="vertical" size={12} style={{ width: "100%" }}>
-        <Typography.Title
-          level={4}
-          style={{
-            margin: 0,
-            color: mode === "dark" ? "#f1f5f9" : undefined,
-          }}
-        >
-          Cart
-        </Typography.Title>
         <Typography.Text
           type="secondary"
           style={{
             color: mode === "dark" ? "#cbd5e1" : undefined,
           }}
         >
-          {cartItemCount} item{cartItemCount === 1 ? "" : "s"} in cart
+          {cartItemCount} item{cartItemCount === 1 ? "" : "s"}
         </Typography.Text>
         <CartContent
           cart={cart}

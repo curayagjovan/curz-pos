@@ -3,13 +3,81 @@
 import { useRef, useState, type TouchEvent } from "react";
 import { Card, Space, Typography, Button, Empty } from "antd";
 import { AutoSizer } from "react-virtualized-auto-sizer";
-import { List as VirtualList } from "react-window";
+import { List as VirtualList, type RowComponentProps } from "react-window";
 import {
   ProductRow,
   LIST_ROW_GAP,
   LIST_ROW_HEIGHT,
   type Product,
 } from "@/app/components/pos/product-row";
+
+type ProductVirtualRowProps = {
+  products: Product[];
+  mode: "light" | "dark";
+  loadingMoreProducts: boolean;
+  onAddToCart: (product: Product, quantity: number) => void;
+  onViewProduct?: (productId: string) => void;
+};
+
+function ProductVirtualRow({
+  ariaAttributes,
+  index,
+  style,
+  products,
+  mode,
+  loadingMoreProducts,
+  onAddToCart,
+  onViewProduct,
+}: RowComponentProps<ProductVirtualRowProps>) {
+  if (loadingMoreProducts && index === products.length) {
+    const parsedTop =
+      typeof style.top === "number"
+        ? style.top
+        : Number.parseFloat(String(style.top ?? "0"));
+    const parsedHeight =
+      typeof style.height === "number"
+        ? style.height
+        : Number.parseFloat(String(style.height ?? String(LIST_ROW_HEIGHT)));
+    const safeTop = Number.isFinite(parsedTop) ? parsedTop : 0;
+    const safeHeight = Number.isFinite(parsedHeight)
+      ? parsedHeight
+      : LIST_ROW_HEIGHT;
+
+    return (
+      <div
+        style={{
+          ...style,
+          top: safeTop + LIST_ROW_GAP / 2,
+          height: Math.max(safeHeight - LIST_ROW_GAP, 0),
+        }}
+      >
+        <Card
+          loading
+          style={{
+            height: `${LIST_ROW_HEIGHT}px`,
+            borderRadius: 16,
+            border: mode === "dark" ? "1px solid #2a3548" : "1px solid #dbe4f0",
+            background:
+              mode === "dark"
+                ? "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(17,24,39,0.92) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,255,0.94) 100%)",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ProductRow
+      ariaAttributes={ariaAttributes}
+      index={index}
+      style={style}
+      products={products}
+      onAddToCart={onAddToCart}
+      onViewProduct={onViewProduct}
+    />
+  );
+}
 
 interface ProductsTabContentProps {
   mode: "light" | "dark";
@@ -214,12 +282,14 @@ export function ProductsTabContent({
                     width: Math.max(width ?? 1, 1),
                     height: Math.max(height ?? virtualListFallbackHeight, 1),
                   }}
-                  rowCount={products.length}
+                  rowCount={products.length + (loadingMoreProducts ? 1 : 0)}
                   rowHeight={LIST_ROW_HEIGHT + LIST_ROW_GAP}
                   overscanCount={overscanRows}
-                  rowComponent={ProductRow}
+                  rowComponent={ProductVirtualRow}
                   rowProps={{
                     products,
+                    mode,
+                    loadingMoreProducts,
                     onAddToCart,
                     onViewProduct,
                   }}
@@ -230,7 +300,6 @@ export function ProductsTabContent({
           </div>
         </div>
       ) : null}
-      {loadingMoreProducts && !loadingProducts ? <Card loading /> : null}
     </div>
   );
 }

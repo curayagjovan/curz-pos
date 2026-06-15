@@ -69,3 +69,16 @@ html[data-theme="dark"] body {
     animation: none;
   }
 }
+
+/* Prevent iOS Safari from zooming when focusing inputs with small text. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select,
+  .ant-input,
+  .ant-input-affix-wrapper input,
+  .ant-input-number-input,
+  .ant-select-selection-search-input {
+    font-size: 16px !important;
+  }
+}

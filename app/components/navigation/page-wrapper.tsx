@@ -42,7 +42,9 @@ export function PageWrapper({
   searchValue = "",
   onSearchChange,
 }: PageWrapperProps) {
-  const headerOffset = "calc(104px + env(safe-area-inset-top))";
+  const headerOffset = showSearch
+    ? "calc(104px + env(safe-area-inset-top))"
+    : "calc(56px + env(safe-area-inset-top))";
   const bottomOffset = "calc(72px + env(safe-area-inset-bottom))";
 
   return (
