@@ -42,17 +42,8 @@ export function PageWrapper({
   searchValue = "",
   onSearchChange,
 }: PageWrapperProps) {
-  const headerOffset = showSearch
-    ? isCompactHeight
-      ? "calc(116px + env(safe-area-inset-top))"
-      : "calc(106px + env(safe-area-inset-top))"
-    : isCompactHeight
-      ? "calc(64px + env(safe-area-inset-top))"
-      : "calc(56px + env(safe-area-inset-top))";
-
-  const bottomOffset = isCompactHeight
-    ? "calc(114px + env(safe-area-inset-bottom))"
-    : "calc(98px + env(safe-area-inset-bottom))";
+  const headerOffset = "calc(104px + env(safe-area-inset-top))";
+  const bottomOffset = "calc(72px + env(safe-area-inset-bottom))";
 
   return (
     <Layout

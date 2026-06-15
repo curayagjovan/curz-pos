@@ -53,7 +53,7 @@ export function BottomNav({
 }: BottomNavProps) {
   const { mode } = useThemeMode();
   const { token } = theme.useToken();
-  const navTopPadding = isCompactHeight ? 10 : 8;
+  const navTopPadding = isCompactHeight ? 10 : 0;
   const navBottomPadding = isCompactHeight
     ? "calc(30px + env(safe-area-inset-bottom))"
     : "calc(23px + env(safe-area-inset-bottom))";
