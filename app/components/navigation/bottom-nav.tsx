@@ -2,10 +2,10 @@
 
 import { Tabs, theme } from "antd";
 import {
-  AppstoreOutlined,
-  ShoppingCartOutlined,
-  FileTextOutlined,
-  SettingOutlined,
+  AppstoreFilled,
+  ShoppingFilled,
+  FileTextFilled,
+  SettingFilled,
 } from "@ant-design/icons";
 import { useThemeMode } from "@/app/components/providers/theme-provider";
 
@@ -13,41 +13,53 @@ export type BottomNavTabKey = "products" | "cart" | "transactions" | "settings";
 
 interface TabItem {
   key: BottomNavTabKey;
-  label: string;
+  title: string;
   icon: React.ReactNode;
 }
 
 const TAB_ITEMS: TabItem[] = [
   {
     key: "products",
-    label: "Products",
-    icon: <AppstoreOutlined />,
+    title: "Products",
+    icon: <AppstoreFilled />,
   },
   {
     key: "cart",
-    label: "Cart",
-    icon: <ShoppingCartOutlined />,
+    title: "Cart",
+    icon: <ShoppingFilled />,
   },
   {
     key: "transactions",
-    label: "Transactions",
-    icon: <FileTextOutlined />,
+    title: "Transactions",
+    icon: <FileTextFilled />,
   },
   {
     key: "settings",
-    label: "Settings",
-    icon: <SettingOutlined />,
+    title: "Settings",
+    icon: <SettingFilled />,
   },
 ];
 
 type BottomNavProps = {
   activeTab: BottomNavTabKey;
+  isCompactHeight?: boolean;
   onTabChange: (tab: BottomNavTabKey) => void;
 };
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export function BottomNav({
+  activeTab,
+  isCompactHeight = false,
+  onTabChange,
+}: BottomNavProps) {
   const { mode } = useThemeMode();
   const { token } = theme.useToken();
+  const navTopPadding = isCompactHeight ? 10 : 8;
+  const navBottomPadding = isCompactHeight
+    ? "calc(30px + env(safe-area-inset-bottom))"
+    : "calc(23px + env(safe-area-inset-bottom))";
+  const iconSize = isCompactHeight ? 24 : 22;
+  const tabVerticalPadding = isCompactHeight ? 17 : 13;
+  const tabMinHeight = isCompactHeight ? 58 : 48;
 
   return (
     <div
@@ -66,7 +78,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           background:
             mode === "dark" ? "rgba(17,24,39,0.98)" : "rgba(255,255,255,0.98)",
           backdropFilter: "blur(10px)",
-          paddingBottom: `calc(16px + env(safe-area-inset-bottom))`,
+          paddingTop: navTopPadding,
+          paddingBottom: navBottomPadding,
           display: "flex",
           justifyContent: "center",
         }}
@@ -78,17 +91,17 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onChange={(key) => onTabChange(key as BottomNavTabKey)}
             items={TAB_ITEMS.map((item) => ({
               key: item.key,
+              title: item.title,
               label: (
                 <span
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
-                    fontSize: 12,
+                    justifyContent: "center",
+                    lineHeight: 1,
                   }}
                 >
                   {item.icon}
-                  {item.label}
                 </span>
               ),
             }))}
@@ -97,7 +110,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             }}
             tabBarStyle={{
               margin: 0,
-              padding: "0 16px",
+              padding: "0 10px",
               borderBottom: "none",
             }}
           />
@@ -109,6 +122,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         }
         .bottom-nav-tabs .ant-tabs-nav {
           margin: 0 !important;
+        }
+        .bottom-nav-tabs .ant-tabs-nav::before {
+          border-bottom: none !important;
         }
         .bottom-nav-tabs .ant-tabs-nav-list {
           display: flex !important;
@@ -122,7 +138,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           justify-content: center !important;
           align-items: center !important;
           margin: 0 !important;
-          padding: 8px 0 !important;
+          padding: ${tabVerticalPadding}px 0 !important;
+          min-height: ${tabMinHeight}px !important;
           text-align: center !important;
         }
         .bottom-nav-tabs .ant-tabs-tab-btn {
@@ -130,6 +147,15 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           justify-content: center !important;
           align-items: center !important;
           width: 100% !important;
+        }
+        .bottom-nav-tabs .ant-tabs-tab-btn .anticon {
+          font-size: ${iconSize}px;
+        }
+        .bottom-nav-tabs .ant-tabs-ink-bar {
+          top: 0 !important;
+          bottom: auto !important;
+          height: 3px !important;
+          border-radius: 999px !important;
         }
       `}</style>
     </div>

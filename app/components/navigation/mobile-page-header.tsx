@@ -1,4 +1,4 @@
-import { Affix, Flex, Input, Layout, Typography, theme } from "antd";
+import { Flex, Input, Layout, Typography, theme } from "antd";
 
 const { Header } = Layout;
 
@@ -20,14 +20,22 @@ export function MobilePageHeader({
   const { token } = theme.useToken();
 
   return (
-    <Affix offsetTop={0} style={{ zIndex: 50 }}>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 80,
+      }}
+    >
       <Header
         style={{
           height: "auto",
           lineHeight: "normal",
           paddingInline: 14,
           paddingTop: "calc(8px + env(safe-area-inset-top))",
-          paddingBottom: showSearch ? 10 : 10,
+          paddingBottom: 10,
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
           background:
             mode === "dark" ? "rgba(17,24,39,0.92)" : token.colorBgElevated,
@@ -74,6 +82,6 @@ export function MobilePageHeader({
           )}
         </Flex>
       </Header>
-    </Affix>
+    </div>
   );
 }

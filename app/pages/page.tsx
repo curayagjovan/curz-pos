@@ -857,10 +857,9 @@ export default function Home() {
     () => cart.reduce((sum, item) => sum + item.quantity, 0),
     [cart],
   );
-  const virtualListContainerHeight = isCompactHeight
-    ? "calc(100vh - 182px)"
-    : "calc(100vh - 208px)";
-  const virtualListFallbackHeight = 560;
+  const virtualListContainerHeight =
+    "calc(100dvh - var(--mobile-header-offset) - var(--mobile-bottom-offset))";
+  const virtualListFallbackHeight = 460;
   const overscanRows = 8;
 
   const requestNextPage = useCallback(() => {
@@ -986,15 +985,14 @@ export default function Home() {
                 ? "Settings"
                 : "SHOPMAE"
         }
+        isCompactHeight={isCompactHeight}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         showSearch={activeTab === "products"}
         searchValue={search}
         onSearchChange={handleSearchChange}
         contentStyle={{
-          paddingTop: isCompactHeight ? 10 : 14,
           paddingInline: isCompactHeight ? 10 : 14,
-          paddingBottom: "calc(68px + env(safe-area-inset-bottom))",
           background:
             mode === "dark"
               ? "linear-gradient(180deg, rgba(8,15,30,0.64), rgba(10,17,31,0.38))"

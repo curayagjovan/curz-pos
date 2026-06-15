@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, Space, Typography, Button, Col, Row, Empty, Spin } from "antd";
+import { useRef, useState, type TouchEvent } from "react";
+import { Card, Space, Typography, Button, Empty } from "antd";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import { List as VirtualList } from "react-window";
 import {
@@ -34,7 +35,6 @@ export function ProductsTabContent({
   loadingProducts,
   productsLoadError,
   loadingMoreProducts,
-  hasMoreProducts,
   virtualListContainerHeight,
   virtualListFallbackHeight,
   overscanRows,
@@ -43,198 +43,194 @@ export function ProductsTabContent({
   onRetry,
   onRowsRendered,
 }: ProductsTabContentProps) {
+  const PULL_TRIGGER_PX = 72;
+  const PULL_MAX_PX = 108;
+  const pullContainerRef = useRef<HTMLDivElement | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const canPullRef = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+
+  const getListElement = () =>
+    pullContainerRef.current?.querySelector(
+      '[role="list"]',
+    ) as HTMLElement | null;
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (loadingProducts || loadingMoreProducts) {
+      return;
+    }
+
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    const listElement = getListElement();
+    canPullRef.current = !listElement || listElement.scrollTop <= 0;
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (!canPullRef.current || touchStartYRef.current === null) {
+      return;
+    }
+
+    const listElement = getListElement();
+    if (listElement && listElement.scrollTop > 0) {
+      canPullRef.current = false;
+      if (pullDistance > 0) {
+        setPullDistance(0);
+      }
+      return;
+    }
+
+    const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
+    const delta = currentY - touchStartYRef.current;
+    if (delta <= 0) {
+      if (pullDistance > 0) {
+        setPullDistance(0);
+      }
+      return;
+    }
+
+    const dampedDistance = Math.min(PULL_MAX_PX, delta * 0.42);
+    setPullDistance(dampedDistance);
+    event.preventDefault();
+  };
+
+  const handleTouchEnd = () => {
+    const shouldRefresh =
+      canPullRef.current && pullDistance >= PULL_TRIGGER_PX && !loadingProducts;
+
+    touchStartYRef.current = null;
+    canPullRef.current = false;
+    setPullDistance(0);
+
+    if (shouldRefresh) {
+      onRetry();
+    }
+  };
+
   return (
-    <Space
-      orientation="vertical"
-      size={isCompactHeight ? 6 : 12}
-      style={{ width: "100%" }}
+    <div
+      style={{
+        width: "100%",
+        height: virtualListContainerHeight,
+        display: "flex",
+        flexDirection: "column",
+        gap: isCompactHeight ? 6 : 12,
+        minHeight: 0,
+      }}
     >
-      <Card
-        style={{
-          borderRadius: 16,
-          border: mode === "dark" ? "1px solid #273244" : "1px solid #d0dff4",
-          background:
-            mode === "dark"
-              ? "linear-gradient(150deg, rgba(17,24,39,0.96), rgba(15,23,42,0.9))"
-              : "linear-gradient(150deg, #ffffff, #f3f8ff)",
-          boxShadow:
-            mode === "dark"
-              ? "0 4px 16px rgba(0,0,0,0.28)"
-              : "0 4px 16px rgba(16,40,90,0.07)",
-        }}
-        styles={{
-          body: {
-            padding: isCompactHeight ? 12 : 16,
-          },
-        }}
-      >
-        <Space orientation="vertical" style={{ width: "100%" }} size={12}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <Typography.Text
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: mode === "dark" ? "#e2e8f0" : "#1a3055",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Products
-            </Typography.Text>
+      {loadingProducts
+        ? Array.from({ length: 4 }).map((_, idx) => <Card key={idx} loading />)
+        : null}
+      {!loadingProducts && productsLoadError ? (
+        <Card>
+          <Space orientation="vertical" style={{ width: "100%" }} size={10}>
+            <Typography.Text type="danger">{productsLoadError}</Typography.Text>
+            <Button onClick={onRetry}>Retry Loading Products</Button>
+          </Space>
+        </Card>
+      ) : null}
+      {!loadingProducts && !productsLoadError && products.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            padding: "40px 20px",
+          }}
+        >
+          <Empty description="No Products" style={{ marginTop: "20px" }}>
             <Typography.Text
               type="secondary"
-              style={{
-                fontSize: 11,
-                background: mode === "dark" ? "rgba(51,65,85,0.7)" : "#eef3fb",
-                border:
-                  mode === "dark" ? "1px solid #334155" : "1px solid #d0dff4",
-                borderRadius: 999,
-                padding: "2px 10px",
-              }}
+              style={{ display: "block", marginBottom: "16px" }}
             >
-              {products.length} items
+              Add products to your database and they will appear here.
             </Typography.Text>
-          </div>
-        </Space>
-      </Card>
-
-      <Row gutter={[10, 10]}>
-        {loadingProducts ? (
-          <Col xs={24}>
-            <Card
-              style={{
-                borderStyle: "dashed",
-                borderColor: mode === "dark" ? "#334155" : "#bfdbfe",
-                background:
-                  mode === "dark"
-                    ? "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,41,59,0.85))"
-                    : "linear-gradient(135deg, #eff6ff, #f8fafc)",
-              }}
-            >
-              <Space
-                align="center"
-                size={12}
-                style={{ width: "100%", justifyContent: "center" }}
-              >
-                <Spin size="large" />
-                <Space orientation="vertical" size={2}>
-                  <Typography.Text strong>Loading products...</Typography.Text>
-                  <Typography.Text type="secondary">
-                    Preparing your inventory list.
-                  </Typography.Text>
-                </Space>
-              </Space>
-            </Card>
-          </Col>
-        ) : null}
-        {loadingProducts
-          ? Array.from({ length: 4 }).map((_, idx) => (
-              <Col xs={24} sm={12} xl={8} key={`loading-${idx}`}>
-                <Card loading />
-              </Col>
-            ))
-          : null}
-        {!loadingProducts && productsLoadError ? (
-          <Col xs={24}>
-            <Card>
-              <Space orientation="vertical" style={{ width: "100%" }} size={10}>
-                <Typography.Text type="danger">
-                  {productsLoadError}
-                </Typography.Text>
-                <Button onClick={onRetry}>Retry Loading Products</Button>
-              </Space>
-            </Card>
-          </Col>
-        ) : null}
-        {!loadingProducts && !productsLoadError && products.length === 0 ? (
-          <Col xs={24}>
+            <Button type="primary" href="/pages/settings/product">
+              Add Product
+            </Button>
+          </Empty>
+        </div>
+      ) : null}
+      {!loadingProducts && !productsLoadError ? (
+        <div
+          ref={pullContainerRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+          style={{ flex: 1, minHeight: 0, position: "relative" }}
+        >
+          {pullDistance > 0 ? (
             <div
               style={{
+                position: "absolute",
+                top: 8,
+                left: 0,
+                right: 0,
+                zIndex: 2,
                 display: "flex",
                 justifyContent: "center",
-                padding: "40px 20px",
+                pointerEvents: "none",
               }}
             >
-              <Empty description="No Products" style={{ marginTop: "20px" }}>
-                <Typography.Text
-                  type="secondary"
-                  style={{ display: "block", marginBottom: "16px" }}
-                >
-                  Add products to your database and they will appear here.
-                </Typography.Text>
-                <Button type="primary" href="/pages/settings/product">
-                  Add Product
-                </Button>
-              </Empty>
+              <Typography.Text
+                type="secondary"
+                style={{
+                  background:
+                    mode === "dark"
+                      ? "rgba(15, 23, 42, 0.86)"
+                      : "rgba(255, 255, 255, 0.92)",
+                  border:
+                    mode === "dark"
+                      ? "1px solid rgba(71, 85, 105, 0.7)"
+                      : "1px solid rgba(191, 219, 254, 0.95)",
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                }}
+              >
+                {pullDistance >= PULL_TRIGGER_PX
+                  ? "Release to refresh"
+                  : "Pull down to refresh"}
+              </Typography.Text>
             </div>
-          </Col>
-        ) : null}
-        {!loadingProducts && !productsLoadError ? (
-          <Col xs={24}>
-            <div
-              style={{
-                height: virtualListContainerHeight,
-                width: "100%",
-                overflow: "hidden",
-                borderRadius: 14,
-                border:
-                  mode === "dark"
-                    ? "1px solid rgba(51, 65, 85, 0.9)"
-                    : "1px solid rgba(214, 225, 241, 0.95)",
-                background:
-                  mode === "dark"
-                    ? "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(15,23,42,0.52))"
-                    : "linear-gradient(180deg, rgba(250,252,255,0.9), rgba(242,247,255,0.9))",
-                padding: 6,
-              }}
-            >
-              <AutoSizer
-                renderProp={({
-                  width,
-                  height,
-                }: {
-                  width: number | undefined;
-                  height: number | undefined;
-                }) => (
-                  <VirtualList
-                    style={{
-                      width: Math.max(width ?? 1, 1),
-                      height: Math.max(height ?? virtualListFallbackHeight, 1),
-                    }}
-                    rowCount={products.length}
-                    rowHeight={LIST_ROW_HEIGHT + LIST_ROW_GAP}
-                    overscanCount={overscanRows}
-                    rowComponent={ProductRow}
-                    rowProps={{
-                      products,
-                      onAddToCart,
-                      onViewProduct,
-                    }}
-                    onRowsRendered={onRowsRendered}
-                  />
-                )}
-              />
-            </div>
-          </Col>
-        ) : null}
-        {loadingMoreProducts && !loadingProducts ? (
-          <Col xs={24}>
-            <Card size="small">
-              <Space align="center" size={10} style={{ width: "100%" }}>
-                <Spin size="small" />
-                <Typography.Text type="secondary">
-                  Fetching more products...
-                </Typography.Text>
-              </Space>
-            </Card>
-          </Col>
-        ) : null}
-      </Row>
-    </Space>
+          ) : null}
+
+          <div
+            style={{
+              height: "100%",
+              transform: `translateY(${pullDistance}px)`,
+              transition:
+                pullDistance === 0 ? "transform 160ms ease-out" : "none",
+            }}
+          >
+            <AutoSizer
+              renderProp={({
+                width,
+                height,
+              }: {
+                width: number | undefined;
+                height: number | undefined;
+              }) => (
+                <VirtualList
+                  style={{
+                    width: Math.max(width ?? 1, 1),
+                    height: Math.max(height ?? virtualListFallbackHeight, 1),
+                  }}
+                  rowCount={products.length}
+                  rowHeight={LIST_ROW_HEIGHT + LIST_ROW_GAP}
+                  overscanCount={overscanRows}
+                  rowComponent={ProductRow}
+                  rowProps={{
+                    products,
+                    onAddToCart,
+                    onViewProduct,
+                  }}
+                  onRowsRendered={onRowsRendered}
+                />
+              )}
+            />
+          </div>
+        </div>
+      ) : null}
+      {loadingMoreProducts && !loadingProducts ? <Card loading /> : null}
+    </div>
   );
 }

@@ -5,8 +5,7 @@ import { generateSmartSku } from "@/lib/sku-generator";
 import { calculateSellingPrice } from "@/lib/price-calculator";
 import { setImportProgress } from "@/lib/import-progress-store";
 
-// Use direct connection (bypasses pgBouncer) for bulk imports to avoid
-// "prepared statement does not exist" errors from parallel queries on pooled connections.
+// Use direct DB connection for bulk imports to reduce pooled-connection issues.
 const bulkPrisma = new PrismaClient({
   datasources: {
     db: {
