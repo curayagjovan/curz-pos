@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 type MarkupBulkPayload = {
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const where: Prisma.ProductWhereInput = {
+    const where: Record<string, unknown> = {
       isActive: true,
     };
 
@@ -33,7 +32,6 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-
       where.unit = { equals: filterValue, mode: "insensitive" };
     }
 
@@ -44,42 +42,55 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-
       where.OR = [
         { name: { contains: filterValue, mode: "insensitive" } },
         { description: { contains: filterValue, mode: "insensitive" } },
       ];
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      select: {
-        id: true,
-        cost: true,
-      },
-    });
+    // Build a single SQL UPDATE so we avoid N round-trips through the pooler.
+    // price = cost * (1 + markupPct/100) rounded to 2 decimal places
+    let updatedCount: number;
 
-    if (products.length === 0) {
+    if (filterType === "all") {
+      const result = await prisma.$executeRaw`
+        UPDATE "Product"
+        SET    "markupPct"  = ${markupPercent},
+               "price"     = ROUND(CAST("cost" AS numeric) * (1 + ${markupPercent}::numeric / 100), 2),
+               "updatedAt" = NOW()
+        WHERE  "isActive" = true
+      `;
+      updatedCount = result;
+    } else if (filterType === "unit") {
+      const result = await prisma.$executeRaw`
+        UPDATE "Product"
+        SET    "markupPct"  = ${markupPercent},
+               "price"     = ROUND(CAST("cost" AS numeric) * (1 + ${markupPercent}::numeric / 100), 2),
+               "updatedAt" = NOW()
+        WHERE  "isActive" = true
+          AND  LOWER("unit") = LOWER(${filterValue})
+      `;
+      updatedCount = result;
+    } else {
+      // category / productType — keyword match on name or description
+      const keyword = `%${filterValue}%`;
+      const result = await prisma.$executeRaw`
+        UPDATE "Product"
+        SET    "markupPct"  = ${markupPercent},
+               "price"     = ROUND(CAST("cost" AS numeric) * (1 + ${markupPercent}::numeric / 100), 2),
+               "updatedAt" = NOW()
+        WHERE  "isActive" = true
+          AND  (LOWER("name") LIKE LOWER(${keyword}) OR LOWER("description") LIKE LOWER(${keyword}))
+      `;
+      updatedCount = result;
+    }
+
+    if (updatedCount === 0) {
       return NextResponse.json(
         { message: "No matching products found.", updatedCount: 0 },
         { status: 200 },
       );
     }
-
-    const operations = products.map((product) => {
-      const cost = Number(product.cost);
-      const nextPrice = Number((cost * (1 + markupPercent / 100)).toFixed(2));
-
-      return prisma.product.update({
-        where: { id: product.id },
-        data: {
-          markupPct: markupPercent,
-          price: nextPrice,
-        },
-      });
-    });
-
-    await prisma.$transaction(operations);
 
     await prisma.appSetting.upsert({
       where: { id: 1 },
@@ -98,8 +109,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      message: `Updated ${products.length} product(s) using the global markup value (${markupPercent}%).`,
-      updatedCount: products.length,
+      message: `Updated ${updatedCount} product(s) using the global markup value (${markupPercent}%).`,
+      updatedCount,
     });
   } catch (error) {
     console.error("Failed to apply bulk markup", error);

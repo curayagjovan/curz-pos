@@ -422,7 +422,13 @@ export async function POST(request: Request) {
 
       const appliedMarkup = matchesMarkupFilter ? markupPercent : 0;
       const usesGlobalMarkup = matchesMarkupFilter;
-      const sellingPrice = calculateSellingPrice(price, appliedMarkup);
+      // If the unit implies multiple pieces (e.g. CS12 → 12, 3'S → 3),
+      // divide the bulk cost down to a per-piece cost and expand stock to pieces.
+      const piecesPerUnit = normalizedUnitInfo.piecesPerUnit;
+      const costPerPiece =
+        piecesPerUnit > 1 ? Number((price / piecesPerUnit).toFixed(2)) : price;
+      const totalStock = Math.round(stock * piecesPerUnit);
+      const sellingPrice = calculateSellingPrice(costPerPiece, appliedMarkup);
       const skuForError = rawSku || "(generated)";
 
       try {
@@ -432,7 +438,8 @@ export async function POST(request: Request) {
 
         if (existingByNameAndUnit) {
           const existingCost = Number(existingByNameAndUnit.cost);
-          const hasSameCost = existingCost.toFixed(2) === price.toFixed(2);
+          const hasSameCost =
+            existingCost.toFixed(2) === costPerPiece.toFixed(2);
           const nextMarkup = hasSameCost
             ? Number(existingByNameAndUnit.markupPct)
             : appliedMarkup;
@@ -443,14 +450,14 @@ export async function POST(request: Request) {
             Number(existingByNameAndUnit.price) !== nextPrice;
           const newStock = isDuplicateFile
             ? existingByNameAndUnit.stock
-            : existingByNameAndUnit.stock + stock;
+            : existingByNameAndUnit.stock + totalStock;
 
           const updatedSnapshot: ProductSnapshot = {
             ...existingByNameAndUnit,
             name,
             unit: unit || null,
             description: description || existingByNameAndUnit.description,
-            cost: new Prisma.Decimal(hasSameCost ? existingCost : price),
+            cost: new Prisma.Decimal(hasSameCost ? existingCost : costPerPiece),
             markupPct: new Prisma.Decimal(nextMarkup),
             price: new Prisma.Decimal(nextPrice),
             stock: newStock,
@@ -470,8 +477,8 @@ export async function POST(request: Request) {
             message: isDuplicateFile
               ? `Updated (stock unchanged)${priceChanged ? ", price changed" : ""}`
               : priceChanged
-                ? `Updated: stock +${stock}, price changed`
-                : `Updated: stock +${stock}`,
+                ? `Updated: stock +${totalStock}, price changed`
+                : `Updated: stock +${totalStock}`,
           });
 
           const productId = existingByNameAndUnit.id;
@@ -486,7 +493,7 @@ export async function POST(request: Request) {
                   name,
                   unit: unit || undefined,
                   description: description || existingDescription,
-                  cost: hasSameCost ? undefined : price,
+                  cost: hasSameCost ? undefined : costPerPiece,
                   markupPct: nextMarkup,
                   stock: newStock,
                   price: nextPrice,
@@ -496,7 +503,7 @@ export async function POST(request: Request) {
                     inventoryMovements: {
                       create: {
                         movementType: "BULK_IMPORT",
-                        quantityDelta: stock,
+                        quantityDelta: totalStock,
                         previousStock: prevStock,
                         newStock,
                         referenceType: "BULK_IMPORT",
@@ -539,10 +546,10 @@ export async function POST(request: Request) {
               name,
               unit: unit || null,
               description: description || null,
-              cost: new Prisma.Decimal(price),
+              cost: new Prisma.Decimal(costPerPiece),
               markupPct: new Prisma.Decimal(appliedMarkup),
               price: new Prisma.Decimal(sellingPrice),
-              stock,
+              stock: totalStock,
             };
             existingProductBySku.set(uniqueSku, createdSnapshot);
             existingProductByNameUnit.set(
@@ -569,18 +576,18 @@ export async function POST(request: Request) {
                     name,
                     unit: unit || null,
                     description: description || null,
-                    cost: price,
+                    cost: costPerPiece,
                     markupPct: appliedMarkup,
                     price: sellingPrice,
-                    stock,
+                    stock: totalStock,
                     usesGlobalMarkup,
                     isActive: true,
                     inventoryMovements: {
                       create: {
                         movementType: "BULK_IMPORT",
-                        quantityDelta: stock,
+                        quantityDelta: totalStock,
                         previousStock: 0,
-                        newStock: stock,
+                        newStock: totalStock,
                         referenceType: "BULK_IMPORT",
                         note: `Bulk import create for ${uniqueSku} (SKU adjusted from ${targetSku})`,
                       },
@@ -595,7 +602,7 @@ export async function POST(request: Request) {
           if (isDuplicateFile) {
             const existingCostBySku = Number(existingBySku.cost);
             const hasSameCostBySku =
-              existingCostBySku.toFixed(2) === price.toFixed(2);
+              existingCostBySku.toFixed(2) === costPerPiece.toFixed(2);
             const nextMarkupBySku = hasSameCostBySku
               ? Number(existingBySku.markupPct)
               : appliedMarkup;
@@ -611,7 +618,7 @@ export async function POST(request: Request) {
               unit: unit || null,
               description: description || existingBySku.description,
               cost: new Prisma.Decimal(
-                hasSameCostBySku ? existingCostBySku : price,
+                hasSameCostBySku ? existingCostBySku : costPerPiece,
               ),
               markupPct: new Prisma.Decimal(nextMarkupBySku),
               price: new Prisma.Decimal(nextPriceBySku),
@@ -643,7 +650,7 @@ export async function POST(request: Request) {
                     name,
                     unit: unit || undefined,
                     description: description || existingDescriptionBySku,
-                    cost: hasSameCostBySku ? undefined : price,
+                    cost: hasSameCostBySku ? undefined : costPerPiece,
                     markupPct: nextMarkupBySku,
                     price: nextPriceBySku,
                     usesGlobalMarkup,
@@ -656,7 +663,7 @@ export async function POST(request: Request) {
 
           const existingCostBySku = Number(existingBySku.cost);
           const hasSameCostBySku =
-            existingCostBySku.toFixed(2) === price.toFixed(2);
+            existingCostBySku.toFixed(2) === costPerPiece.toFixed(2);
           const nextMarkupBySku = hasSameCostBySku
             ? Number(existingBySku.markupPct)
             : appliedMarkup;
@@ -665,7 +672,7 @@ export async function POST(request: Request) {
             : sellingPrice;
           const priceChangedBySku =
             Number(existingBySku.price) !== nextPriceBySku;
-          const newStockBySku = existingBySku.stock + stock;
+          const newStockBySku = existingBySku.stock + totalStock;
 
           const updatedSnapshot: ProductSnapshot = {
             ...existingBySku,
@@ -673,7 +680,7 @@ export async function POST(request: Request) {
             unit: unit || null,
             description: description || existingBySku.description,
             cost: new Prisma.Decimal(
-              hasSameCostBySku ? existingCostBySku : price,
+              hasSameCostBySku ? existingCostBySku : costPerPiece,
             ),
             markupPct: new Prisma.Decimal(nextMarkupBySku),
             price: new Prisma.Decimal(nextPriceBySku),
@@ -692,8 +699,8 @@ export async function POST(request: Request) {
             sku: targetSku,
             success: true,
             message: priceChangedBySku
-              ? `Updated: stock +${stock}, price changed`
-              : `Updated: stock +${stock}`,
+              ? `Updated: stock +${totalStock}, price changed`
+              : `Updated: stock +${totalStock}`,
           });
 
           const productId = existingBySku.id;
@@ -708,7 +715,7 @@ export async function POST(request: Request) {
                   name,
                   unit: unit || undefined,
                   description: description || existingDescriptionBySku,
-                  cost: hasSameCostBySku ? undefined : price,
+                  cost: hasSameCostBySku ? undefined : costPerPiece,
                   markupPct: nextMarkupBySku,
                   stock: newStockBySku,
                   price: nextPriceBySku,
@@ -717,7 +724,7 @@ export async function POST(request: Request) {
                   inventoryMovements: {
                     create: {
                       movementType: "BULK_IMPORT",
-                      quantityDelta: stock,
+                      quantityDelta: totalStock,
                       previousStock: prevStockBySku,
                       newStock: newStockBySku,
                       referenceType: "BULK_IMPORT",
@@ -739,10 +746,10 @@ export async function POST(request: Request) {
           name,
           unit: unit || null,
           description: description || null,
-          cost: new Prisma.Decimal(price),
+          cost: new Prisma.Decimal(costPerPiece),
           markupPct: new Prisma.Decimal(appliedMarkup),
           price: new Prisma.Decimal(sellingPrice),
-          stock,
+          stock: totalStock,
         };
         existingProductBySku.set(targetSku, createdSnapshot);
         existingProductByNameUnit.set(
@@ -769,18 +776,18 @@ export async function POST(request: Request) {
                 name,
                 unit: unit || null,
                 description: description || null,
-                cost: price,
+                cost: costPerPiece,
                 markupPct: appliedMarkup,
                 price: sellingPrice,
-                stock,
+                stock: totalStock,
                 usesGlobalMarkup,
                 isActive: true,
                 inventoryMovements: {
                   create: {
                     movementType: "BULK_IMPORT",
-                    quantityDelta: stock,
+                    quantityDelta: totalStock,
                     previousStock: 0,
-                    newStock: stock,
+                    newStock: totalStock,
                     referenceType: "BULK_IMPORT",
                     note: `Bulk import create for ${targetSku}`,
                   },

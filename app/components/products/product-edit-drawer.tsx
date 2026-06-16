@@ -269,7 +269,7 @@ export function ProductEditDrawer({
       placement="bottom"
       size="90vh"
       styles={{
-        body: { padding: 16, overflow: "auto" },
+        body: { padding: "16px 16px 24px", overflow: "auto" },
       }}
     >
       {loading ? (
@@ -454,7 +454,7 @@ export function ProductEditDrawer({
             </>
           )}
 
-          <Space style={{ width: "100%" }}>
+          <Space orientation="vertical" style={{ width: "100%" }}>
             <Button
               type="primary"
               htmlType="submit"
