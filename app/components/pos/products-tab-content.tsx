@@ -211,7 +211,7 @@ export function ProductsTabContent({
             >
               Add products to your database and they will appear here.
             </Typography.Text>
-            <Button type="primary" href="/pages/settings/product">
+            <Button type="primary" href="/pages/products/add">
               Add Product
             </Button>
           </Empty>
