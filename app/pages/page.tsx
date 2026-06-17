@@ -34,6 +34,7 @@ import { CartTabContent } from "@/app/components/pos/cart-tab-content";
 import { type Product } from "@/app/components/pos/product-row";
 import { ProductViewDrawer } from "@/app/components/products/product-view-drawer";
 import { ProductEditDrawer } from "@/app/components/products/product-edit-drawer";
+import { ProductLongPressSheet } from "@/app/components/products/product-long-press-sheet";
 import type {
   Transaction,
   TransactionFilter,
@@ -240,6 +241,7 @@ function SettingsTabContent({ mode }: SettingsTabContentProps) {
 
   return (
     <Card
+      className={`ui-surface ${mode === "dark" ? "ui-surface-dark" : "ui-surface-light"}`}
       style={{
         background:
           mode === "dark"
@@ -254,6 +256,7 @@ function SettingsTabContent({ mode }: SettingsTabContentProps) {
         <div>
           <Typography.Title
             level={5}
+            className="ui-section-title"
             style={{
               margin: 0,
               marginBottom: 8,
@@ -271,6 +274,7 @@ function SettingsTabContent({ mode }: SettingsTabContentProps) {
 
           <Card
             size="small"
+            className={`ui-surface ${mode === "dark" ? "ui-surface-dark" : "ui-surface-light"}`}
             style={{
               marginTop: 12,
               background:
@@ -326,6 +330,7 @@ function SettingsTabContent({ mode }: SettingsTabContentProps) {
         <div>
           <Typography.Title
             level={5}
+            className="ui-section-title"
             style={{
               margin: 0,
               marginBottom: 8,
@@ -358,6 +363,7 @@ function SettingsTabContent({ mode }: SettingsTabContentProps) {
           {/* Global Markup Section */}
           <Card
             size="small"
+            className={`ui-surface ${mode === "dark" ? "ui-surface-dark" : "ui-surface-light"}`}
             style={{
               marginTop: 12,
               background:
@@ -491,6 +497,7 @@ export default function Home() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [longPressSheetOpen, setLongPressSheetOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(
     null,
   );
@@ -974,99 +981,114 @@ export default function Home() {
 
   return (
     <>
-      <PageWrapper
-        mode={mode}
-        title={
-          activeTab === "transactions"
-            ? "Transactions"
-            : activeTab === "cart"
-              ? "Cart"
-              : activeTab === "settings"
-                ? "Settings"
-                : "Products"
-        }
-        isCompactHeight={isCompactHeight}
-        cartItemCount={cartItemCount}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        showSearch={activeTab === "products"}
-        searchValue={search}
-        onSearchChange={handleSearchChange}
-        contentStyle={{
-          paddingInline: isCompactHeight ? 10 : 14,
-          background:
-            mode === "dark"
-              ? "linear-gradient(180deg, rgba(8,15,30,0.64), rgba(10,17,31,0.38))"
-              : "transparent",
-        }}
+      <div
+        className={`origin-top transition-[transform,filter,opacity] duration-300 ${
+          longPressSheetOpen ? "scale-[0.985] blur-[1px] opacity-95" : ""
+        }`}
       >
-        <div key={activeTab} className="tab-panel-transition">
-          {activeTab === "products" ? (
-            <ProductsTabContent
-              mode={mode}
-              isCompactHeight={isCompactHeight}
-              products={products}
-              loadingProducts={loadingProducts}
-              productsLoadError={productsLoadError}
-              loadingMoreProducts={loadingMoreProducts}
-              hasMoreProducts={hasMoreProducts}
-              virtualListContainerHeight={virtualListContainerHeight}
-              virtualListFallbackHeight={virtualListFallbackHeight}
-              overscanRows={overscanRows}
-              onAddToCart={addToCart}
-              onViewProduct={(productId: string) => {
-                setSelectedProductId(productId);
-                setViewDrawerOpen(true);
-              }}
-              onRetry={() => {
-                setLoadingProducts(true);
-                setReloadToken((value) => value + 1);
-              }}
-              onRowsRendered={(info: { stopIndex: number }) => {
-                if (hasMoreProducts && info.stopIndex >= products.length - 3) {
-                  requestNextPage();
-                }
-              }}
-            />
-          ) : null}
+        <PageWrapper
+          mode={mode}
+          title={
+            activeTab === "transactions"
+              ? "Transactions"
+              : activeTab === "cart"
+                ? "Cart"
+                : activeTab === "settings"
+                  ? "Settings"
+                  : "Products"
+          }
+          isCompactHeight={isCompactHeight}
+          cartItemCount={cartItemCount}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          showSearch={activeTab === "products"}
+          searchValue={search}
+          onSearchChange={handleSearchChange}
+          contentStyle={{
+            paddingInline: isCompactHeight ? 10 : 14,
+            background:
+              mode === "dark"
+                ? "linear-gradient(180deg, rgba(8,15,30,0.64), rgba(10,17,31,0.38))"
+                : "transparent",
+          }}
+        >
+          <div key={activeTab} className="tab-panel-transition">
+            {activeTab === "products" ? (
+              <ProductsTabContent
+                mode={mode}
+                isCompactHeight={isCompactHeight}
+                products={products}
+                loadingProducts={loadingProducts}
+                productsLoadError={productsLoadError}
+                loadingMoreProducts={loadingMoreProducts}
+                hasMoreProducts={hasMoreProducts}
+                virtualListContainerHeight={virtualListContainerHeight}
+                virtualListFallbackHeight={virtualListFallbackHeight}
+                overscanRows={overscanRows}
+                onAddToCart={addToCart}
+                onViewProduct={(productId: string) => {
+                  setSelectedProductId(productId);
+                  setViewDrawerOpen(true);
+                }}
+                onLongPressProduct={(productId: string) => {
+                  setSelectedProductId(productId);
+                  setLongPressSheetOpen(true);
+                }}
+                onRetry={() => {
+                  setLoadingProducts(true);
+                  setReloadToken((value) => value + 1);
+                }}
+                onRowsRendered={(info: { stopIndex: number }) => {
+                  if (
+                    hasMoreProducts &&
+                    info.stopIndex >= products.length - 3
+                  ) {
+                    requestNextPage();
+                  }
+                }}
+              />
+            ) : null}
 
-          {activeTab === "cart" ? (
-            <CartTabContent
-              mode={mode}
-              cart={cart}
-              cartItemCount={cartItemCount}
-              subtotal={subtotal}
-              tax={tax}
-              total={total}
-              paymentAmount={paymentAmount}
-              quickCashAmounts={quickCashAmounts}
-              change={change}
-              checkingOut={checkingOut}
-              onPaymentAmountChange={setPaymentAmount}
-              onUpdateQty={updateQty}
-              onCheckout={() => {
-                void submitCheckout();
-              }}
-            />
-          ) : null}
+            {activeTab === "cart" ? (
+              <CartTabContent
+                mode={mode}
+                cart={cart}
+                cartItemCount={cartItemCount}
+                subtotal={subtotal}
+                tax={tax}
+                total={total}
+                paymentAmount={paymentAmount}
+                quickCashAmounts={quickCashAmounts}
+                change={change}
+                checkingOut={checkingOut}
+                onPaymentAmountChange={setPaymentAmount}
+                onUpdateQty={updateQty}
+                onCheckout={() => {
+                  void submitCheckout();
+                }}
+              />
+            ) : null}
 
-          {activeTab === "transactions" ? (
-            <TransactionsTabContent
-              mode={mode}
-              loadingTransactions={loadingTransactions}
-              transactions={transactions}
-              transactionFilter={transactionFilter}
-              currentTransactionPage={currentTransactionPage}
-              totalTransactions={totalTransactions}
-              search={search}
-              onFilterChange={setTransactionFilter}
-              onPageChange={setCurrentTransactionPage}
-            />
-          ) : null}
+            {activeTab === "transactions" ? (
+              <TransactionsTabContent
+                mode={mode}
+                loadingTransactions={loadingTransactions}
+                transactions={transactions}
+                transactionFilter={transactionFilter}
+                currentTransactionPage={currentTransactionPage}
+                totalTransactions={totalTransactions}
+                search={search}
+                onFilterChange={setTransactionFilter}
+                onPageChange={setCurrentTransactionPage}
+              />
+            ) : null}
 
-          {activeTab === "settings" ? <SettingsTabContent mode={mode} /> : null}
-        </div>
-      </PageWrapper>
+            {activeTab === "settings" ? (
+              <SettingsTabContent mode={mode} />
+            ) : null}
+          </div>
+        </PageWrapper>
+      </div>
 
       <ProductViewDrawer
         open={viewDrawerOpen && !editDrawerOpen}
@@ -1086,16 +1108,39 @@ export default function Home() {
         }}
       />
 
+      <ProductLongPressSheet
+        open={longPressSheetOpen}
+        productId={selectedProductId}
+        onClose={() => {
+          setLongPressSheetOpen(false);
+          setSelectedProductId(null);
+        }}
+        onEdit={() => {
+          setLongPressSheetOpen(false);
+          setEditDrawerOpen(true);
+        }}
+        onProductDeleted={() => {
+          setLongPressSheetOpen(false);
+          setSelectedProductId(null);
+          setReloadToken((prev) => prev + 1);
+        }}
+      />
+
       <ProductEditDrawer
         open={editDrawerOpen}
         productId={selectedProductId}
         onClose={() => {
           setEditDrawerOpen(false);
-          setViewDrawerOpen(true);
+          if (viewDrawerOpen) {
+            setViewDrawerOpen(true);
+          } else {
+            setLongPressSheetOpen(true);
+          }
         }}
         onProductUpdated={() => {
           setEditDrawerOpen(false);
           setViewDrawerOpen(false);
+          setLongPressSheetOpen(false);
           setSelectedProductId(null);
           setReloadToken((prev) => prev + 1);
         }}

@@ -17,6 +17,7 @@ type ProductVirtualRowProps = {
   loadingMoreProducts: boolean;
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct?: (productId: string) => void;
+  onLongPressProduct?: (productId: string) => void;
 };
 
 function ProductVirtualRow({
@@ -28,6 +29,7 @@ function ProductVirtualRow({
   loadingMoreProducts,
   onAddToCart,
   onViewProduct,
+  onLongPressProduct,
 }: RowComponentProps<ProductVirtualRowProps>) {
   if (loadingMoreProducts && index === products.length) {
     const parsedTop =
@@ -52,6 +54,7 @@ function ProductVirtualRow({
         }}
       >
         <Card
+          className="pos-product-card"
           loading
           style={{
             height: `${LIST_ROW_HEIGHT}px`,
@@ -75,6 +78,7 @@ function ProductVirtualRow({
       products={products}
       onAddToCart={onAddToCart}
       onViewProduct={onViewProduct}
+      onLongPressProduct={onLongPressProduct}
     />
   );
 }
@@ -92,6 +96,7 @@ interface ProductsTabContentProps {
   overscanRows: number;
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct: (productId: string) => void;
+  onLongPressProduct: (productId: string) => void;
   onRetry: () => void;
   onRowsRendered: (info: { stopIndex: number }) => void;
 }
@@ -108,6 +113,7 @@ export function ProductsTabContent({
   overscanRows,
   onAddToCart,
   onViewProduct,
+  onLongPressProduct,
   onRetry,
   onRowsRendered,
 }: ProductsTabContentProps) {
@@ -189,7 +195,7 @@ export function ProductsTabContent({
         ? Array.from({ length: 4 }).map((_, idx) => <Card key={idx} loading />)
         : null}
       {!loadingProducts && productsLoadError ? (
-        <Card>
+        <Card className="ui-surface pos-empty-surface">
           <Space orientation="vertical" style={{ width: "100%" }} size={10}>
             <Typography.Text type="danger">{productsLoadError}</Typography.Text>
             <Button onClick={onRetry}>Retry Loading Products</Button>
@@ -198,6 +204,7 @@ export function ProductsTabContent({
       ) : null}
       {!loadingProducts && !productsLoadError && products.length === 0 ? (
         <div
+          className="pos-empty-surface"
           style={{
             display: "flex",
             justifyContent: "center",
@@ -292,6 +299,7 @@ export function ProductsTabContent({
                     loadingMoreProducts,
                     onAddToCart,
                     onViewProduct,
+                    onLongPressProduct,
                   }}
                   onRowsRendered={onRowsRendered}
                 />

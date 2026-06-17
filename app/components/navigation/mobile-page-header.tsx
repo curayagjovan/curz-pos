@@ -30,6 +30,7 @@ export function MobilePageHeader({
       }}
     >
       <Header
+        className="border-b border-slate-300/30 backdrop-blur-md dark:border-slate-600/60"
         style={{
           height: "auto",
           lineHeight: "normal",
@@ -71,6 +72,7 @@ export function MobilePageHeader({
               }}
             >
               <Input.Search
+                className="rounded-[14px]"
                 placeholder="Search by name or SKU…"
                 value={searchValue}
                 onChange={(event) => onSearchChange?.(event.target.value)}

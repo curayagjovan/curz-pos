@@ -39,6 +39,7 @@ export function CartTabContent({
 }: CartTabContentProps) {
   return (
     <Card
+      className="rounded-[18px] border shadow-sm backdrop-blur-sm"
       style={{
         background:
           mode === "dark"

@@ -65,12 +65,71 @@ export function ProductEditDrawer({
   const [skuEditable, setSkuEditable] = useState(false);
   const [bundleEnabled, setBundleEnabled] = useState(false);
   const [globalMarkupPercent, setGlobalMarkupPercent] = useState<number>(0);
+  const [itemsPerContainer, setItemsPerContainer] = useState<number | null>(
+    null,
+  );
+  const [originalUnit, setOriginalUnit] = useState<string | null>(null);
 
   const cost = Form.useWatch("cost", form);
   const markupPercent = Form.useWatch("markupPercent", form);
+  const unit = Form.useWatch("unit", form);
+  const stock = Form.useWatch("stock", form);
   const bundleQty = Form.useWatch("bundleQty", form);
   const bundleMarkdownPercent = Form.useWatch("bundleMarkdownPercent", form);
   const priceValue = Form.useWatch("price", form);
+
+  // Container units that can be converted to single items
+  const CONTAINER_UNITS = [
+    "CASE",
+    "PACK",
+    "BOX",
+    "JAR",
+    "CAN",
+    "BOT",
+    "BAG",
+    "ROLL",
+    "REAM",
+    "PAD",
+    "TIE",
+    "CUP",
+  ];
+  // Single item units to convert to
+  const SINGLE_ITEM_UNITS = ["PCS", "BOT", "CAN", "BAR"];
+
+  // Show conversion field only if: original unit is a container AND selected unit is a single item
+  const isConversionMode =
+    originalUnit &&
+    CONTAINER_UNITS.includes(originalUnit) &&
+    unit &&
+    SINGLE_ITEM_UNITS.includes(unit);
+
+  const handleConvert = () => {
+    if (!itemsPerContainer || itemsPerContainer <= 0) {
+      message.error("Please enter a valid number of items per container.");
+      return;
+    }
+
+    const currentCost = Number(cost ?? 0);
+    const currentStock = Number(stock ?? 0);
+
+    if (Number.isNaN(currentCost) || Number.isNaN(currentStock)) {
+      message.error("Please ensure cost and stock have valid values.");
+      return;
+    }
+
+    const newCost = Number((currentCost / itemsPerContainer).toFixed(2));
+    const newStock = Math.round(currentStock * itemsPerContainer);
+
+    form.setFieldsValue({
+      cost: newCost,
+      stock: newStock,
+    });
+
+    message.success(
+      `Converted: Cost ₱${currentCost} → ₱${newCost} per item, Stock ${currentStock} → ${newStock} items`,
+    );
+    setItemsPerContainer(null);
+  };
 
   const calculatedPrice = useMemo(() => {
     const baseCost = Number(cost ?? 0);
@@ -164,6 +223,7 @@ export function ProductEditDrawer({
           product.bundleQty !== null && product.bundleQty > 0;
         setBundleEnabled(hasBundleData);
 
+        setOriginalUnit(product.unit ?? null);
         form.setFieldsValue({
           sku: product.sku,
           name: product.name,
@@ -263,6 +323,8 @@ export function ProductEditDrawer({
           form.resetFields();
           setSkuEditable(false);
           setBundleEnabled(false);
+          setOriginalUnit(null);
+          setItemsPerContainer(null);
           setLoading(true);
         }
       }}
@@ -312,12 +374,36 @@ export function ProductEditDrawer({
             <Select
               placeholder="Select a unit"
               allowClear
+              onChange={() => setItemsPerContainer(null)}
               options={STANDARD_UNITS.map((unit) => ({
                 value: unit,
                 label: UNIT_LABELS[unit],
               }))}
             />
           </Form.Item>
+
+          {isConversionMode && (
+            <Form.Item label="Items per Container">
+              <Space style={{ width: "100%" }}>
+                <InputNumber
+                  style={{ flex: 1 }}
+                  placeholder="e.g., 24"
+                  min={1}
+                  step={1}
+                  precision={0}
+                  value={itemsPerContainer}
+                  onChange={(val) => setItemsPerContainer(val)}
+                />
+                <Button
+                  type="default"
+                  onClick={handleConvert}
+                  disabled={!itemsPerContainer || itemsPerContainer <= 0}
+                >
+                  Convert
+                </Button>
+              </Space>
+            </Form.Item>
+          )}
 
           <Form.Item label="Description" name="description">
             <Input.TextArea

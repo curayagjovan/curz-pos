@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Space, Tag, Typography } from "antd";
 import { type RowComponentProps } from "react-window";
@@ -21,6 +21,7 @@ export type ProductRowProps = {
   products: Product[];
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct?: (productId: string) => void;
+  onLongPressProduct?: (productId: string) => void;
 };
 
 export function ProductRow({
@@ -29,10 +30,16 @@ export function ProductRow({
   products,
   onAddToCart,
   onViewProduct,
+  onLongPressProduct,
 }: RowComponentProps<ProductRowProps>) {
   const { mode } = useThemeMode();
   const product = products[index];
   const [quantity, setQuantity] = useState(1);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
+  const [showLongPressPulse, setShowLongPressPulse] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const parsedTop =
     typeof style.top === "number"
       ? style.top
@@ -63,8 +70,66 @@ export function ProductRow({
         : `In stock: ${product.stock}`;
   const isDark = mode === "dark";
 
+  useEffect(() => {
+    if (!isAdding) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setIsAdding(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [isAdding]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showLongPressPulse) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setShowLongPressPulse(false), 280);
+    return () => window.clearTimeout(timer);
+  }, [showLongPressPulse]);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleCardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    longPressTriggeredRef.current = false;
+    setIsPressing(true);
+    clearLongPressTimer();
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setShowLongPressPulse(true);
+      onLongPressProduct?.(product.id);
+    }, 450);
+  };
+
+  const handleCardPointerUp = () => {
+    setIsPressing(false);
+    clearLongPressTimer();
+  };
+
   return (
     <div
+      onPointerDown={handleCardPointerDown}
+      onPointerUp={handleCardPointerUp}
+      onPointerCancel={handleCardPointerUp}
+      onPointerLeave={handleCardPointerUp}
       style={{
         ...style,
         top: safeTop + LIST_ROW_GAP / 2,
@@ -72,6 +137,13 @@ export function ProductRow({
       }}
     >
       <Card
+        className={`rounded-[18px] transition-[transform,box-shadow,border-color] duration-180 will-change-transform hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none ${
+          isPressing ? "scale-[0.995]" : ""
+        } ${
+          showLongPressPulse
+            ? "animate-[long-press-haptic-pulse_260ms_cubic-bezier(0.22,1,0.36,1)]"
+            : ""
+        }`}
         hoverable
         style={{
           height: `${LIST_ROW_HEIGHT}px`,
@@ -86,31 +158,22 @@ export function ProductRow({
             : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,250,255,0.94) 100%)",
         }}
         styles={{ body: { padding: 10, height: "100%" } }}
-        onClick={() => onViewProduct?.(product.id)}
+        onClick={() => {
+          if (longPressTriggeredRef.current) {
+            longPressTriggeredRef.current = false;
+            return;
+          }
+
+          onViewProduct?.(product.id);
+        }}
       >
-        <div
-          style={{
-            height: "100%",
-            display: "grid",
-            gridTemplateRows: "auto auto auto",
-            gap: 6,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 8,
-            }}
-          >
+        <div className="grid h-full grid-rows-[auto_auto_auto] gap-1.5">
+          <div className="flex items-start justify-between gap-2">
             <Space orientation="vertical" size={1} style={{ minWidth: 0 }}>
               <Typography.Paragraph
+                className="text-[0.9rem] leading-[1.15] font-bold tracking-[-0.01em]"
                 style={{
                   margin: 0,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  lineHeight: 1.15,
                   color: isDark ? "#f3f4f6" : "#0f172a",
                 }}
                 ellipsis={{ rows: 1 }}
@@ -118,18 +181,18 @@ export function ProductRow({
                 {product.name}
               </Typography.Paragraph>
               <Typography.Text
+                className="text-[0.68rem] tracking-[0.03em] uppercase opacity-90"
                 type="secondary"
-                style={{ fontSize: 11, color: isDark ? "#93a4bc" : undefined }}
+                style={{ color: isDark ? "#93a4bc" : undefined }}
               >
                 SKU {product.sku}
               </Typography.Text>
             </Space>
             <Tag
+              className="rounded-full text-[0.64rem] font-bold tracking-[0.01em]"
               style={{
                 marginInlineEnd: 0,
                 borderRadius: 999,
-                fontWeight: 600,
-                fontSize: 10,
                 lineHeight: "16px",
                 paddingInline: 8,
                 color: stockColor,
@@ -141,20 +204,11 @@ export function ProductRow({
             </Tag>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap items-baseline gap-2">
             <Typography.Text
+              className="text-[1.35rem] leading-none font-extrabold tracking-[-0.02em]"
               strong
               style={{
-                fontWeight: 700,
-                fontSize: 20,
-                letterSpacing: "0.01em",
                 color: isDark ? "#90caf9" : "#0f3f77",
               }}
             >
@@ -179,14 +233,9 @@ export function ProductRow({
             ) : null}
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "102px 1fr",
-              gap: 6,
-            }}
-          >
+          <div className="grid grid-cols-[102px_1fr] gap-1.5">
             <div
+              className="transition-[transform,box-shadow,border-color,background-color] duration-140 active:scale-96 motion-reduce:transform-none motion-reduce:transition-none"
               style={{
                 width: "100%",
                 display: "flex",
@@ -197,6 +246,7 @@ export function ProductRow({
                 background: isDark ? "#0f172a" : "#ffffff",
                 padding: "2px 6px",
               }}
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
             >
               <Button
@@ -206,12 +256,12 @@ export function ProductRow({
                   setQuantity((current) => Math.max(current - 1, 1));
                 }}
                 size="small"
-                style={{ width: 24, minWidth: 24, height: 24, padding: 0 }}
+                className="h-6 min-h-6 w-6 min-w-6 p-0"
                 disabled={isOutOfStock || selectedQuantity <= 1}
               />
               <Typography.Text
                 strong
-                style={{ minWidth: 20, textAlign: "center", fontSize: 13 }}
+                className="min-w-5 text-center text-[13px]"
               >
                 {selectedQuantity}
               </Typography.Text>
@@ -222,26 +272,25 @@ export function ProductRow({
                   setQuantity((current) => Math.min(current + 1, maxQuantity));
                 }}
                 size="small"
-                style={{ width: 24, minWidth: 24, height: 24, padding: 0 }}
+                className="h-6 min-h-6 w-6 min-w-6 p-0"
                 disabled={isOutOfStock || selectedQuantity >= maxQuantity}
               />
             </div>
 
             <Button
+              className={`h-full rounded-[10px] text-xs font-semibold transition-[transform,box-shadow,filter] duration-140 active:translate-y-px active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none ${
+                isAdding ? "animate-[pos-add-pulse_420ms_ease-out]" : ""
+              }`}
               type="primary"
               block
               size="small"
               onClick={(event) => {
                 event.stopPropagation();
+                setIsAdding(true);
                 onAddToCart(product, selectedQuantity);
               }}
+              onPointerDown={(event) => event.stopPropagation()}
               disabled={isOutOfStock}
-              style={{
-                height: "100%",
-                borderRadius: 10,
-                fontWeight: 600,
-                fontSize: 12,
-              }}
             >
               Add to Cart
             </Button>

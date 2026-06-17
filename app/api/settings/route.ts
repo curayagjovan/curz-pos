@@ -9,13 +9,10 @@ type SettingsPayload = {
 };
 
 async function getOrCreateSettings() {
-  const existing = await prisma.appSetting.findUnique({ where: { id: 1 } });
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.appSetting.create({
-    data: {
+  return prisma.appSetting.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
       id: 1,
       themeMode: "light",
       globalMarkupPercent: 0,
