@@ -130,7 +130,7 @@ export function ProductLongPressSheet({
           background: "rgba(2, 6, 23, 0.42)",
           backdropFilter: "blur(8px)",
         },
-        content: {
+        section: {
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           overflow: "hidden",

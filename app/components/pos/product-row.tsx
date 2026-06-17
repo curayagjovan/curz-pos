@@ -126,10 +126,12 @@ export function ProductRow({
 
   return (
     <div
+      className="pos-product-touch-surface"
       onPointerDown={handleCardPointerDown}
       onPointerUp={handleCardPointerUp}
       onPointerCancel={handleCardPointerUp}
       onPointerLeave={handleCardPointerUp}
+      onContextMenu={(event) => event.preventDefault()}
       style={{
         ...style,
         top: safeTop + LIST_ROW_GAP / 2,
@@ -137,7 +139,7 @@ export function ProductRow({
       }}
     >
       <Card
-        className={`rounded-[18px] transition-[transform,box-shadow,border-color] duration-180 will-change-transform hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none ${
+        className={`pos-product-touch-surface rounded-[18px] transition-[transform,box-shadow,border-color] duration-180 will-change-transform hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none ${
           isPressing ? "scale-[0.995]" : ""
         } ${
           showLongPressPulse

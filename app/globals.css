@@ -11,6 +11,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  font-family: "Outfit", "SF Pro Display", "Segoe UI", sans-serif;
 }
 
 body {
@@ -137,6 +138,12 @@ html[data-theme="dark"] body {
   .tab-panel-transition {
     animation: none;
   }
+}
+
+.pos-product-touch-surface {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Prevent iOS Safari from zooming when focusing inputs with small text. */
