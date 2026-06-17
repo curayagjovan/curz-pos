@@ -22,9 +22,9 @@ type ProductFormValues = {
   unit?: string;
   description?: string;
   cost?: number;
-  markupPercent?: number;
+  markupPercent?: number | string;
   bundleQty?: number | null;
-  bundleMarkdownPercent?: number | null;
+  bundleMarkdownPercent?: number | string | null;
   bundlePrice?: number | null;
   price: number;
   stock: number;
@@ -260,7 +260,11 @@ export function ProductEditDrawer({
         ? (values.bundleQty ?? null)
         : null;
       const normalizedBundleMarkdownPercent = bundleEnabled
-        ? (values.bundleMarkdownPercent ?? null)
+        ? values.bundleMarkdownPercent === null ||
+          values.bundleMarkdownPercent === undefined ||
+          values.bundleMarkdownPercent === ""
+          ? null
+          : Number(values.bundleMarkdownPercent)
         : null;
       const normalizedBundlePrice = bundleEnabled
         ? (values.bundlePrice ?? null)
@@ -282,7 +286,7 @@ export function ProductEditDrawer({
         unit: values.unit?.trim() ?? "",
         description: values.description,
         cost: values.cost ?? 0,
-        markupPercent: values.markupPercent ?? 0,
+        markupPercent: Number(values.markupPercent ?? 0),
         bundleQty: normalizedBundleQty,
         bundleMarkdownPercent: normalizedBundleMarkdownPercent,
         bundlePrice: normalizedBundlePrice,
@@ -440,12 +444,14 @@ export function ProductEditDrawer({
               },
             ]}
           >
-            <InputNumber
-              suffix="%"
+            <Input
+              inputMode="decimal"
               placeholder="0.00"
-              min={0}
-              step={0.01}
-              precision={2}
+              addonAfter="%"
+              onChange={(event) => {
+                const nextValue = event.target.value.replace(/[^0-9.]/g, "");
+                form.setFieldValue("markupPercent", nextValue);
+              }}
             />
           </Form.Item>
 
@@ -509,13 +515,17 @@ export function ProductEditDrawer({
                   },
                 ]}
               >
-                <InputNumber
-                  suffix="%"
+                <Input
+                  inputMode="decimal"
                   placeholder="0.00"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  precision={2}
+                  addonAfter="%"
+                  onChange={(event) => {
+                    const nextValue = event.target.value.replace(
+                      /[^0-9.]/g,
+                      "",
+                    );
+                    form.setFieldValue("bundleMarkdownPercent", nextValue);
+                  }}
                 />
               </Form.Item>
 
