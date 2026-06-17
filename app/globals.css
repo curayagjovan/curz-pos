@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 *,
 *::before,
 *::after {
@@ -45,6 +47,73 @@ html[data-theme="dark"] body {
     ),
     linear-gradient(180deg, #0a1220 0%, #0f172a 100%);
   color: #e2e8f0;
+}
+
+:root {
+  --ui-radius-lg: 16px;
+  --ui-radius-xl: 20px;
+}
+
+@layer components {
+  @keyframes pos-add-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45);
+      filter: saturate(1);
+    }
+    100% {
+      box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+      filter: saturate(1.08);
+    }
+  }
+
+  @keyframes long-press-sheet-enter {
+    0% {
+      opacity: 0;
+      transform: translateY(24px) scale(0.985);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes long-press-card-pop {
+    0% {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes long-press-haptic-pulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.35);
+    }
+    55% {
+      transform: scale(0.992);
+      box-shadow: 0 0 0 8px rgba(56, 189, 248, 0.08);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[pos-add-pulse_420ms_ease-out\] {
+    animation: none !important;
+  }
+
+  .animate-\[long-press-sheet-enter_300ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\],
+  .animate-\[long-press-card-pop_260ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\],
+  .animate-\[long-press-haptic-pulse_260ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\] {
+    animation: none !important;
+  }
 }
 
 /* Tab panel animation */
