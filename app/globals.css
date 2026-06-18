@@ -175,13 +175,57 @@ html[data-theme="dark"] body {
 
 /* Gradient border wrapper */
 .ios-glass-border-wrap {
-  display: relative;
+  position: relative;
+  display: inline-flex;
   border-radius: 9999px;
   padding: 1px;
-  background: linear-gradient(160deg, #fff 0%, #f1f1f6 100%);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(246, 246, 250, 0.92) 48%,
+    rgba(236, 236, 242, 0.88) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(222, 222, 230, 0.45),
+    0 1px 1px rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+}
+
+.ios-glass-border-wrap::before {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 1px;
+  height: 44%;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.24) 62%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+.ios-glass-border-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.1) 42%,
+    rgba(255, 255, 255, 0) 80%
+  );
 }
 
 .ios-glass-border-wrap .ios-button-spring {
+  position: relative;
+  z-index: 1;
   border-radius: 9999px !important;
 }
 
