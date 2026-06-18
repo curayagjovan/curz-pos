@@ -47,14 +47,14 @@ export function MobilePageHeader({
         <Flex
           align="flex-start"
           justify="flex-start"
-          gap={12}
+          gap={16}
           vertical={showSearch}
         >
           <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
             {/* <SettingOutlined /> */}Edit
           </GlassButton>
           <Typography.Title
-            level={2}
+            level={1}
             style={{
               margin: 0,
               // fontSize: 24,
