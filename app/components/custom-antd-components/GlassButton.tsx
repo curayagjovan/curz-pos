@@ -1,6 +1,8 @@
 import { Button, ConfigProvider } from "antd";
 import type { ButtonProps } from "antd";
 import {
+  useEffect,
+  useRef,
   useState,
   type MouseEvent,
   type ReactNode,
@@ -21,19 +23,48 @@ function GlassButton({
 }: {
   children?: ReactNode;
 } & ButtonProps) {
+  const MIN_PRESS_MS = 200;
   const { alignSelf, ...buttonStyle } = style ?? {};
 
   const [isPressed, setIsPressed] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
+  const pressedAtRef = useRef<number>(0);
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (releaseTimerRef.current) {
+        clearTimeout(releaseTimerRef.current);
+      }
+    };
+  }, []);
 
   const pressStart = () => {
+    if (releaseTimerRef.current) {
+      clearTimeout(releaseTimerRef.current);
+      releaseTimerRef.current = null;
+    }
+    pressedAtRef.current = Date.now();
     setIsReleasing(false);
     setIsPressed(true);
   };
 
   const pressEnd = () => {
-    setIsPressed(false);
-    setIsReleasing(true);
+    const elapsed = Date.now() - pressedAtRef.current;
+    const release = () => {
+      setIsPressed(false);
+      setIsReleasing(true);
+    };
+
+    if (elapsed >= MIN_PRESS_MS) {
+      release();
+      return;
+    }
+
+    releaseTimerRef.current = setTimeout(() => {
+      release();
+      releaseTimerRef.current = null;
+    }, MIN_PRESS_MS - elapsed);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
