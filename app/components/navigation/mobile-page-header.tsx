@@ -54,7 +54,7 @@ export function MobilePageHeader({
             {/* <SettingOutlined /> */}Edit
           </GlassButton>
           <Typography.Title
-            level={2}
+            level={1}
             className="font-semibold!"
             style={{
               margin: 0,
