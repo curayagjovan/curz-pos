@@ -36,7 +36,7 @@ function GlassButton({
         fontSize: 17,
         lineHeight: 1.2,
         letterSpacing: "-0.01em",
-        boxShadow: "0px 10px 20px 9px #00000014",
+        boxShadow: "0px 10px 20px 6px rgba(0,0,0,0.06)",
         ...style,
       }}
       {...props}
