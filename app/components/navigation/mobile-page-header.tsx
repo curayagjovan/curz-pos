@@ -36,7 +36,7 @@ export function MobilePageHeader({
         style={{
           height: "auto",
           lineHeight: "normal",
-          paddingInline: 14,
+          paddingInline: 24,
           paddingTop: "calc(env(safe-area-inset-top))",
           paddingBottom: 10,
           background:
