@@ -54,10 +54,12 @@ export function MobilePageHeader({
             {/* <SettingOutlined /> */}Edit
           </GlassButton>
           <Typography.Title
-            level={1}
+            level={2}
+            className="font-semibold!"
             style={{
               margin: 0,
               // fontSize: 24,
+
               width: "100%",
               textAlign: "left",
               color: token.colorTextHeading,
