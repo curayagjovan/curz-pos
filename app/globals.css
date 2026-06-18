@@ -156,22 +156,12 @@ html[data-theme="dark"] body {
   will-change: transform;
   -webkit-tap-highlight-color: transparent;
   transform: scale(1);
-  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
+  /* Spring release: fast compress, slow overshoot back to rest */
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .ios-button-spring.is-pressed {
-  transform: scale(1.1);
-  animation: none;
-  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.ios-button-spring.is-releasing {
-  animation: ios-spring-bounce 0.4s cubic-bezier(0.25, 1.35, 0.4, 1) forwards;
-}
-
-@keyframes ios-spring-bounce {
-  0%   { transform: scale(1.1); }
-  40%  { transform: scale(0.97); }
-  70%  { transform: scale(1.01); }
-  100% { transform: scale(1); }
+  transform: scale(1.08);
+  /* Snap up quickly on press */
+  transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1);
 }
