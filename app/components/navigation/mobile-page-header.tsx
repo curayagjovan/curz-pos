@@ -58,7 +58,7 @@ export function MobilePageHeader({
             className="font-semibold!"
             style={{
               margin: 0,
-              // fontSize: 24,
+              fontSize: 32,
 
               width: "100%",
               textAlign: "left",
