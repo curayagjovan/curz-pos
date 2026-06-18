@@ -19,6 +19,7 @@ export type Product = {
 
 export type ProductRowProps = {
   products: Product[];
+  horizontalInset?: number;
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct?: (productId: string) => void;
   onLongPressProduct?: (productId: string) => void;
@@ -28,6 +29,7 @@ export function ProductRow({
   index,
   style,
   products,
+  horizontalInset = 0,
   onAddToCart,
   onViewProduct,
   onLongPressProduct,
@@ -52,23 +54,6 @@ export function ProductRow({
   const safeHeight = Number.isFinite(parsedHeight)
     ? parsedHeight
     : LIST_ROW_HEIGHT;
-
-  if (!product) {
-    return <div style={style} />;
-  }
-
-  const maxQuantity = Math.max(product.stock, 1);
-  const selectedQuantity = Math.min(Math.max(quantity, 1), maxQuantity);
-  const isOutOfStock = product.stock <= 0;
-  const stockColor =
-    product.stock <= 0 ? "#b91c1c" : product.stock <= 5 ? "#b45309" : "#0f766e";
-  const stockLabel =
-    product.stock <= 0
-      ? "Out of stock"
-      : product.stock <= 5
-        ? `Low stock: ${product.stock}`
-        : `In stock: ${product.stock}`;
-  const isDark = mode === "dark";
 
   useEffect(() => {
     if (!isAdding) {
@@ -95,6 +80,23 @@ export function ProductRow({
     const timer = window.setTimeout(() => setShowLongPressPulse(false), 280);
     return () => window.clearTimeout(timer);
   }, [showLongPressPulse]);
+
+  if (!product) {
+    return <div style={style} />;
+  }
+
+  const maxQuantity = Math.max(product.stock, 1);
+  const selectedQuantity = Math.min(Math.max(quantity, 1), maxQuantity);
+  const isOutOfStock = product.stock <= 0;
+  const stockColor =
+    product.stock <= 0 ? "#b91c1c" : product.stock <= 5 ? "#b45309" : "#0f766e";
+  const stockLabel =
+    product.stock <= 0
+      ? "Out of stock"
+      : product.stock <= 5
+        ? `Low stock: ${product.stock}`
+        : `In stock: ${product.stock}`;
+  const isDark = mode === "dark";
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current !== null) {
@@ -134,6 +136,12 @@ export function ProductRow({
       onContextMenu={(event) => event.preventDefault()}
       style={{
         ...style,
+        left:
+          ((typeof style.left === "number"
+            ? style.left
+            : Number.parseFloat(String(style.left ?? "0"))) || 0) +
+          horizontalInset,
+        width: `calc(100% - ${horizontalInset * 2}px)`,
         top: safeTop + LIST_ROW_GAP / 2,
         height: Math.max(safeHeight - LIST_ROW_GAP, 0),
       }}

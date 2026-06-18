@@ -1005,7 +1005,8 @@ export default function Home() {
           searchValue={search}
           onSearchChange={handleSearchChange}
           contentStyle={{
-            paddingInline: isCompactHeight ? 10 : 14,
+            paddingInline:
+              activeTab === "products" ? 0 : isCompactHeight ? 10 : 14,
             background:
               mode === "dark"
                 ? "linear-gradient(180deg, rgba(8,15,30,0.64), rgba(10,17,31,0.38))"

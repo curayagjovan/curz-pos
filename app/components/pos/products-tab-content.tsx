@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type TouchEvent } from "react";
-import { Card, Space, Typography, Button, Empty } from "antd";
+import { Card, Space, Typography, Button, Empty, Spin } from "antd";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import { List as VirtualList, type RowComponentProps } from "react-window";
 import {
@@ -14,6 +14,7 @@ import {
 type ProductVirtualRowProps = {
   products: Product[];
   mode: "light" | "dark";
+  horizontalInset: number;
   loadingMoreProducts: boolean;
   onAddToCart: (product: Product, quantity: number) => void;
   onViewProduct?: (productId: string) => void;
@@ -26,6 +27,7 @@ function ProductVirtualRow({
   style,
   products,
   mode,
+  horizontalInset,
   loadingMoreProducts,
   onAddToCart,
   onViewProduct,
@@ -49,6 +51,12 @@ function ProductVirtualRow({
       <div
         style={{
           ...style,
+          left:
+            ((typeof style.left === "number"
+              ? style.left
+              : Number.parseFloat(String(style.left ?? "0"))) || 0) +
+            horizontalInset,
+          width: `calc(100% - ${horizontalInset * 2}px)`,
           top: safeTop + LIST_ROW_GAP / 2,
           height: Math.max(safeHeight - LIST_ROW_GAP, 0),
         }}
@@ -76,6 +84,7 @@ function ProductVirtualRow({
       index={index}
       style={style}
       products={products}
+      horizontalInset={horizontalInset}
       onAddToCart={onAddToCart}
       onViewProduct={onViewProduct}
       onLongPressProduct={onLongPressProduct}
@@ -117,6 +126,7 @@ export function ProductsTabContent({
   onRetry,
   onRowsRendered,
 }: ProductsTabContentProps) {
+  const horizontalInset = isCompactHeight ? 10 : 14;
   const PULL_TRIGGER_PX = 72;
   const PULL_MAX_PX = 108;
   const pullContainerRef = useRef<HTMLDivElement | null>(null);
@@ -164,7 +174,9 @@ export function ProductsTabContent({
 
     const dampedDistance = Math.min(PULL_MAX_PX, delta * 0.42);
     setPullDistance(dampedDistance);
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
   };
 
   const handleTouchEnd = () => {
@@ -192,7 +204,9 @@ export function ProductsTabContent({
       }}
     >
       {loadingProducts
-        ? Array.from({ length: 4 }).map((_, idx) => <Card key={idx} loading />)
+        ? Array.from({ length: 4 }).map((_, idx) => (
+            <Card key={idx} loading style={{ marginInline: horizontalInset }} />
+          ))
         : null}
       {!loadingProducts && productsLoadError ? (
         <Card className="ui-surface pos-empty-surface">
@@ -246,8 +260,7 @@ export function ProductsTabContent({
                 pointerEvents: "none",
               }}
             >
-              <Typography.Text
-                type="secondary"
+              <div
                 style={{
                   background:
                     mode === "dark"
@@ -258,13 +271,15 @@ export function ProductsTabContent({
                       ? "1px solid rgba(71, 85, 105, 0.7)"
                       : "1px solid rgba(191, 219, 254, 0.95)",
                   borderRadius: 999,
-                  padding: "4px 10px",
+                  width: 34,
+                  height: 34,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {pullDistance >= PULL_TRIGGER_PX
-                  ? "Release to refresh"
-                  : "Pull down to refresh"}
-              </Typography.Text>
+                <Spin size="small" />
+              </div>
             </div>
           ) : null}
 
@@ -286,7 +301,6 @@ export function ProductsTabContent({
               }) => (
                 <VirtualList
                   style={{
-                    paddingInline: isCompactHeight ? 10 : 14,
                     width: Math.max(width ?? 1, 1),
                     height: Math.max(height ?? virtualListFallbackHeight, 1),
                   }}
@@ -297,6 +311,7 @@ export function ProductsTabContent({
                   rowProps={{
                     products,
                     mode,
+                    horizontalInset,
                     loadingMoreProducts,
                     onAddToCart,
                     onViewProduct,
