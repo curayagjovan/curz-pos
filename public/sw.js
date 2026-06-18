@@ -1,13 +1,5 @@
-const CACHE_VERSION = "shopmae-v3";
-const APP_SHELL = [
-  "/",
-  "/pages",
-  "/pages/",
-  "/offline/",
-  "/offline",
-  "/manifest.webmanifest",
-  "/pwa-icon.svg",
-];
+const CACHE_VERSION = "shopmae-v4";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg"];
 
 function isStaticAsset(pathname) {
   return (
@@ -90,8 +82,7 @@ self.addEventListener("fetch", (event) => {
           const cache = await caches.open(CACHE_VERSION);
           return (
             (await cache.match(request)) ||
-            (await cache.match("/offline")) ||
-            (await cache.match("/pages/")) ||
+            (await cache.match("/")) ||
             Response.error()
           );
         }),

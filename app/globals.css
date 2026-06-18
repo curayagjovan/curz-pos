@@ -6,224 +6,82 @@
   box-sizing: border-box;
 }
 
-html {
-  scrollbar-gutter: stable;
-}
-
 html,
 body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  font-family: "Outfit", "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
+  font-family: "Outfit", "Segoe UI", sans-serif;
+  background: var(--background);
+  color: var(--foreground);
   transition:
     background-color 180ms ease,
     color 180ms ease;
-  scrollbar-gutter: stable;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1220;
+    --foreground: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #334155;
+  }
 }
 
 html[data-theme="light"] {
   color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #334155;
 }
 
-html[data-theme="light"] body {
-  background: #f2f2f7;
-  color: #000000;
-}
-
-html[data-theme="dark"] body {
-  background: #1c1c1e;
-  color: #ffffff;
-}
-
-:root {
-  --ui-radius-lg: 16px;
-  --ui-radius-xl: 20px;
-}
-
-@layer components {
-  @keyframes pos-add-pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45);
-      filter: saturate(1);
-    }
-    100% {
-      box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
-      filter: saturate(1.08);
-    }
-  }
-
-  @keyframes long-press-sheet-enter {
-    0% {
-      opacity: 0;
-      transform: translateY(24px) scale(0.985);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  @keyframes long-press-card-pop {
-    0% {
-      opacity: 0;
-      transform: translateY(14px) scale(0.98);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  @keyframes long-press-haptic-pulse {
-    0% {
-      transform: scale(1);
-      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.35);
-    }
-    55% {
-      transform: scale(0.992);
-      box-shadow: 0 0 0 8px rgba(56, 189, 248, 0.08);
-    }
-    100% {
-      transform: scale(1);
-      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
-    }
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-\[pos-add-pulse_420ms_ease-out\] {
-    animation: none !important;
-  }
-
-  .animate-\[long-press-sheet-enter_300ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\],
-  .animate-\[long-press-card-pop_260ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\],
-  .animate-\[long-press-haptic-pulse_260ms_cubic-bezier\(0\.22\,1\,0\.36\,1\)\] {
-    animation: none !important;
-  }
-}
-
-/* Tab panel animation */
-.tab-panel-transition {
-  animation: tab-panel-enter 220ms ease-out;
-  will-change: opacity, transform;
-}
-
-@keyframes tab-panel-enter {
-  from {
+@keyframes splash-reveal {
+  0% {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px) scale(0.985);
+    letter-spacing: 0.28em;
+    filter: blur(4px);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    letter-spacing: 0.18em;
+    filter: blur(0);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tab-panel-transition {
-    animation: none;
-  }
+.splash-logo {
+  animation: splash-reveal 650ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
-.pos-product-touch-surface {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Prevent iOS Safari from zooming when focusing inputs with small text. */
+/* Prevent iOS Safari zoom on focus for small controls. */
 @supports (-webkit-touch-callout: none) {
   input,
   textarea,
-  select,
-  .ant-input,
-  .ant-input-affix-wrapper input,
-  .ant-input-number-input,
-  .ant-select-selection-search-input {
-    font-size: 16px !important;
-  }
-}
-
-.ios-button-spring {
-  will-change: transform;
-  -webkit-tap-highlight-color: transparent;
-  transform: scale(1);
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.58))
-      padding-box,
-    linear-gradient(160deg, #fff 0%, #f1f1f6 100%) border-box;
-  border: 1px solid transparent !important;
-}
-
-/* Gradient border wrapper */
-.ios-glass-border-wrap {
-  display: inline-flex;
-  border-radius: 9999px;
-}
-
-.ios-glass-border-wrap .ios-button-spring {
-  border-radius: 9999px !important;
-}
-
-/* Neutralize Ant Design hover/active/focus blue tint */
-.ios-button-spring:hover,
-.ios-button-spring:focus,
-.ios-button-spring:active,
-.ios-button-spring:focus-visible {
-  color: inherit !important;
-  border-color: transparent !important;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.58))
-      padding-box,
-    linear-gradient(160deg, #fff 0%, #f1f1f6 100%) border-box !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.ios-button-spring.is-pressed {
-  transform: scale(1.3);
-  animation: none;
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.ios-button-spring.is-pressed,
-.ios-button-spring.is-pressed.ant-btn,
-.ios-button-spring.is-pressed.ant-btn:active,
-.ios-button-spring.is-pressed.ant-btn:focus {
-  background: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(255, 255, 255, 1) !important;
-  color: rgba(0, 0, 0, 0.2) !important;
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.ios-button-spring.is-releasing {
-  transition: none;
-  animation: ios-spring-bounce 0.45s cubic-bezier(0.25, 1.35, 0.4, 1) forwards;
-}
-
-@keyframes ios-spring-bounce {
-  0% {
-    transform: scale(1.3);
-  }
-  40% {
-    transform: scale(0.97);
-  }
-  70% {
-    transform: scale(1.015);
-  }
-  85% {
-    transform: scale(0.997);
-  }
-  100% {
-    transform: scale(1);
+  select {
+    font-size: 16px;
   }
 }
