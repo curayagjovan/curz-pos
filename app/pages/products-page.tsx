@@ -15,7 +15,7 @@ export default function ProductsPage() {
   }, []);
 
   return (
-    <PageContainer title="Products">
+    <PageContainer>
       <div
         className="grid min-h-full w-full place-items-center transition-opacity duration-500"
         style={{
