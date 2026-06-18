@@ -36,7 +36,7 @@ export function MobilePageHeader({
         style={{
           height: "auto",
           lineHeight: "normal",
-          paddingInline: 20,
+          paddingInline: 18,
           paddingTop: "calc(env(safe-area-inset-top))",
           paddingBottom: 10,
           background:
@@ -47,7 +47,7 @@ export function MobilePageHeader({
         <Flex
           align="flex-start"
           justify="flex-start"
-          gap={24}
+          gap={26}
           vertical={showSearch}
         >
           <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
