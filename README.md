@@ -3,14 +3,15 @@
 A modern POS starter built with:
 
 - Next.js (App Router) + React
-- Ant Design
+- Tailwind CSS
 - Prisma ORM
 - Supabase (Postgres + optional auth/data APIs)
 - Vercel deployment
 
 ## What is included
 
-- POS dashboard starter UI in `app/page.tsx`
+- Minimal home page in `app/page.tsx`
+- Tailwind + light/dark theme token setup in `app/globals.css`
 - Prisma schema for products, orders, and order items in `prisma/schema.prisma`
 - Product API endpoint in `app/api/products/route.ts`
 - Shared Prisma client in `lib/prisma.ts`
