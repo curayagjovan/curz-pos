@@ -159,7 +159,7 @@ html[data-theme="dark"] body {
 
 .ios-button-spring:active,
 .ios-button-spring.is-pressed {
-  transform: scale(1.06);
+  transform: scale(0.93);
   animation: none; /* Kills any ongoing bounce animation */
   transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
 }
@@ -172,16 +172,16 @@ html[data-theme="dark"] body {
 /* The true spring calculation curve */
 @keyframes ios-spring-bounce {
   0% {
-    transform: scale(1.06);
-  } /* Starts from enlarged pressed state */
+    transform: scale(0.93);
+  } /* Starts flat from compressed state */
   35% {
-    transform: scale(0.985);
-  } /* Undershoots a bit below resting size */
+    transform: scale(1.04);
+  } /* Overshoots past original size */
   65% {
-    transform: scale(1.015);
-  } /* Corrects slightly above resting size */
+    transform: scale(0.98);
+  } /* Corrects back slightly under original size */
   85% {
-    transform: scale(0.996);
+    transform: scale(1.01);
   } /* Micro overshoot */
   100% {
     transform: scale(1);
