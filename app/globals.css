@@ -155,33 +155,23 @@ html[data-theme="dark"] body {
 .ios-button-spring {
   will-change: transform;
   -webkit-tap-highlight-color: transparent;
-}
-
-.ios-button-spring:active,
-.ios-button-spring.is-pressed {
-  transform: scale(1.2);
-  animation: none; /* Kills any ongoing bounce animation */
+  transform: scale(1);
   transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Trigger the bounce animation when the active state is released */
-.ios-button-spring:not(:active):not(.is-pressed) {
-  animation: ios-spring-bounce 0.45s cubic-bezier(0.25, 1.35, 0.4, 1) forwards;
+.ios-button-spring.is-pressed {
+  transform: scale(1.1);
+  animation: none;
+  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* The true spring calculation curve */
-@keyframes ios-spring-bounce {
-  0% {
-    transform: scale(1.2);
-  } /* Starts flat from compressed state */
-  35% {
-    transform: scale(0.93);
-  } /* Overshoots past original size */
+.ios-button-spring.is-releasing {
+  animation: ios-spring-bounce 0.4s cubic-bezier(0.25, 1.35, 0.4, 1) forwards;
+}
 
-  85% {
-    transform: scale(1.02);
-  } /* Micro overshoot */
-  100% {
-    transform: scale(1);
-  } /* Perfectly lands at rest */
+@keyframes ios-spring-bounce {
+  0%   { transform: scale(1.1); }
+  40%  { transform: scale(0.97); }
+  70%  { transform: scale(1.01); }
+  100% { transform: scale(1); }
 }

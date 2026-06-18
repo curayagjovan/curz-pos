@@ -22,40 +22,52 @@ function GlassButton({
   children?: ReactNode;
 } & ButtonProps) {
   const [isPressed, setIsPressed] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
+
+  const pressStart = () => {
+    setIsReleasing(false);
+    setIsPressed(true);
+  };
+
+  const pressEnd = () => {
+    setIsPressed(false);
+    setIsReleasing(true);
+  };
 
   const handleTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
-    setIsPressed(true);
+    pressStart();
     onTouchStart?.(event);
   };
 
   const handleTouchEnd = (event: TouchEvent<HTMLButtonElement>) => {
-    setIsPressed(false);
+    pressEnd();
     onTouchEnd?.(event);
   };
 
   const handleTouchCancel = (event: TouchEvent<HTMLButtonElement>) => {
-    setIsPressed(false);
+    pressEnd();
     onTouchCancel?.(event);
   };
 
   const handleMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
-    setIsPressed(true);
+    pressStart();
     onMouseDown?.(event);
   };
 
   const handleMouseUp = (event: MouseEvent<HTMLButtonElement>) => {
-    setIsPressed(false);
+    pressEnd();
     onMouseUp?.(event);
   };
 
   const handleMouseLeave = (event: MouseEvent<HTMLButtonElement>) => {
-    setIsPressed(false);
+    if (isPressed) pressEnd();
     onMouseLeave?.(event);
   };
 
   return (
     <Button
-      className={`rounded-4xl! ios-button-spring ${isPressed ? "is-pressed" : ""} ${className ?? ""}`}
+      className={`rounded-4xl! ios-button-spring ${isPressed ? "is-pressed" : ""} ${isReleasing ? "is-releasing" : ""} ${className ?? ""}`}
+      onAnimationEnd={() => setIsReleasing(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
