@@ -152,18 +152,38 @@ html[data-theme="dark"] body {
   }
 }
 
-.ios-pop-animation {
-  animation: iosSpring 0.35s cubic-bezier(0.25, 1.5, 0.5, 1) forwards;
+.ios-button-spring {
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
 }
 
-@keyframes iosSpring {
+.ios-button-spring:active,
+.ios-button-spring.is-pressed {
+  transform: scale(0.93);
+  animation: none; /* Kills any ongoing bounce animation */
+  transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Trigger the bounce animation when the active state is released */
+.ios-button-spring:not(:active):not(.is-pressed) {
+  animation: ios-spring-bounce 0.45s cubic-bezier(0.25, 1.35, 0.4, 1) forwards;
+}
+
+/* The true spring calculation curve */
+@keyframes ios-spring-bounce {
   0% {
-    transform: scale(0.95); /* Compressed state on click */
-  }
-  50% {
-    transform: scale(1.03); /* Overshoot beyond normal size on release */
-  }
+    transform: scale(0.93);
+  } /* Starts flat from compressed state */
+  35% {
+    transform: scale(1.04);
+  } /* Overshoots past original size */
+  65% {
+    transform: scale(0.98);
+  } /* Corrects back slightly under original size */
+  85% {
+    transform: scale(1.01);
+  } /* Micro overshoot */
   100% {
-    transform: scale(1); /* Settle back to original size */
-  }
+    transform: scale(1);
+  } /* Perfectly lands at rest */
 }

@@ -51,7 +51,7 @@ export function MobilePageHeader({
           vertical={showSearch}
         >
           <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
-            {/* <SettingOutlined /> */}Edit
+            <SettingOutlined />
           </GlassButton>
           <Typography.Title
             level={1}

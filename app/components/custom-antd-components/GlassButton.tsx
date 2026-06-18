@@ -1,34 +1,67 @@
 import { Button } from "antd";
 import type { ButtonProps } from "antd";
-import { useState, type ReactNode } from "react";
+import {
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type TouchEvent,
+} from "react";
 
 function GlassButton({
   children,
   style,
-  onClick,
+  className,
+  onTouchStart,
+  onTouchEnd,
+  onTouchCancel,
+  onMouseDown,
+  onMouseUp,
+  onMouseLeave,
   ...props
 }: {
   children?: ReactNode;
 } & ButtonProps) {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    // 1. Restart the animation state immediately
-    setIsAnimating(false);
-
-    // 2. Use a microtask/timeout to force React to batch the state change and re-trigger the animation
-    setTimeout(() => {
-      setIsAnimating(true);
-    }, 10);
-
-    // 3. Fire any external click logic passed from parent components
-    if (onClick) onClick(e);
+  const handleTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
+    setIsPressed(true);
+    onTouchStart?.(event);
   };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLButtonElement>) => {
+    setIsPressed(false);
+    onTouchEnd?.(event);
+  };
+
+  const handleTouchCancel = (event: TouchEvent<HTMLButtonElement>) => {
+    setIsPressed(false);
+    onTouchCancel?.(event);
+  };
+
+  const handleMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
+    setIsPressed(true);
+    onMouseDown?.(event);
+  };
+
+  const handleMouseUp = (event: MouseEvent<HTMLButtonElement>) => {
+    setIsPressed(false);
+    onMouseUp?.(event);
+  };
+
+  const handleMouseLeave = (event: MouseEvent<HTMLButtonElement>) => {
+    setIsPressed(false);
+    onMouseLeave?.(event);
+  };
+
   return (
     <Button
-      className={`rounded-4xl! py ${isAnimating ? "ios-pop-animation" : ""}`}
-      onClick={handleClick}
-      onAnimationEnd={() => setIsAnimating(false)}
+      className={`rounded-4xl! ios-button-spring ${isPressed ? "is-pressed" : ""} ${className ?? ""}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       style={{
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif',
