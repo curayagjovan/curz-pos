@@ -47,7 +47,7 @@ export function MobilePageHeader({
         <Flex
           align="flex-start"
           justify="flex-start"
-          gap={26}
+          gap={24}
           vertical={showSearch}
         >
           <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
