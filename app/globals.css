@@ -151,3 +151,19 @@ html[data-theme="dark"] body {
     font-size: 16px !important;
   }
 }
+
+.ios-pop-animation {
+  animation: iosSpring 0.35s cubic-bezier(0.25, 1.5, 0.5, 1) forwards;
+}
+
+@keyframes iosSpring {
+  0% {
+    transform: scale(0.95); /* Compressed state on click */
+  }
+  50% {
+    transform: scale(1.03); /* Overshoot beyond normal size on release */
+  }
+  100% {
+    transform: scale(1); /* Settle back to original size */
+  }
+}
