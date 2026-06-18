@@ -1,45 +1,11 @@
 "use client";
 
-import { Badge, Input, Tabs, theme } from "antd";
-import {
-  AppstoreFilled,
-  ShoppingFilled,
-  FileTextFilled,
-  SettingFilled,
-  SearchOutlined,
-} from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { Input, theme } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 import { useThemeMode } from "@/app/components/providers/theme-provider";
 
 export type BottomNavTabKey = "products" | "cart" | "transactions" | "settings";
-
-interface TabItem {
-  key: BottomNavTabKey;
-  title: string;
-  icon: React.ReactNode;
-}
-
-const TAB_ITEMS: TabItem[] = [
-  {
-    key: "products",
-    title: "Products",
-    icon: <AppstoreFilled />,
-  },
-  {
-    key: "cart",
-    title: "Cart",
-    icon: <ShoppingFilled />,
-  },
-  {
-    key: "transactions",
-    title: "Transactions",
-    icon: <FileTextFilled />,
-  },
-  {
-    key: "settings",
-    title: "Settings",
-    icon: <SettingFilled />,
-  },
-];
 
 type BottomNavProps = {
   activeTab: BottomNavTabKey;
@@ -52,16 +18,54 @@ type BottomNavProps = {
 };
 
 export function BottomNav({
-  activeTab,
+  activeTab: _activeTab,
   isCompactHeight = false,
-  cartItemCount = 0,
+  cartItemCount: _cartItemCount = 0,
   showSearch = false,
   searchValue = "",
   onSearchChange,
-  onTabChange,
+  onTabChange: _onTabChange,
 }: BottomNavProps) {
+  void _activeTab;
+  void _cartItemCount;
+  void _onTabChange;
+
   const { mode } = useThemeMode();
   const { token } = theme.useToken();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  useEffect(() => {
+    if (!showSearch || typeof window === "undefined") {
+      return;
+    }
+
+    const updateKeyboardInset = () => {
+      const viewport = window.visualViewport;
+
+      if (!viewport) {
+        setKeyboardInset(0);
+        return;
+      }
+
+      const nextInset = Math.max(
+        0,
+        window.innerHeight - (viewport.height + viewport.offsetTop),
+      );
+
+      setKeyboardInset(nextInset);
+    };
+
+    updateKeyboardInset();
+    window.visualViewport?.addEventListener("resize", updateKeyboardInset);
+    window.visualViewport?.addEventListener("scroll", updateKeyboardInset);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateKeyboardInset);
+      window.visualViewport?.removeEventListener("scroll", updateKeyboardInset);
+    };
+  }, [showSearch]);
+
   const navTopPadding = 0;
   const navBottomPadding = isCompactHeight
     ? "calc(30px + env(safe-area-inset-bottom))"
@@ -69,6 +73,7 @@ export function BottomNav({
   const iconSize = isCompactHeight ? 24 : 22;
   const tabVerticalPadding = isCompactHeight ? 17 : 13;
   const tabMinHeight = isCompactHeight ? 58 : 48;
+  const isFloatingSearch = showSearch && isSearchFocused && keyboardInset > 0;
 
   return (
     <div
@@ -76,29 +81,38 @@ export function BottomNav({
         position: "fixed",
         left: 0,
         right: 0,
-        bottom: 0,
+        bottom: isFloatingSearch ? keyboardInset : 0,
         width: "100%",
         zIndex: 99,
+        pointerEvents: "none",
       }}
     >
       <div
         style={{
-          borderTop: `1px solid ${token.colorBorderSecondary}`,
-          background:
-            mode === "dark" ? "rgba(17,24,39,0.98)" : "rgba(255,255,255,0.98)",
-          backdropFilter: "blur(10px)",
-          paddingTop: navTopPadding,
-          paddingBottom: navBottomPadding,
+          borderTop: isFloatingSearch
+            ? "none"
+            : `1px solid ${token.colorBorderSecondary}`,
+          background: isFloatingSearch
+            ? "transparent"
+            : mode === "dark"
+              ? "rgba(17,24,39,0.98)"
+              : "rgba(255,255,255,0.98)",
+          backdropFilter: isFloatingSearch ? "none" : "blur(10px)",
+          paddingTop: isFloatingSearch ? 0 : navTopPadding,
+          paddingBottom: isFloatingSearch ? 8 : navBottomPadding,
           overflow: "visible",
           display: "flex",
           justifyContent: "center",
+          pointerEvents: "none",
         }}
       >
-        <div style={{ width: "100%", maxWidth: "500px" }}>
+        <div
+          style={{ width: "100%", maxWidth: "500px", pointerEvents: "auto" }}
+        >
           {showSearch ? (
             <div
               style={{
-                padding: "10px 14px 8px",
+                padding: isFloatingSearch ? "0 14px" : "10px 14px 8px",
               }}
             >
               <Input
@@ -107,6 +121,8 @@ export function BottomNav({
                 placeholder="Search by name or SKU..."
                 value={searchValue}
                 onChange={(event) => onSearchChange?.(event.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
                 allowClear
                 size="large"
                 style={{
