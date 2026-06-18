@@ -1,5 +1,4 @@
-import { Flex, Input, Layout, Typography, theme } from "antd";
-import CustomButton from "../custom-antd-components/GlassButton";
+import { Flex, Layout, Typography, theme } from "antd";
 import GlassButton from "../custom-antd-components/GlassButton";
 import { SettingOutlined } from "@ant-design/icons";
 
@@ -13,13 +12,7 @@ type MobilePageHeaderProps = {
   onSearchChange?: (value: string) => void;
 };
 
-export function MobilePageHeader({
-  mode,
-  title = "",
-  showSearch = false,
-  searchValue = "",
-  onSearchChange,
-}: MobilePageHeaderProps) {
+export function MobilePageHeader({ mode, title = "" }: MobilePageHeaderProps) {
   const { token } = theme.useToken();
 
   return (
@@ -44,12 +37,7 @@ export function MobilePageHeader({
           backdropFilter: "blur(10px)",
         }}
       >
-        <Flex
-          align="flex-start"
-          justify="flex-start"
-          gap={24}
-          vertical={showSearch}
-        >
+        <Flex align="flex-start" justify="flex-start" gap={12} vertical>
           <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
             <SettingOutlined />
           </GlassButton>
