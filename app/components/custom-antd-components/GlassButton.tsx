@@ -68,6 +68,7 @@ function GlassButton({
 
   return (
     <ConfigProvider
+      wave={{ disabled: true }}
       theme={{
         components: {
           Button: {
