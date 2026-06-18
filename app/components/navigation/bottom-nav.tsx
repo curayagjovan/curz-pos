@@ -1,11 +1,12 @@
 "use client";
 
-import { Badge, Tabs, theme } from "antd";
+import { Badge, Input, Tabs, theme } from "antd";
 import {
   AppstoreFilled,
   ShoppingFilled,
   FileTextFilled,
   SettingFilled,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { useThemeMode } from "@/app/components/providers/theme-provider";
 
@@ -44,6 +45,9 @@ type BottomNavProps = {
   activeTab: BottomNavTabKey;
   isCompactHeight?: boolean;
   cartItemCount?: number;
+  showSearch?: boolean;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   onTabChange: (tab: BottomNavTabKey) => void;
 };
 
@@ -51,6 +55,9 @@ export function BottomNav({
   activeTab,
   isCompactHeight = false,
   cartItemCount = 0,
+  showSearch = false,
+  searchValue = "",
+  onSearchChange,
   onTabChange,
 }: BottomNavProps) {
   const { mode } = useThemeMode();
@@ -88,7 +95,27 @@ export function BottomNav({
         }}
       >
         <div style={{ width: "100%", maxWidth: "500px" }}>
-          <Tabs
+          {showSearch ? (
+            <div
+              style={{
+                padding: "10px 14px 8px",
+              }}
+            >
+              <Input
+                prefix={<SearchOutlined />}
+                className="rounded-4xl!"
+                placeholder="Search by name or SKU..."
+                value={searchValue}
+                onChange={(event) => onSearchChange?.(event.target.value)}
+                allowClear
+                size="large"
+                style={{
+                  width: "100%",
+                }}
+              />
+            </div>
+          ) : null}
+          {/* <Tabs
             className="bottom-nav-tabs"
             activeKey={activeTab}
             onChange={(key) => onTabChange(key as BottomNavTabKey)}
@@ -135,7 +162,7 @@ export function BottomNav({
               padding: "0 10px",
               borderBottom: "none",
             }}
-          />
+          /> */}
         </div>
       </div>
       <style>{`

@@ -44,10 +44,10 @@ export function PageWrapper({
   searchValue = "",
   onSearchChange,
 }: PageWrapperProps) {
-  const headerOffset = showSearch
-    ? "calc(104px + env(safe-area-inset-top))"
-    : "calc(56px + env(safe-area-inset-top))";
-  const bottomOffset = "calc(72px + env(safe-area-inset-bottom))";
+  const headerOffset = "calc(56px + env(safe-area-inset-top))";
+  const bottomOffset = showSearch
+    ? "calc(142px + env(safe-area-inset-bottom))"
+    : "calc(72px + env(safe-area-inset-bottom))";
 
   return (
     <Layout
@@ -74,6 +74,9 @@ export function PageWrapper({
         activeTab={activeTab}
         isCompactHeight={isCompactHeight}
         cartItemCount={cartItemCount}
+        showSearch={showSearch}
+        searchValue={searchValue}
+        onSearchChange={onSearchChange}
         onTabChange={onTabChange}
       />
     </Layout>
