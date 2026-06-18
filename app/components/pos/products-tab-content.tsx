@@ -286,6 +286,7 @@ export function ProductsTabContent({
               }) => (
                 <VirtualList
                   style={{
+                    paddingInline: isCompactHeight ? 10 : 14,
                     width: Math.max(width ?? 1, 1),
                     height: Math.max(height ?? virtualListFallbackHeight, 1),
                   }}

@@ -29,25 +29,13 @@ html[data-theme="dark"] {
 }
 
 html[data-theme="light"] body {
-  background:
-    radial-gradient(
-      circle at 20% -10%,
-      rgba(59, 130, 246, 0.14),
-      transparent 42%
-    ),
-    linear-gradient(180deg, #f8fbff 0%, #eef4fc 100%);
-  color: #10243f;
+  background: #f2f2f7;
+  color: #000000;
 }
 
 html[data-theme="dark"] body {
-  background:
-    radial-gradient(
-      circle at 20% -10%,
-      rgba(59, 130, 246, 0.2),
-      transparent 40%
-    ),
-    linear-gradient(180deg, #0a1220 0%, #0f172a 100%);
-  color: #e2e8f0;
+  background: #1c1c1e;
+  color: #ffffff;
 }
 
 :root {

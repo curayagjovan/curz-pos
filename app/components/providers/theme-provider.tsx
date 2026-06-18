@@ -88,6 +88,27 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         theme={{
           algorithm:
             mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          token: {
+            // iOS Color System
+            ...(mode === "light"
+              ? {
+                  colorBgBase: "#F2F2F7",
+                  colorTextBase: "#000000",
+                  colorBorder: "#E5E5E5",
+                  colorBgContainer: "#FFFFFF",
+                  colorBgElevated: "#FFFFFF",
+                  colorBgLayout: "#F2F2F7",
+                }
+              : {
+                  colorBgBase: "#1C1C1E",
+                  colorTextBase: "#FFFFFF",
+                  colorBorder: "#3A3A3C",
+                  colorBgContainer: "#2C2C2E",
+                  colorBgElevated: "#3A3A3C",
+                  colorBgLayout: "#1C1C1E",
+                }),
+            fontFamily: '"Outfit", "SF Pro Display", "Segoe UI", sans-serif',
+          },
         }}
       >
         <AntdApp>{children}</AntdApp>
