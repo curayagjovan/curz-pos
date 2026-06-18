@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
-import konstaConfig from "konsta/config";
 
-export default konstaConfig({
+export default {
   content: ["./app/**/*.{js,ts,jsx,tsx,mdx}"],
   darkMode: "media",
   theme: {
@@ -15,4 +14,4 @@ export default konstaConfig({
     },
   },
   plugins: [],
-}) satisfies Config;
+} satisfies Config;

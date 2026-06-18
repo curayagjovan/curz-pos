@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Page } from "konsta/react";
+import PageContainer from "../components/page-container";
 
 const GLOW =
   "radial-gradient(circle at 30% 20%, rgba(14,165,233,0.18), transparent 45%), radial-gradient(circle at 70% 80%, rgba(56,189,248,0.16), transparent 45%)";
 
-export default function HomePage() {
+export default function ProductsPage() {
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
@@ -15,15 +15,10 @@ export default function HomePage() {
   }, []);
 
   return (
-    <Page className="bg-(--background)">
-      {/* ── Home content ── */}
+    <PageContainer title="Products">
       <div
-        className="grid min-h-dvh w-full place-items-center px-6 transition-opacity duration-500"
+        className="grid min-h-full w-full place-items-center transition-opacity duration-500"
         style={{
-          paddingTop: "var(--safe-top)",
-          paddingBottom: "var(--safe-bottom)",
-          paddingLeft: "calc(var(--safe-left) + 1.5rem)",
-          paddingRight: "calc(var(--safe-right) + 1.5rem)",
           opacity: splashDone ? 1 : 0,
           visibility: splashDone ? "visible" : "hidden",
         }}
@@ -68,6 +63,6 @@ export default function HomePage() {
           </h1>
         </div>
       </div>
-    </Page>
+    </PageContainer>
   );
 }
