@@ -8,8 +8,8 @@
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "id": "/",
-  "background_color": "#0b1220",
-  "theme_color": "#0b6bcb",
+  "background_color": "#1c1c1e",
+  "theme_color": "#f2f2f7",
   "icons": [
     {
       "src": "/pwa-icon.svg",
