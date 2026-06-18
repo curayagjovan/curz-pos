@@ -40,12 +40,6 @@ body {
   --muted: #8e8e93;
   --border: #d1d1d6;
   --tint: #007aff;
-
-  /* Safe area insets (populated by browser on iPhone) */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 @media (prefers-color-scheme: dark) {

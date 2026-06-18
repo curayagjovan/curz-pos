@@ -38,13 +38,8 @@ export default function ProductsPage() {
 
       {/* ── Splash overlay ── */}
       <div
-        className="fixed inset-0 z-50 grid place-items-center overflow-hidden transition-opacity duration-500"
+        className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-(--background) pt-safe pb-safe px-safe-6 transition-opacity duration-500"
         style={{
-          background: "var(--background)",
-          paddingTop: "var(--safe-top)",
-          paddingBottom: "var(--safe-bottom)",
-          paddingLeft: "calc(var(--safe-left) + 1.5rem)",
-          paddingRight: "calc(var(--safe-right) + 1.5rem)",
           opacity: splashDone ? 0 : 1,
           pointerEvents: splashDone ? "none" : "auto",
         }}
