@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Page } from "konsta/react";
 
 const GLOW =
   "radial-gradient(circle at 30% 20%, rgba(14,165,233,0.18), transparent 45%), radial-gradient(circle at 70% 80%, rgba(56,189,248,0.16), transparent 45%)";
@@ -14,11 +15,18 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-dvh">
+    <Page className="bg-[var(--background)]">
       {/* ── Home content ── */}
-      <main
-        className="grid min-h-dvh place-items-center px-6 transition-opacity duration-500"
-        style={{ opacity: splashDone ? 1 : 0 }}
+      <div
+        className="grid min-h-dvh w-full place-items-center px-6 transition-opacity duration-500"
+        style={{
+          paddingTop: "var(--safe-top)",
+          paddingBottom: "var(--safe-bottom)",
+          paddingLeft: "calc(var(--safe-left) + 1.5rem)",
+          paddingRight: "calc(var(--safe-right) + 1.5rem)",
+          opacity: splashDone ? 1 : 0,
+          visibility: splashDone ? "visible" : "hidden",
+        }}
         aria-hidden={!splashDone}
       >
         <div
@@ -31,13 +39,17 @@ export default function HomePage() {
             Hello, User 👋
           </h1>
         </div>
-      </main>
+      </div>
 
       {/* ── Splash overlay ── */}
       <div
         className="fixed inset-0 z-50 grid place-items-center overflow-hidden transition-opacity duration-500"
         style={{
           background: "var(--background)",
+          paddingTop: "var(--safe-top)",
+          paddingBottom: "var(--safe-bottom)",
+          paddingLeft: "calc(var(--safe-left) + 1.5rem)",
+          paddingRight: "calc(var(--safe-right) + 1.5rem)",
           opacity: splashDone ? 0 : 1,
           pointerEvents: splashDone ? "none" : "auto",
         }}
@@ -56,6 +68,6 @@ export default function HomePage() {
           </h1>
         </div>
       </div>
-    </div>
+    </Page>
   );
 }
