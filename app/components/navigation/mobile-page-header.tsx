@@ -1,4 +1,7 @@
 import { Flex, Input, Layout, Typography, theme } from "antd";
+import CustomButton from "../custom-antd-components/GlassButton";
+import GlassButton from "../custom-antd-components/GlassButton";
+import { SettingOutlined } from "@ant-design/icons";
 
 const { Header } = Layout;
 
@@ -30,16 +33,14 @@ export function MobilePageHeader({
       }}
     >
       <Header
-        className="border-b border-slate-300/30 backdrop-blur-md dark:border-slate-600/60"
         style={{
           height: "auto",
           lineHeight: "normal",
           paddingInline: 14,
           paddingTop: "calc(8px + env(safe-area-inset-top))",
           paddingBottom: 10,
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
           background:
-            mode === "dark" ? "rgba(17,24,39,0.92)" : token.colorBgElevated,
+            mode === "dark" ? "rgba(17,24,39,0.92)" : token.colorBgBase,
           backdropFilter: "blur(10px)",
         }}
       >
@@ -49,11 +50,14 @@ export function MobilePageHeader({
           gap={12}
           vertical={showSearch}
         >
+          <GlassButton size="large" style={{ alignSelf: "flex-end" }}>
+            {/* <SettingOutlined /> */}Edit
+          </GlassButton>
           <Typography.Title
-            level={4}
+            level={2}
             style={{
               margin: 0,
-              fontSize: 24,
+              // fontSize: 24,
               width: "100%",
               textAlign: "left",
               color: token.colorTextHeading,
@@ -61,7 +65,7 @@ export function MobilePageHeader({
           >
             {title}
           </Typography.Title>
-          {showSearch && (
+          {/* {showSearch && (
             <div
               style={{
                 width: "100%",
@@ -83,7 +87,7 @@ export function MobilePageHeader({
                 }}
               />
             </div>
-          )}
+          )} */}
         </Flex>
       </Header>
     </div>
