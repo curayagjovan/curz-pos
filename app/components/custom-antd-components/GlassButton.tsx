@@ -32,7 +32,7 @@ function GlassButton({
       style={{
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif',
-        fontWeight: 600,
+        fontWeight: 500,
         fontSize: 17,
         lineHeight: 1.2,
         letterSpacing: "-0.01em",
