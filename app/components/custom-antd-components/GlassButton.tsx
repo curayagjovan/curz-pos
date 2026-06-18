@@ -26,7 +26,7 @@ function GlassButton({
   };
   return (
     <Button
-      className={`rounded-4xl! ${isAnimating ? "ios-pop-animation" : ""}`}
+      className={`rounded-4xl! py ${isAnimating ? "ios-pop-animation" : ""}`}
       onClick={handleClick}
       onAnimationEnd={() => setIsAnimating(false)}
       style={{
@@ -35,6 +35,7 @@ function GlassButton({
         fontWeight: 500,
         fontSize: 17,
         lineHeight: 1.2,
+        height: 44,
         letterSpacing: "-0.01em",
         boxShadow: "0px 10px 20px 6px rgba(0,0,0,0.04)",
         backdropFilter: "blur(20px)",
