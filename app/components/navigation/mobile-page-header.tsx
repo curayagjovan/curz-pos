@@ -37,6 +37,7 @@ export function MobilePageHeader({
           height: "auto",
           lineHeight: "normal",
           paddingInline: 14,
+          paddingTop: "calc(env(safe-area-inset-top))",
           paddingBottom: 10,
           background:
             mode === "dark" ? "rgba(17,24,39,0.92)" : token.colorBgBase,
