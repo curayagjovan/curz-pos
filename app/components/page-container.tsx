@@ -17,7 +17,7 @@ type PageContainerProps = {
   splashLabel?: string;
 };
 
-const SPLASH_ROUTES = new Set(["/products"]);
+const SPLASH_ROUTES = new Set(["/", "/products"]);
 const SPLASH_SESSION_KEY = "shopmae:splash-seen";
 
 export default function PageContainer({

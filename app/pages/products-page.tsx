@@ -9,6 +9,7 @@ type ProductListItem = {
   name: string;
   price: number | string;
   sku: string;
+  description?: string;
 };
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-PH", {
@@ -75,7 +76,7 @@ export default function ProductsPage() {
       splashMode="auto"
       splashDurationMs={1700}
     >
-      <List strong inset>
+      <List strongIos inset>
         {isLoadingProducts && <ListItem title="Loading product list..." />}
 
         {!isLoadingProducts && productsError && (
@@ -97,6 +98,8 @@ export default function ProductsPage() {
                 </div>
               }
               title={product.name}
+              subtitle={product.sku}
+              text={product.description}
               after={formatPrice(product.price)}
             />
           ))}
