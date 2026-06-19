@@ -36,7 +36,6 @@ function PageHeader({ title, subtitle }: PageHeaderProps) {
       title={resolvedTitle}
       subtitle={resolvedSubtitle}
       large
-      transparent
       // bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
       right={
         <Link iconOnly>
