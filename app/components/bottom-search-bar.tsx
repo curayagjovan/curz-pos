@@ -1,24 +1,43 @@
-import {
-  MagnifyingGlassIcon,
-  PencilSquareIcon,
-} from "@heroicons/react/24/outline";
-import { Button } from "konsta/react";
+import { ShoppingCartIcon } from "@heroicons/react/24/outline";
+import { Link, Searchbar, Toolbar, ToolbarPane } from "konsta/react";
+import { useState } from "react";
 
-export default function BottomSearchBar() {
+type BottomSearchBarProps = {
+  onSearch?: (query: string) => void;
+};
+
+export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: { target: EventTarget | null }) => {
+    const value = (e.target as HTMLInputElement).value;
+    setSearchQuery(value);
+    onSearch?.(value);
+  };
+  const handleClear = () => {
+    setSearchQuery("");
+    onSearch?.("");
+  };
+  const handleDisable = () => {
+    setSearchQuery("");
+    onSearch?.("");
+  };
   return (
-    <div className="pointer-events-none fixed bottom-safe-2 left-safe-4 right-safe-4 z-40 flex items-center gap-3">
-      <div className="pointer-events-auto flex h-12 flex-1 items-center gap-2 rounded-full border border-(--border) bg-black/5 px-4 text-(--muted) backdrop-blur-md dark:bg-white/10">
-        <MagnifyingGlassIcon className="size-5" />
-        <span className="text-6 font-medium">Search</span>
-      </div>
-      <Button
-        clear
-        rounded
-        className="pointer-events-auto h-12 w-12 border border-(--border) bg-black/5 p-0 text-(--foreground) backdrop-blur-md dark:bg-white/10"
-        aria-label="Compose"
-      >
-        <PencilSquareIcon className="size-6" />
-      </Button>
-    </div>
+    <Toolbar className={`left-0 sticky bottom-0 w-full mt-auto`}>
+      <ToolbarPane>
+        <Searchbar
+          onInput={handleSearch}
+          value={searchQuery}
+          onClear={handleClear}
+          disableButton
+          onDisable={handleDisable}
+        />
+      </ToolbarPane>
+      <ToolbarPane>
+        <Link iconOnly>
+          <ShoppingCartIcon className="size-6" />
+        </Link>
+      </ToolbarPane>
+    </Toolbar>
   );
 }

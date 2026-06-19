@@ -15,6 +15,7 @@ type PageContainerProps = {
   splashDurationMs?: number;
   splashAppName?: string;
   splashLabel?: string;
+  onSearch?: (query: string) => void;
 };
 
 const SPLASH_ROUTES = new Set(["/", "/products"]);
@@ -28,6 +29,7 @@ export default function PageContainer({
   splashDurationMs = 1700,
   splashAppName,
   splashLabel,
+  onSearch,
 }: PageContainerProps) {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
@@ -101,7 +103,7 @@ export default function PageContainer({
       >
         {children}
       </main>
-      <BottomSearchBar />
+      <BottomSearchBar onSearch={onSearch} />
       <SplashScreen
         visible={splashVisible}
         appName={splashAppName}

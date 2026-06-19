@@ -30,6 +30,15 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredProducts = searchQuery.trim()
+    ? products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : products;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,10 +80,11 @@ export default function ProductsPage() {
       subtitle={
         isLoadingProducts
           ? "Loading products..."
-          : `${products.length} Products`
+          : `${filteredProducts.length} Products`
       }
       splashMode="auto"
       splashDurationMs={1700}
+      onSearch={setSearchQuery}
     >
       <List strongIos inset>
         {isLoadingProducts && <ListItem title="Loading product list..." />}
@@ -89,7 +99,14 @@ export default function ProductsPage() {
 
         {!isLoadingProducts &&
           !productsError &&
-          products.map((product) => (
+          products.length > 0 &&
+          filteredProducts.length === 0 && (
+            <ListItem title="No products match your search" />
+          )}
+
+        {!isLoadingProducts &&
+          !productsError &&
+          filteredProducts.map((product) => (
             <ListItem
               key={product.id}
               media={
