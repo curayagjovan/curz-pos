@@ -8,11 +8,7 @@ function PageHeader() {
       subtitle="131 Products"
       large
       transparent
-      bgClassName="backdrop-blur-xl"
-      colors={{
-        bgIos: "bg-white/78 dark:bg-black/70",
-        textIos: "text-black dark:text-white",
-      }}
+      bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
       right={
         <Link
           iconOnly

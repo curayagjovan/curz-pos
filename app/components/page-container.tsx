@@ -9,7 +9,7 @@ type PageContainerProps = {
 
 export default function PageContainer({ children }: PageContainerProps) {
   return (
-    <Page className="bg-(--background)">
+    <Page>
       <PageHeader />
 
       <main className="px-safe-4 pt-4 pb-safe-24">{children}</main>

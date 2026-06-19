@@ -8,13 +8,10 @@ export default function KonstaProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [isDark, setIsDark] = useState(false);
-
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     const applyTheme = (matches: boolean) => {
-      setIsDark(matches);
       document.documentElement.dataset.theme = matches ? "dark" : "light";
     };
 
@@ -32,7 +29,7 @@ export default function KonstaProvider({
   }, []);
 
   return (
-    <App dark={isDark} safeAreas theme="ios">
+    <App safeAreas theme="ios">
       {children}
     </App>
   );
