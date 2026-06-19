@@ -1,7 +1,12 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  content: ["./app/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/konsta/shared/**/*.{js,mjs}",
+    "./node_modules/konsta/react/**/*.{js,mjs}",
+    "./node_modules/konsta/styles/**/*.css",
+  ],
   darkMode: "media",
   theme: {
     extend: {

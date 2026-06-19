@@ -1,38 +1,29 @@
-import {
-  EllipsisHorizontalIcon,
-  ChevronLeftIcon,
-} from "@heroicons/react/24/outline";
-import { Button } from "konsta/react";
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+import { Link, Navbar } from "konsta/react";
 
 function PageHeader() {
   return (
-    <header className="sticky top-0 z-30 bg-(--background)/85 px-safe-4 pt-safe-2 backdrop-blur-md">
-      <div className="mb-5 flex items-center justify-between">
-        <Button
-          clear
-          rounded
-          className="h-12 w-12 border border-(--border) bg-black/5 p-0 text-(--foreground) dark:bg-white/10"
-          aria-label="Back"
-        >
-          <ChevronLeftIcon className="size-6" />
-        </Button>
-        <Button
-          clear
-          rounded
-          className="h-12 w-12 border border-(--border) bg-black/5 p-0 text-(--foreground) dark:bg-white/10"
-          aria-label="More"
+    <Navbar
+      title="Products"
+      subtitle="131 Products"
+      large
+      transparent
+      bgClassName="backdrop-blur-xl"
+      colors={{
+        bgIos: "bg-white/78 dark:bg-black/70",
+        textIos: "text-black dark:text-white",
+      }}
+      right={
+        <Link
+          iconOnly
+          colors={{
+            navbarTextIos: "text-black dark:text-white",
+          }}
         >
           <EllipsisHorizontalIcon className="size-6" />
-        </Button>
-      </div>
-
-      <div>
-        <h1 className="text-5xl font-bold tracking-[-0.03em] text-(--foreground)">
-          Products
-        </h1>
-        <p className="mt-1 text-3 text-(--muted)">131 Products</p>
-      </div>
-    </header>
+        </Link>
+      }
+    />
   );
 }
 

@@ -12,7 +12,7 @@ export default function PageContainer({ children }: PageContainerProps) {
     <Page className="bg-(--background)">
       <PageHeader />
 
-      <main className="flex-1 pb-safe px-safe-4 pt-4">{children}</main>
+      <main className="px-safe-4 pt-4 pb-safe-24">{children}</main>
       <BottomSearchBar />
     </Page>
   );
