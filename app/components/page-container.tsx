@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Page } from "konsta/react";
 import BottomSearchBar from "./bottom-search-bar";
@@ -30,43 +30,62 @@ export default function PageContainer({
   splashLabel,
 }: PageContainerProps) {
   const pathname = usePathname();
-  const [hasSeenSplashThisSession] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.sessionStorage.getItem(SPLASH_SESSION_KEY) === "1";
-  });
-
-  const showSplash = useMemo(() => {
-    if (splashMode === "always") {
-      return true;
-    }
-
-    if (splashMode === "never") {
-      return false;
-    }
-
-    return SPLASH_ROUTES.has(pathname) && !hasSeenSplashThisSession;
-  }, [hasSeenSplashThisSession, pathname, splashMode]);
-
-  const [splashDone, setSplashDone] = useState(() => !showSplash);
+  const [isMounted, setIsMounted] = useState(false);
+  // Keep initial SSR/client render deterministic, then compute splash on mount.
+  const [splashVisible, setSplashVisible] = useState(false);
+  const [contentVisible, setContentVisible] = useState(true);
 
   useEffect(() => {
-    if (!showSplash) {
+    const mountId = window.setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+
+    return () => window.clearTimeout(mountId);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setSplashDone(true);
+    const hasSeenSplashThisSession =
+      window.sessionStorage.getItem(SPLASH_SESSION_KEY) === "1";
+
+    const shouldShowSplash =
+      splashMode === "always" ||
+      (splashMode === "auto" &&
+        SPLASH_ROUTES.has(pathname) &&
+        !hasSeenSplashThisSession);
+
+    const showOrResetId = window.setTimeout(() => {
+      if (!shouldShowSplash) {
+        setSplashVisible(false);
+        setContentVisible(true);
+        return;
+      }
+
+      setSplashVisible(true);
+      setContentVisible(false);
+    }, 0);
+
+    if (!shouldShowSplash) {
+      return () => window.clearTimeout(showOrResetId);
+    }
+
+    const hideId = window.setTimeout(() => {
+      setSplashVisible(false);
+      setContentVisible(true);
 
       if (splashMode === "auto") {
         window.sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
       }
     }, splashDurationMs);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [showSplash, splashDurationMs, splashMode]);
+    return () => {
+      window.clearTimeout(showOrResetId);
+      window.clearTimeout(hideId);
+    };
+  }, [isMounted, pathname, splashDurationMs, splashMode]);
 
   return (
     <Page>
@@ -75,16 +94,16 @@ export default function PageContainer({
       <main
         className="transition-opacity duration-500"
         style={{
-          opacity: splashDone ? 1 : 0,
-          visibility: splashDone ? "visible" : "hidden",
+          opacity: contentVisible ? 1 : 0,
+          visibility: contentVisible ? "visible" : "hidden",
         }}
-        aria-hidden={!splashDone}
+        aria-hidden={!contentVisible}
       >
         {children}
       </main>
       <BottomSearchBar />
       <SplashScreen
-        visible={!splashDone}
+        visible={splashVisible}
         appName={splashAppName}
         label={splashLabel}
       />

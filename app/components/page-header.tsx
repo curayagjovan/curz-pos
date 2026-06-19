@@ -36,7 +36,7 @@ function PageHeader({ title, subtitle }: PageHeaderProps) {
       title={resolvedTitle}
       subtitle={resolvedSubtitle}
       large
-      // bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
+      bgClassName="bg-gradient-to-b from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0"
       right={
         <Link iconOnly>
           <EllipsisHorizontalIcon className="size-6" />

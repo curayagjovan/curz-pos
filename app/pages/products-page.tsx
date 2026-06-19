@@ -98,8 +98,7 @@ export default function ProductsPage() {
                 </div>
               }
               title={product.name}
-              subtitle={product.sku}
-              text={product.description}
+              text={product.sku}
               after={formatPrice(product.price)}
             />
           ))}
