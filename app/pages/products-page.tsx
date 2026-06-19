@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  MagnifyingGlassIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline";
+import { Button } from "konsta/react";
 import PageContainer from "../components/page-container";
 
 const GLOW =
@@ -8,6 +13,35 @@ const GLOW =
 
 export default function ProductsPage() {
   const [splashDone, setSplashDone] = useState(false);
+
+  const sections = [
+    {
+      heading: "Yesterday",
+      items: [{ title: "BED ate", meta: "Yesterday  2x4x8 - 3pcs" }],
+    },
+    {
+      heading: "Previous 7 Days",
+      items: [
+        { title: "Switch", meta: "Monday  TP-Link TL-SG105 or TL-SG1005D" },
+        { title: "Screen", meta: "6/11/26  124 inches x 61 inches" },
+      ],
+    },
+    {
+      heading: "Previous 30 Days",
+      items: [
+        {
+          title: "Do you post-process your photos?",
+          meta: "5/22/26  Yes, absolutely.",
+        },
+        { title: "GitHub PAT for HISD3", meta: "5/13/26  No additional text" },
+        { title: "09953442018", meta: "5/12/26  No additional text" },
+      ],
+    },
+    {
+      heading: "May",
+      items: [{ title: "4 2 kilo", meta: "5/11/26  3 1 kilo" }],
+    },
+  ];
 
   useEffect(() => {
     const t = window.setTimeout(() => setSplashDone(true), 1700);
@@ -17,22 +51,53 @@ export default function ProductsPage() {
   return (
     <PageContainer>
       <div
-        className="grid min-h-full w-full place-items-center transition-opacity duration-500"
+        className="transition-opacity duration-500"
         style={{
           opacity: splashDone ? 1 : 0,
           visibility: splashDone ? "visible" : "hidden",
         }}
         aria-hidden={!splashDone}
       >
-        <div
-          className={splashDone ? "home-greeting text-center" : "text-center"}
-        >
-          <p className="mb-2 text-xs font-semibold tracking-[0.3em] text-muted">
-            SHOPMAE
-          </p>
-          <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
-            Hello, User 👋
-          </h1>
+        <div className="space-y-7 pb-30">
+          {sections.map((section) => (
+            <section key={section.heading}>
+              <h2 className="mb-3 text-4 font-semibold text-(--foreground)">
+                {section.heading}
+              </h2>
+              <div className="overflow-hidden rounded-4xl border border-(--border) bg-black/5 dark:bg-white/10">
+                {section.items.map((item, index) => (
+                  <div key={item.title}>
+                    <div className="px-5 py-3">
+                      <p className="truncate text-7 font-semibold text-(--foreground)">
+                        {item.title}
+                      </p>
+                      <p className="mt-0.5 truncate text-3 text-(--muted)">
+                        {item.meta}
+                      </p>
+                    </div>
+                    {index < section.items.length - 1 && (
+                      <div className="mx-5 h-px bg-(--border)" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <div className="pointer-events-none fixed bottom-safe-3 left-safe-4 right-safe-4 z-40 flex items-center gap-3">
+          <div className="pointer-events-auto flex h-12 flex-1 items-center gap-2 rounded-full border border-(--border) bg-black/5 px-4 text-(--muted) backdrop-blur-md dark:bg-white/10">
+            <MagnifyingGlassIcon className="size-5" />
+            <span className="text-6 font-medium">Search</span>
+          </div>
+          <Button
+            clear
+            rounded
+            className="pointer-events-auto h-12 w-12 border border-(--border) bg-black/5 p-0 text-(--foreground) backdrop-blur-md dark:bg-white/10"
+            aria-label="Compose"
+          >
+            <PencilSquareIcon className="size-6" />
+          </Button>
         </div>
       </div>
 
