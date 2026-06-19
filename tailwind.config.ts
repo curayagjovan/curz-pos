@@ -7,7 +7,7 @@ export default {
     "./node_modules/konsta/react/**/*.{js,mjs}",
     "./node_modules/konsta/styles/**/*.css",
   ],
-  darkMode: "media",
+  darkMode: "class",
   theme: {
     extend: {
       colors: {

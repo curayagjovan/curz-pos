@@ -10,12 +10,7 @@ function PageHeader() {
       transparent
       bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
       right={
-        <Link
-          iconOnly
-          colors={{
-            navbarTextIos: "text-black dark:text-white",
-          }}
-        >
+        <Link iconOnly>
           <EllipsisHorizontalIcon className="size-6" />
         </Link>
       }

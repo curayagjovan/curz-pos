@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { App } from "konsta/react";
 
 export default function KonstaProvider({
@@ -11,8 +11,10 @@ export default function KonstaProvider({
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    const applyTheme = (matches: boolean) => {
-      document.documentElement.dataset.theme = matches ? "dark" : "light";
+    const applyTheme = (isDark: boolean) => {
+      const root = document.documentElement;
+      root.dataset.theme = isDark ? "dark" : "light";
+      root.classList.toggle("dark", isDark);
     };
 
     applyTheme(mediaQuery.matches);
@@ -21,10 +23,18 @@ export default function KonstaProvider({
       applyTheme(event.matches);
     };
 
+    const syncFromSystem = () => {
+      applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches);
+    };
+
     mediaQuery.addEventListener("change", handleChange);
+    document.addEventListener("visibilitychange", syncFromSystem);
+    window.addEventListener("pageshow", syncFromSystem);
 
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
+      document.removeEventListener("visibilitychange", syncFromSystem);
+      window.removeEventListener("pageshow", syncFromSystem);
     };
   }, []);
 
