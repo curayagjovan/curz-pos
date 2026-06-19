@@ -11,10 +11,11 @@ export default function PageContainer({ children }: PageContainerProps) {
       <Navbar
         title="Navbar"
         subtitle="Subtitle"
-        className="top-0 sticky"
+        className="top-0 sticky bg-none"
+        colors={{ bgIos: "bg-transparent" }}
         large
         transparent
-        right={<Link>Right</Link>}
+        right={<Link className="touch-ripple-current">Right</Link>}
       />
 
       <main className="flex-1 pt-3">{children}</main>
