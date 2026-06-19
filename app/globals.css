@@ -56,6 +56,17 @@ textarea {
   --muted: #8e8e93;
   --border: #d1d1d6;
   --tint: #007aff;
+  --splash-glow:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(14, 165, 233, 0.16),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      rgba(56, 189, 248, 0.14),
+      transparent 46%
+    );
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +77,17 @@ textarea {
     --muted: #8e8e93;
     --border: #38383a;
     --tint: #0a84ff;
+    --splash-glow:
+      radial-gradient(
+        circle at 30% 20%,
+        rgba(56, 189, 248, 0.28),
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 70% 80%,
+        rgba(14, 165, 233, 0.22),
+        transparent 48%
+      );
   }
 }
 
@@ -76,6 +98,17 @@ html[data-theme="dark"] {
   --muted: #8e8e93;
   --border: #38383a;
   --tint: #0a84ff;
+  --splash-glow:
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(56, 189, 248, 0.28),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      rgba(14, 165, 233, 0.22),
+      transparent 48%
+    );
 }
 
 @keyframes splash-reveal {

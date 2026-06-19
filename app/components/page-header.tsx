@@ -1,14 +1,43 @@
+"use client";
+
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+import { usePathname } from "next/navigation";
 import { Link, Navbar } from "konsta/react";
 
-function PageHeader() {
+type PageHeaderProps = {
+  title?: string;
+  subtitle?: string;
+};
+
+function formatPageName(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1);
+
+  if (!lastSegment) {
+    return "Products";
+  }
+
+  return lastSegment
+    .split("-")
+    .join(" ")
+    .split("_")
+    .join(" ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function PageHeader({ title, subtitle }: PageHeaderProps) {
+  const pathname = usePathname();
+  const pageName = formatPageName(pathname);
+  const resolvedTitle = title ?? pageName;
+  const resolvedSubtitle = subtitle ?? pageName;
+
   return (
     <Navbar
-      title="Products"
-      subtitle="131 Products"
+      title={resolvedTitle}
+      subtitle={resolvedSubtitle}
       large
       transparent
-      bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
+      // bgClassName="bg-ios-light-surface dark:bg-ios-dark-surface"
       right={
         <Link iconOnly>
           <EllipsisHorizontalIcon className="size-6" />
