@@ -6,7 +6,7 @@ import { Button } from "konsta/react";
 
 function PageHeader() {
   return (
-    <header className="pt-safe-3 px-safe-4">
+    <header className="sticky top-safe z-30 bg-(--background)/85 px-safe-4 pt-safe-3 backdrop-blur-md">
       <div className="mb-5 flex items-center justify-between">
         <Button
           clear
