@@ -89,6 +89,30 @@ html[data-theme="dark"] {
   }
 }
 
+/* Smooth reversed blur mask for bottom-fixed Konsta navbar. */
+.bottom-search-navbar > div:first-child {
+  top: auto;
+  bottom: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.92) 28%,
+    rgba(0, 0, 0, 0.7) 58%,
+    rgba(0, 0, 0, 0.35) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.92) 28%,
+    rgba(0, 0, 0, 0.7) 58%,
+    rgba(0, 0, 0, 0.35) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
 /* Prevent iOS Safari zoom on focus for small controls. */
 @supports (-webkit-touch-callout: none) {
   input,
