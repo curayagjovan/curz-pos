@@ -24,9 +24,9 @@ export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
   };
   return (
     <Navbar
-      className="bottom-0 fixed left-0 mt-auto right-0 top-auto w-full z-40 "
+      className="bottom-safe fixed left-0 mt-auto right-0 top-auto w-full z-40 "
       bgClassName="bg-gradient-to-t from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0 !h-full"
-      titleClassName="px-3 pt-2 pb-[max(8px,var(--k-safe-area-bottom))] !w-full pr-20"
+      titleClassName="!w-full pl-8 pr-20"
       title={
         <Searchbar
           onInput={handleSearch}
