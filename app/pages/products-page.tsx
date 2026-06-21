@@ -82,8 +82,6 @@ export default function ProductsPage() {
           ? "Loading products..."
           : `${filteredProducts.length} Products`
       }
-      splashMode="auto"
-      splashDurationMs={1700}
       onSearch={setSearchQuery}
     >
       <List strongIos inset>
