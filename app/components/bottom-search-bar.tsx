@@ -8,6 +8,7 @@ type BottomSearchBarProps = {
 
 export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
   const handleSearch = (e: { target: EventTarget | null }) => {
     const value = (e.target as HTMLInputElement).value;
@@ -26,20 +27,27 @@ export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
     <Navbar
       className="bottom-search-navbar bottom-0 fixed left-0 mt-auto right-0 top-auto w-full z-40 pt-0! pb-[env(safe-area-inset-bottom)]"
       bgClassName="bg-gradient-to-t from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0 !h-full"
-      titleClassName="!w-full pl-8 pr-20"
+      titleClassName={`!w-full pl-8 ${isSearchActive ? "pr-8" : "pr-20"}`}
       title={
         <Searchbar
           onInput={handleSearch}
           value={searchQuery}
           onClear={handleClear}
+          onFocus={() => setIsSearchActive(true)}
+          onBlur={() => setIsSearchActive(false)}
           disableButton
-          onDisable={handleDisable}
+          onDisable={() => {
+            setIsSearchActive(false);
+            handleDisable();
+          }}
         />
       }
       right={
-        <Link iconOnly>
-          <ShoppingCartIcon className="size-6" />
-        </Link>
+        !isSearchActive && (
+          <Link iconOnly>
+            <ShoppingCartIcon className="size-6" />
+          </Link>
+        )
       }
     />
   );
