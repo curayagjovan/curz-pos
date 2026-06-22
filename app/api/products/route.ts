@@ -39,14 +39,20 @@ export async function GET(request: Request) {
     const query = url.searchParams.get("q")?.trim() ?? "";
     const cursorParam = url.searchParams.get("cursor")?.trim() || null;
     const pageParam = Number(url.searchParams.get("page") ?? "1");
+    const skipParam = Number(url.searchParams.get("skip") ?? "0");
     const limitParam = Number(url.searchParams.get("limit") ?? "18");
     const hasPaginationParams =
       url.searchParams.has("cursor") ||
       url.searchParams.has("page") ||
+      url.searchParams.has("skip") ||
       url.searchParams.has("limit") ||
       url.searchParams.has("q");
 
     const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const skip =
+      url.searchParams.has("skip") && !Number.isNaN(skipParam) && skipParam >= 0
+        ? skipParam
+        : (page - 1) * limitParam;
     const limit =
       Number.isNaN(limitParam) || limitParam < 1
         ? 18
@@ -72,9 +78,10 @@ export async function GET(request: Request) {
       return NextResponse.json(products);
     }
 
-    if (url.searchParams.has("page") && !url.searchParams.has("cursor")) {
-      const skip = (page - 1) * limit;
-
+    if (
+      (url.searchParams.has("page") || url.searchParams.has("skip")) &&
+      !url.searchParams.has("cursor")
+    ) {
       const products = await prisma.product.findMany({
         where: baseWhere,
         orderBy: { name: "asc" },
@@ -91,15 +98,11 @@ export async function GET(request: Request) {
         },
       });
 
+      const total = await prisma.product.count({ where: baseWhere });
       const hasMore = products.length > limit;
       const items = hasMore ? products.slice(0, limit) : products;
 
-      return NextResponse.json({
-        items,
-        page,
-        limit,
-        hasMore,
-      });
+      return NextResponse.json({ items, total, hasMore });
     }
 
     let cursorWhere: Prisma.ProductWhereInput = baseWhere;

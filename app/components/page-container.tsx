@@ -8,10 +8,11 @@ import PageHeader from "./page-header";
 type PageContainerProps = {
   children: ReactNode;
   title?: string;
-  subtitle?: string;
+  subtitle?: string | React.ReactNode;
   onSearch?: (query: string) => void;
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
+  isLoading?: boolean;
 };
 
 export default function PageContainer({
@@ -21,6 +22,7 @@ export default function PageContainer({
   onSearch,
   onRefresh,
   isRefreshing = false,
+  isLoading = false,
 }: PageContainerProps) {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const pullStartYRef = useRef<number | null>(null);
@@ -111,7 +113,7 @@ export default function PageContainer({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
     >
-      <PageHeader title={title} subtitle={subtitle} />
+      <PageHeader title={title} subtitle={subtitle} isLoading={isLoading} />
 
       <div
         className="pointer-events-none sticky top-[max(16px,var(--k-safe-area-top))] z-20 flex justify-center"

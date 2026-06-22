@@ -2,11 +2,12 @@
 
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
-import { Link, Navbar } from "konsta/react";
+import { Link, Navbar, Preloader } from "konsta/react";
 
 type PageHeaderProps = {
   title?: string;
-  subtitle?: string;
+  subtitle?: string | React.ReactNode;
+  isLoading?: boolean;
 };
 
 function formatPageName(pathname: string) {
@@ -25,7 +26,7 @@ function formatPageName(pathname: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function PageHeader({ title, subtitle }: PageHeaderProps) {
+function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
   const pathname = usePathname();
   const pageName = formatPageName(pathname);
   const resolvedTitle = title ?? pageName;
@@ -36,7 +37,13 @@ function PageHeader({ title, subtitle }: PageHeaderProps) {
       title={
         <span className="flex flex-col leading-tight">
           <span>{resolvedTitle}</span>
-          <span className="mt-1 text-[15px] font-medium text-[#2c2c2e] dark:text-[#8e8e93]">
+          <span className="mt-1 flex items-center gap-2 text-[15px] font-medium text-[#2c2c2e] dark:text-[#8e8e93]">
+            {isLoading && (
+              <Preloader
+                className="scale-50 text-[#2c2c2e] dark:text-[#8e8e93]"
+                style={{ width: "16px", height: "16px" }}
+              />
+            )}
             {resolvedSubtitle}
           </span>
         </span>
