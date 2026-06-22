@@ -1,5 +1,6 @@
 "use client";
 
+import { ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
 import PageContainer from "../components/page-container";
@@ -47,6 +48,8 @@ export default function ProductsPage() {
           p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : products;
+  const isEmptyProductsState = true;
+  // !isLoadingProducts && !productsError && products.length === 0;
 
   const refreshProducts = async () => {
     try {
@@ -182,59 +185,46 @@ export default function ProductsPage() {
       isRefreshing={isRefreshingProducts}
       isLoading={isLoadingProducts || isLoadingMore}
     >
-      {/* // isLoadingProducts
-      //   ? "Loading products..."
-      //   : `${filteredProducts.length} Products` */}
-      <List strongIos inset>
-        {/* {isLoadingProducts && (
-          <div
-            className="pointer-events-none sticky top-[max(16px,var(--k-safe-area-top))] z-20 flex justify-center"
-            style={{
-              transition: "opacity 180ms ease, transform 180ms ease",
-            }}
-          >
-            <div className="rounded-full  px-3 py-2 shadow-sm backdrop-blur-sm ">
-              <Preloader className="scale-75" />
-            </div>
-          </div>
-        )} */}
-
-        {!isLoadingProducts && productsError && (
-          <ListItem title={productsError} />
-        )}
-
-        {!isLoadingProducts && !productsError && products.length === 0 && (
-          <ListItem title="No products yet" />
-        )}
-
-        {!isLoadingProducts &&
-          !productsError &&
-          products.length > 0 &&
-          filteredProducts.length === 0 && (
-            <ListItem title="No products match your search" />
+      {isEmptyProductsState ? (
+        <div className="flex min-h-[calc(100svh-16rem)] flex-col items-center justify-center px-6 pb-24 text-center">
+          <ShoppingBagIcon className="mb-4 size-14 text-[#8e8e93]" />
+          <p className="text-[36px] font-semibold leading-tight tracking-[-0.015em] text-foreground">
+            No Products
+          </p>
+        </div>
+      ) : (
+        <List strongIos inset>
+          {!isLoadingProducts && productsError && (
+            <ListItem title={productsError} />
           )}
 
-        {!isLoadingProducts &&
-          !productsError &&
-          filteredProducts.map((product) => (
-            <ListItem
-              key={product.id}
-              media={
-                <div className="flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
-                  {product.sku.slice(0, 2).toUpperCase()}
-                </div>
-              }
-              title={product.name}
-              text={product.sku}
-              after={formatPrice(product.price)}
-            />
-          ))}
+          {!isLoadingProducts &&
+            !productsError &&
+            products.length > 0 &&
+            filteredProducts.length === 0 && (
+              <ListItem title="No products match your search" />
+            )}
 
-        {/* Sentinel element for infinite scroll */}
-        <div ref={sentinelRef} className="py-4" />
+          {!isLoadingProducts &&
+            !productsError &&
+            filteredProducts.map((product) => (
+              <ListItem
+                key={product.id}
+                media={
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
+                    {product.sku.slice(0, 2).toUpperCase()}
+                  </div>
+                }
+                title={product.name}
+                text={product.sku}
+                after={formatPrice(product.price)}
+              />
+            ))}
 
-        {isLoadingMore && <ListItem title="Loading more products..." />}
-      </List>
+          {/* Sentinel element for infinite scroll */}
+          <div ref={sentinelRef} className="py-4" />
+        </List>
+      )}
     </PageContainer>
   );
 }
