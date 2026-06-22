@@ -124,9 +124,6 @@ export default function ProductsPage() {
             : product,
         ),
       );
-      setQuickViewProduct((prev) =>
-        prev?.id === productId ? { ...prev, isPinned: nextIsPinned } : prev,
-      );
 
       try {
         const response = await fetch(`/api/products/${productId}/pin`, {
@@ -151,11 +148,6 @@ export default function ProductsPage() {
               : product,
           ),
         );
-        setQuickViewProduct((prev) =>
-          prev?.id === updatedProduct.id
-            ? { ...prev, isPinned: updatedProduct.isPinned }
-            : prev,
-        );
       } catch (error) {
         console.error("Unable to update pinned product", error);
         setProducts((prev) =>
@@ -164,9 +156,6 @@ export default function ProductsPage() {
               ? { ...product, isPinned }
               : product,
           ),
-        );
-        setQuickViewProduct((prev) =>
-          prev?.id === productId ? { ...prev, isPinned } : prev,
         );
       }
     },

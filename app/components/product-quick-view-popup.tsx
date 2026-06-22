@@ -139,11 +139,11 @@ export default function ProductQuickViewPopup({
 
             <button
               className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left active:bg-black/6 dark:active:bg-white/6"
-              onClick={async () => {
-                if (onPinProduct) {
-                  await onPinProduct(product.id, product.isPinned ?? false);
-                }
+              onClick={() => {
                 onClose();
+                if (onPinProduct) {
+                  void onPinProduct(product.id, product.isPinned ?? false);
+                }
               }}
             >
               <MapPinIcon
