@@ -3,15 +3,9 @@
 import { ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
+import ProductQuickViewPopup from "../components/product-quick-view-popup";
 import PageContainer from "../components/page-container";
-
-type ProductListItem = {
-  id: string;
-  name: string;
-  price: number | string;
-  sku: string;
-  description?: string;
-};
+import { type ProductListItem } from "../types";
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -28,6 +22,7 @@ function formatPrice(value: number | string) {
 }
 
 const ITEMS_PER_PAGE = 20;
+const LONG_PRESS_DURATION_MS = 320;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -40,6 +35,13 @@ export default function ProductsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [quickViewProduct, setQuickViewProduct] =
+    useState<ProductListItem | null>(null);
+  const [quickViewNotice, setQuickViewNotice] = useState<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickViewNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const filteredProducts = searchQuery.trim()
     ? products.filter(
@@ -48,8 +50,57 @@ export default function ProductsPage() {
           p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : products;
-  const isEmptyProductsState = true;
-  // !isLoadingProducts && !productsError && products.length === 0;
+  const isEmptyProductsState =
+    !isLoadingProducts && !productsError && products.length === 0;
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const startLongPress = useCallback(
+    (product: ProductListItem) => {
+      clearLongPressTimer();
+      longPressTimerRef.current = setTimeout(() => {
+        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+          navigator.vibrate(12);
+        }
+        setQuickViewProduct(product);
+        longPressTimerRef.current = null;
+      }, LONG_PRESS_DURATION_MS);
+    },
+    [clearLongPressTimer],
+  );
+
+  const showQuickViewNotice = useCallback((message: string) => {
+    setQuickViewNotice(message);
+    if (quickViewNoticeTimerRef.current) {
+      clearTimeout(quickViewNoticeTimerRef.current);
+    }
+    quickViewNoticeTimerRef.current = setTimeout(() => {
+      setQuickViewNotice(null);
+      quickViewNoticeTimerRef.current = null;
+    }, 1200);
+  }, []);
+
+  const copyToClipboard = useCallback(
+    async (value: string, label: string) => {
+      try {
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(value);
+          showQuickViewNotice(`${label} copied`);
+          return;
+        }
+      } catch {
+        // Fall through to a user-visible fallback message.
+      }
+
+      showQuickViewNotice(`Unable to copy ${label.toLowerCase()}`);
+    },
+    [showQuickViewNotice],
+  );
 
   const refreshProducts = async () => {
     try {
@@ -177,6 +228,15 @@ export default function ProductsPage() {
     return () => observer.disconnect();
   }, [loadMore, hasMore, isLoadingMore]);
 
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+      if (quickViewNoticeTimerRef.current) {
+        clearTimeout(quickViewNoticeTimerRef.current);
+      }
+    };
+  }, [clearLongPressTimer]);
+
   return (
     <PageContainer
       subtitle={`${totalProducts} Products`}
@@ -210,6 +270,18 @@ export default function ProductsPage() {
             filteredProducts.map((product) => (
               <ListItem
                 key={product.id}
+                onTouchStart={() => startLongPress(product)}
+                onTouchEnd={clearLongPressTimer}
+                onTouchCancel={clearLongPressTimer}
+                onTouchMove={clearLongPressTimer}
+                onMouseDown={() => startLongPress(product)}
+                onMouseUp={clearLongPressTimer}
+                onMouseLeave={clearLongPressTimer}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  clearLongPressTimer();
+                  setQuickViewProduct(product);
+                }}
                 media={
                   <div className="flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
                     {product.sku.slice(0, 2).toUpperCase()}
@@ -225,6 +297,24 @@ export default function ProductsPage() {
           <div ref={sentinelRef} className="py-4" />
         </List>
       )}
+
+      <ProductQuickViewPopup
+        product={quickViewProduct}
+        notice={quickViewNotice}
+        onClose={() => {
+          setQuickViewProduct(null);
+          setQuickViewNotice(null);
+        }}
+        onCopySku={() => {
+          if (!quickViewProduct) return;
+          void copyToClipboard(quickViewProduct.sku, "SKU");
+        }}
+        onCopyName={() => {
+          if (!quickViewProduct) return;
+          void copyToClipboard(quickViewProduct.name, "Name");
+        }}
+        formatPrice={formatPrice}
+      />
     </PageContainer>
   );
 }

@@ -14,3 +14,11 @@ export type TransactionCacheEntry = {
   total: number;
   updatedAt: number;
 };
+
+export type ProductListItem = {
+  id: string;
+  name: string;
+  price: number | string;
+  sku: string;
+  description?: string;
+};
