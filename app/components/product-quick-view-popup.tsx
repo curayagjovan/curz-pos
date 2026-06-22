@@ -105,7 +105,7 @@ export default function ProductQuickViewPopup({
           style={{ top: 0, visibility: "hidden" }}
         >
           {/* Preview card */}
-          <div className="overflow-hidden rounded-[20px] bg-white/90 shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] backdrop-blur-2xl dark:bg-[#2c2c2e]/92">
+          <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] dark:bg-[#2c2c2e]">
             <div className="px-4 py-4">
               <p className="text-[1rem] font-semibold leading-snug text-[#1c1c1e] dark:text-white">
                 {product.name}
