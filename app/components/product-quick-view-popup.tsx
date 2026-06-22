@@ -122,7 +122,7 @@ export default function ProductQuickViewPopup({
           </div>
 
           {/* Actions card */}
-          <div className="overflow-hidden rounded-[20px] bg-white/90 shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] backdrop-blur-2xl dark:bg-[#2c2c2e]/92">
+          <div className="mx-auto w-fit min-w-52 overflow-hidden rounded-[20px] bg-ios-light-glass shadow-ios-light-glass backdrop-blur-lg dark:bg-ios-dark-glass dark:shadow-ios-dark-glass">
             {notice && (
               <>
                 <p className="px-4 py-2.5 text-[0.72rem] font-medium text-brand-primary dark:text-[#0a84ff]">
