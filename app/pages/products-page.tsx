@@ -185,13 +185,15 @@ export default function ProductsPage() {
       setHasMore(normalized.hasMore);
     } catch (error) {
       console.error("Unable to load products", error);
-      setProductsError("Unable to load products");
-      setProducts([]);
-      setTotalProducts(0);
+      if (products.length === 0) {
+        setProductsError("Unable to load products");
+        setProducts([]);
+        setTotalProducts(0);
+      }
     } finally {
       setIsRefreshingProducts(false);
     }
-  }, []);
+  }, [products.length]);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) {
@@ -225,6 +227,8 @@ export default function ProductsPage() {
       }
     } catch (error) {
       console.error("Unable to load more products", error);
+      // Stop repeated observer-triggered retries after a failed page load.
+      setHasMore(false);
     } finally {
       setIsLoadingMore(false);
     }

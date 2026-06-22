@@ -3,6 +3,24 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
 
+const PRODUCT_LIST_SELECT = {
+  id: true,
+  sku: true,
+  name: true,
+  price: true,
+  bundleQty: true,
+  bundlePrice: true,
+  stock: true,
+} as const;
+
+function isMissingPinnedColumn(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2022" &&
+    String(error.meta?.column ?? "").includes("isPinned")
+  );
+}
+
 type CursorToken = {
   name: string;
   id: string;
@@ -82,22 +100,43 @@ export async function GET(request: Request) {
       (url.searchParams.has("page") || url.searchParams.has("skip")) &&
       !url.searchParams.has("cursor")
     ) {
-      const products = await prisma.product.findMany({
-        where: baseWhere,
-        orderBy: { name: "asc" },
-        skip,
-        take: limit + 1,
-        select: {
-          id: true,
-          sku: true,
-          name: true,
-          price: true,
-          bundleQty: true,
-          bundlePrice: true,
-          stock: true,
-          isPinned: true,
-        },
-      });
+      let products: Array<
+        Prisma.ProductGetPayload<{
+          select: typeof PRODUCT_LIST_SELECT;
+        }> & {
+          isPinned: boolean;
+        }
+      >;
+
+      try {
+        products = await prisma.product.findMany({
+          where: baseWhere,
+          orderBy: { name: "asc" },
+          skip,
+          take: limit + 1,
+          select: {
+            ...PRODUCT_LIST_SELECT,
+            isPinned: true,
+          },
+        });
+      } catch (error) {
+        if (!isMissingPinnedColumn(error)) {
+          throw error;
+        }
+
+        const fallbackProducts = await prisma.product.findMany({
+          where: baseWhere,
+          orderBy: { name: "asc" },
+          skip,
+          take: limit + 1,
+          select: PRODUCT_LIST_SELECT,
+        });
+
+        products = fallbackProducts.map((product) => ({
+          ...product,
+          isPinned: false,
+        }));
+      }
 
       const total = await prisma.product.count({ where: baseWhere });
       const hasMore = products.length > limit;
@@ -150,21 +189,41 @@ export async function GET(request: Request) {
       }
     }
 
-    const products = await prisma.product.findMany({
-      where: cursorWhere,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: limit + 1,
-      select: {
-        id: true,
-        sku: true,
-        name: true,
-        price: true,
-        bundleQty: true,
-        bundlePrice: true,
-        stock: true,
-        isPinned: true,
-      },
-    });
+    let products: Array<
+      Prisma.ProductGetPayload<{
+        select: typeof PRODUCT_LIST_SELECT;
+      }> & {
+        isPinned: boolean;
+      }
+    >;
+
+    try {
+      products = await prisma.product.findMany({
+        where: cursorWhere,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: limit + 1,
+        select: {
+          ...PRODUCT_LIST_SELECT,
+          isPinned: true,
+        },
+      });
+    } catch (error) {
+      if (!isMissingPinnedColumn(error)) {
+        throw error;
+      }
+
+      const fallbackProducts = await prisma.product.findMany({
+        where: cursorWhere,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: limit + 1,
+        select: PRODUCT_LIST_SELECT,
+      });
+
+      products = fallbackProducts.map((product) => ({
+        ...product,
+        isPinned: false,
+      }));
+    }
 
     const hasMore = products.length > limit;
     const items = hasMore ? products.slice(0, limit) : products;
