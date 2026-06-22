@@ -65,7 +65,7 @@ export default function ProductsPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
-  const [pressPosition, setPressPosition] = useState<{ x: number; y: number } | null>(null);
+  const pressedElementRef = useRef<HTMLElement | null>(null);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const [quickViewNotice, setQuickViewNotice] = useState<string | null>(null);
@@ -97,9 +97,7 @@ export default function ProductsPage() {
     (product: ProductListItem, event: React.TouchEvent | React.MouseEvent) => {
       clearLongPressTimer();
       setPressedProductId(product.id);
-      const clientX = "touches" in event ? event.touches[0]?.clientX : (event as React.MouseEvent).clientX;
-      const clientY = "touches" in event ? event.touches[0]?.clientY : (event as React.MouseEvent).clientY;
-      setPressPosition({ x: clientX ?? 0, y: clientY ?? 0 });
+      pressedElementRef.current = event.currentTarget as HTMLElement;
       longPressTimerRef.current = setTimeout(() => {
         setPulsingProductId(product.id);
         if (pulseTimerRef.current) {
@@ -348,12 +346,11 @@ export default function ProductsPage() {
 
       <ProductQuickViewPopup
         product={quickViewProduct}
-        pressPosition={pressPosition}
+        pressTarget={pressedElementRef}
         notice={quickViewNotice}
         onClose={() => {
           setQuickViewProduct(null);
           setQuickViewNotice(null);
-          setPressPosition(null);
         }}
         onCopySku={() => {
           if (!quickViewProduct) return;
