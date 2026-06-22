@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { List, ListItem } from "konsta/react";
+import { List, ListItem, Preloader } from "konsta/react";
 import PageContainer from "../components/page-container";
 
 type ProductListItem = {
@@ -29,6 +29,7 @@ function formatPrice(value: number | string) {
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isRefreshingProducts, setIsRefreshingProducts] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -40,10 +41,30 @@ export default function ProductsPage() {
       )
     : products;
 
+  const refreshProducts = async () => {
+    try {
+      setIsRefreshingProducts(true);
+      setProductsError(null);
+
+      const response = await fetch("/api/products", { cache: "no-store" });
+
+      if (!response.ok) throw new Error("Failed to load products");
+
+      const data = (await response.json()) as ProductListItem[];
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Unable to load products", error);
+      setProductsError("Unable to load products");
+      setProducts([]);
+    } finally {
+      setIsRefreshingProducts(false);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadProducts = async () => {
+    const initialLoad = async () => {
       try {
         setIsLoadingProducts(true);
         setProductsError(null);
@@ -53,9 +74,7 @@ export default function ProductsPage() {
           signal: controller.signal,
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to load products");
-        }
+        if (!response.ok) throw new Error("Failed to load products");
 
         const data = (await response.json()) as ProductListItem[];
         setProducts(Array.isArray(data) ? data : []);
@@ -70,7 +89,7 @@ export default function ProductsPage() {
       }
     };
 
-    void loadProducts();
+    void initialLoad();
 
     return () => controller.abort();
   }, []);
@@ -83,9 +102,22 @@ export default function ProductsPage() {
           : `${filteredProducts.length} Products`
       }
       onSearch={setSearchQuery}
+      onRefresh={refreshProducts}
+      isRefreshing={isRefreshingProducts}
     >
       <List strongIos inset>
-        {isLoadingProducts && <ListItem title="Loading product list..." />}
+        {isLoadingProducts && (
+          <div
+            className="pointer-events-none sticky top-[max(16px,var(--k-safe-area-top))] z-20 flex justify-center"
+            style={{
+              transition: "opacity 180ms ease, transform 180ms ease",
+            }}
+          >
+            <div className="rounded-full  px-3 py-2 shadow-sm backdrop-blur-sm ">
+              <Preloader className="scale-75" />
+            </div>
+          </div>
+        )}
 
         {!isLoadingProducts && productsError && (
           <ListItem title={productsError} />
