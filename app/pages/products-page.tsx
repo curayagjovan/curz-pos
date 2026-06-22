@@ -24,6 +24,34 @@ function formatPrice(value: number | string) {
 const ITEMS_PER_PAGE = 20;
 const LONG_PRESS_DURATION_MS = 320;
 
+type ProductsResponseShape =
+  | {
+      items?: ProductListItem[];
+      total?: number;
+      hasMore?: boolean;
+    }
+  | ProductListItem[];
+
+function normalizeProductsResponse(data: ProductsResponseShape) {
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      hasMore: data.length === ITEMS_PER_PAGE,
+      total: null as number | null,
+    };
+  }
+
+  const items = Array.isArray(data.items) ? data.items : [];
+  return {
+    items,
+    hasMore:
+      typeof data.hasMore === "boolean"
+        ? data.hasMore
+        : items.length === ITEMS_PER_PAGE,
+    total: typeof data.total === "number" ? data.total : null,
+  };
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -116,16 +144,11 @@ export default function ProductsPage() {
 
       if (!response.ok) throw new Error("Failed to load products");
 
-      const data = (await response.json()) as {
-        items: ProductListItem[];
-        total: number;
-        hasMore: boolean;
-      };
-      if (data.items && Array.isArray(data.items)) {
-        setProducts(data.items);
-        setTotalProducts(data.total);
-        setHasMore(data.hasMore);
-      }
+      const data = (await response.json()) as ProductsResponseShape;
+      const normalized = normalizeProductsResponse(data);
+      setProducts(normalized.items);
+      setTotalProducts(normalized.total ?? normalized.items.length);
+      setHasMore(normalized.hasMore);
     } catch (error) {
       console.error("Unable to load products", error);
       setProductsError("Unable to load products");
@@ -150,15 +173,15 @@ export default function ProductsPage() {
 
       if (!response.ok) throw new Error("Failed to load more products");
 
-      const data = (await response.json()) as {
-        items: ProductListItem[];
-        total: number;
-        hasMore: boolean;
-      };
-      if (data.items && Array.isArray(data.items)) {
-        setProducts((prev) => [...prev, ...data.items]);
+      const data = (await response.json()) as ProductsResponseShape;
+      const normalized = normalizeProductsResponse(data);
+      if (normalized.items.length > 0) {
+        setProducts((prev) => [...prev, ...normalized.items]);
         setOffset(newOffset);
-        setHasMore(data.hasMore);
+      }
+      setHasMore(normalized.hasMore);
+      if (normalized.total !== null) {
+        setTotalProducts(normalized.total);
       }
     } catch (error) {
       console.error("Unable to load more products", error);
@@ -185,16 +208,11 @@ export default function ProductsPage() {
 
         if (!response.ok) throw new Error("Failed to load products");
 
-        const data = (await response.json()) as {
-          items: ProductListItem[];
-          total: number;
-          hasMore: boolean;
-        };
-        if (data.items && Array.isArray(data.items)) {
-          setProducts(data.items);
-          setTotalProducts(data.total);
-          setHasMore(data.hasMore);
-        }
+        const data = (await response.json()) as ProductsResponseShape;
+        const normalized = normalizeProductsResponse(data);
+        setProducts(normalized.items);
+        setTotalProducts(normalized.total ?? normalized.items.length);
+        setHasMore(normalized.hasMore);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Unable to load products", error);
