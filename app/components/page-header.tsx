@@ -33,8 +33,14 @@ function PageHeader({ title, subtitle }: PageHeaderProps) {
 
   return (
     <Navbar
-      title={resolvedTitle}
-      subtitle={resolvedSubtitle}
+      title={
+        <span className="flex flex-col leading-tight">
+          <span>{resolvedTitle}</span>
+          <span className="mt-1 text-[15px] font-medium text-[#2c2c2e] dark:text-[#8e8e93]">
+            {resolvedSubtitle}
+          </span>
+        </span>
+      }
       large
       bgClassName="bg-gradient-to-b from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0"
       right={
