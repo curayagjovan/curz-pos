@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button, Popup } from "konsta/react";
+import { createPortal } from "react-dom";
+import {
+  Actions,
+  ActionsButton,
+  ActionsGroup,
+  ActionsLabel,
+  Popup,
+} from "konsta/react";
 import { type ProductListItem } from "../types";
 
 type ProductQuickViewPopupProps = {
@@ -23,58 +30,88 @@ export default function ProductQuickViewPopup({
 }: ProductQuickViewPopupProps) {
   const router = useRouter();
 
-  return (
-    <Popup opened={Boolean(product)} onBackdropClick={onClose}>
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <>
+      <Popup
+        opened={Boolean(product)}
+        onBackdropClick={onClose}
+        onClick={onClose}
+        className="bg-transparent"
+      >
+        {product && (
+          <div className="flex h-full w-full items-start justify-center px-4 pt-[max(4.5rem,env(safe-area-inset-top))]">
+            <div
+              className="w-full max-w-lg rounded-4xl border border-white/15 bg-[#2f2f35]/92 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="text-8 font-semibold leading-tight tracking-[-0.01em] text-white">
+                {product.name}
+              </p>
+              <p className="mt-3 text-[1.65rem] leading-tight text-white/80">
+                SKU: {product.sku}
+              </p>
+              <p className="mt-1 text-[1.65rem] leading-tight text-white/80">
+                Price: {formatPrice(product.price)}
+              </p>
+              {product.description && (
+                <p className="mt-3 text-4 leading-6 text-white/75">
+                  {product.description}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </Popup>
+
       {product && (
-        <div className="rounded-t-3xl border-t border-black/5 bg-[#f8f8fb]/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 backdrop-blur-md dark:border-white/10 dark:bg-[#16171d]/95">
-          <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-black/10 dark:bg-white/20" />
-          <p className="text-7 font-semibold text-foreground">{product.name}</p>
-          <p className="mt-1 text-4 text-[#8e8e93]">SKU: {product.sku}</p>
-          <p className="mt-2 text-6 font-semibold text-foreground">
-            {formatPrice(product.price)}
-          </p>
-          {product.description && (
-            <p className="mt-3 text-4 leading-6 text-[#8e8e93]">
-              {product.description}
-            </p>
-          )}
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className="rounded-2xl bg-black/5 px-4 py-3 text-4 font-medium text-foreground active:scale-[0.98] dark:bg-white/10"
+        <Actions
+          opened
+          backdrop={false}
+          onBackdropClick={onClose}
+          className="bottom-auto! top-[calc(max(4.5rem,env(safe-area-inset-top))+19.5rem)]! w-[calc(100%-2rem)]! max-w-lg! px-0! pb-0! pt-0!"
+        >
+          <ActionsGroup>
+            <ActionsLabel>
+              <div className="flex flex-col items-start gap-0.5 text-left">
+                <span className="text-3 text-black/55 dark:text-white/55">
+                  Quick Actions
+                </span>
+                {notice && (
+                  <span className="text-3 text-primary">{notice}</span>
+                )}
+              </div>
+            </ActionsLabel>
+            <ActionsButton
+              className="text-[1.08rem] font-medium"
               onClick={onCopySku}
             >
               Copy SKU
-            </button>
-            <button
-              type="button"
-              className="rounded-2xl bg-black/5 px-4 py-3 text-4 font-medium text-foreground active:scale-[0.98] dark:bg-white/10"
+            </ActionsButton>
+            <ActionsButton
+              className="text-[1.08rem] font-medium"
               onClick={onCopyName}
             >
               Copy Name
-            </button>
-          </div>
-          <Button
-            className="mt-3"
-            tonal
-            large
-            rounded
-            onClick={() => {
-              const id = product.id;
-              onClose();
-              router.push(`/products/${id}`);
-            }}
-          >
-            Edit Product
-          </Button>
-          <p className="mt-3 min-h-5 text-center text-3 text-[#8e8e93]">
-            {notice ?? " "}
-          </p>
-          <Button className="mt-3" large rounded onClick={onClose}>
-            Close
-          </Button>
-        </div>
+            </ActionsButton>
+            <ActionsButton
+              bold
+              className="text-[1.08rem]"
+              onClick={() => {
+                const id = product.id;
+                onClose();
+                router.push(`/products/${id}`);
+              }}
+            >
+              Edit Product
+            </ActionsButton>
+          </ActionsGroup>
+        </Actions>
       )}
-    </Popup>
+    </>,
+    document.body,
   );
 }

@@ -65,8 +65,11 @@ export default function ProductsPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
+  const [pressedProductId, setPressedProductId] = useState<string | null>(null);
+  const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const [quickViewNotice, setQuickViewNotice] = useState<string | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickViewNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -86,16 +89,24 @@ export default function ProductsPage() {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    setPressedProductId(null);
   }, []);
 
   const startLongPress = useCallback(
     (product: ProductListItem) => {
       clearLongPressTimer();
+      setPressedProductId(product.id);
       longPressTimerRef.current = setTimeout(() => {
-        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-          navigator.vibrate(12);
+        setPulsingProductId(product.id);
+        if (pulseTimerRef.current) {
+          clearTimeout(pulseTimerRef.current);
         }
+        pulseTimerRef.current = setTimeout(() => {
+          setPulsingProductId(null);
+          pulseTimerRef.current = null;
+        }, 240);
         setQuickViewProduct(product);
+        setPressedProductId(null);
         longPressTimerRef.current = null;
       }, LONG_PRESS_DURATION_MS);
     },
@@ -249,6 +260,9 @@ export default function ProductsPage() {
   useEffect(() => {
     return () => {
       clearLongPressTimer();
+      if (pulseTimerRef.current) {
+        clearTimeout(pulseTimerRef.current);
+      }
       if (quickViewNoticeTimerRef.current) {
         clearTimeout(quickViewNoticeTimerRef.current);
       }
@@ -288,6 +302,18 @@ export default function ProductsPage() {
             filteredProducts.map((product) => (
               <ListItem
                 key={product.id}
+                className={
+                  [
+                    pressedProductId === product.id
+                      ? "bg-black/5 dark:bg-white/10"
+                      : "",
+                    pulsingProductId === product.id
+                      ? "animate-[pulse_240ms_ease-out_1]"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
                 onTouchStart={() => startLongPress(product)}
                 onTouchEnd={clearLongPressTimer}
                 onTouchCancel={clearLongPressTimer}
