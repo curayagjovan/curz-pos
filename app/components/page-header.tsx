@@ -40,8 +40,8 @@ function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
           <span className="mt-1 flex items-center gap-2 text-[15px] font-medium text-[#2c2c2e] dark:text-[#8e8e93]">
             {isLoading && (
               <Preloader
-                className="scale-50 text-[#2c2c2e] dark:text-[#8e8e93]"
-                style={{ width: "16px", height: "16px" }}
+                className="text-[#2c2c2e] dark:text-[#8e8e93]"
+                style={{ width: "15px", height: "15px" }}
               />
             )}
             {resolvedSubtitle}
