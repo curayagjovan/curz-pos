@@ -95,6 +95,7 @@ export async function GET(request: Request) {
           bundleQty: true,
           bundlePrice: true,
           stock: true,
+          isPinned: true,
         },
       });
 
@@ -161,6 +162,7 @@ export async function GET(request: Request) {
         bundleQty: true,
         bundlePrice: true,
         stock: true,
+        isPinned: true,
       },
     });
 

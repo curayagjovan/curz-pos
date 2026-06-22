@@ -21,4 +21,5 @@ export type ProductListItem = {
   price: number | string;
   sku: string;
   description?: string;
+  isPinned?: boolean;
 };

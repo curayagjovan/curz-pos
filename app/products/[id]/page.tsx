@@ -46,7 +46,7 @@ export default function ProductEditPage() {
   const router = useRouter();
   const productId = useMemo(() => params?.id ?? "", [params]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -58,11 +58,7 @@ export default function ProductEditPage() {
   const [form, setForm] = useState<ProductForm>(INITIAL_FORM);
 
   useEffect(() => {
-    if (!productId) {
-      setLoading(false);
-      setError("Missing product id");
-      return;
-    }
+    if (!productId) return;
 
     const controller = new AbortController();
 

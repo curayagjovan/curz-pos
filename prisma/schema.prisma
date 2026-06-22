@@ -23,6 +23,7 @@ model Product {
   stock       Int      @default(0)
   isActive    Boolean  @default(true)
   usesGlobalMarkup Boolean @default(true)
+  isPinned    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

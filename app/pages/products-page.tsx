@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBagIcon } from "@heroicons/react/24/outline";
+import { MapPinIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
 import ProductQuickViewPopup from "../components/product-quick-view-popup";
@@ -62,26 +62,24 @@ export default function ProductsPage() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
-  const pressedElementRef = useRef<HTMLElement | null>(null);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
-  const [quickViewNotice, setQuickViewNotice] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const pressedElementRef = useRef<HTMLElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const quickViewNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
 
   const filteredProducts = searchQuery.trim()
     ? products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.sku.toLowerCase().includes(searchQuery.toLowerCase()),
+        (product) =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.sku.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : products;
+  const pinnedProducts = filteredProducts.filter((product) => product.isPinned);
+  const otherProducts = filteredProducts.filter((product) => !product.isPinned);
   const isEmptyProductsState =
     !isLoadingProducts && !productsError && products.length === 0;
 
@@ -115,35 +113,67 @@ export default function ProductsPage() {
     [clearLongPressTimer],
   );
 
-  const showQuickViewNotice = useCallback((message: string) => {
-    setQuickViewNotice(message);
-    if (quickViewNoticeTimerRef.current) {
-      clearTimeout(quickViewNoticeTimerRef.current);
-    }
-    quickViewNoticeTimerRef.current = setTimeout(() => {
-      setQuickViewNotice(null);
-      quickViewNoticeTimerRef.current = null;
-    }, 1200);
-  }, []);
+  const handlePinProduct = useCallback(
+    async (productId: string, isPinned: boolean) => {
+      const nextIsPinned = !isPinned;
 
-  const copyToClipboard = useCallback(
-    async (value: string, label: string) => {
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === productId
+            ? { ...product, isPinned: nextIsPinned }
+            : product,
+        ),
+      );
+      setQuickViewProduct((prev) =>
+        prev?.id === productId ? { ...prev, isPinned: nextIsPinned } : prev,
+      );
+
       try {
-        if (typeof navigator !== "undefined" && navigator.clipboard) {
-          await navigator.clipboard.writeText(value);
-          showQuickViewNotice(`${label} copied`);
-          return;
-        }
-      } catch {
-        // Fall through to a user-visible fallback message.
-      }
+        const response = await fetch(`/api/products/${productId}/pin`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPinned: nextIsPinned }),
+        });
 
-      showQuickViewNotice(`Unable to copy ${label.toLowerCase()}`);
+        if (!response.ok) {
+          throw new Error("Failed to pin product");
+        }
+
+        const updatedProduct = (await response.json()) as {
+          id: string;
+          isPinned: boolean;
+        };
+
+        setProducts((prev) =>
+          prev.map((product) =>
+            product.id === updatedProduct.id
+              ? { ...product, isPinned: updatedProduct.isPinned }
+              : product,
+          ),
+        );
+        setQuickViewProduct((prev) =>
+          prev?.id === updatedProduct.id
+            ? { ...prev, isPinned: updatedProduct.isPinned }
+            : prev,
+        );
+      } catch (error) {
+        console.error("Unable to update pinned product", error);
+        setProducts((prev) =>
+          prev.map((product) =>
+            product.id === productId
+              ? { ...product, isPinned }
+              : product,
+          ),
+        );
+        setQuickViewProduct((prev) =>
+          prev?.id === productId ? { ...prev, isPinned } : prev,
+        );
+      }
     },
-    [showQuickViewNotice],
+    [],
   );
 
-  const refreshProducts = async () => {
+  const refreshProducts = useCallback(async () => {
     try {
       setIsRefreshingProducts(true);
       setProductsError(null);
@@ -155,7 +185,9 @@ export default function ProductsPage() {
         { cache: "no-store" },
       );
 
-      if (!response.ok) throw new Error("Failed to load products");
+      if (!response.ok) {
+        throw new Error("Failed to load products");
+      }
 
       const data = (await response.json()) as ProductsResponseShape;
       const normalized = normalizeProductsResponse(data);
@@ -170,10 +202,12 @@ export default function ProductsPage() {
     } finally {
       setIsRefreshingProducts(false);
     }
-  };
+  }, []);
 
   const loadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore) {
+      return;
+    }
 
     try {
       setIsLoadingMore(true);
@@ -184,14 +218,18 @@ export default function ProductsPage() {
         { cache: "no-store" },
       );
 
-      if (!response.ok) throw new Error("Failed to load more products");
+      if (!response.ok) {
+        throw new Error("Failed to load more products");
+      }
 
       const data = (await response.json()) as ProductsResponseShape;
       const normalized = normalizeProductsResponse(data);
+
       if (normalized.items.length > 0) {
         setProducts((prev) => [...prev, ...normalized.items]);
         setOffset(newOffset);
       }
+
       setHasMore(normalized.hasMore);
       if (normalized.total !== null) {
         setTotalProducts(normalized.total);
@@ -219,7 +257,9 @@ export default function ProductsPage() {
           },
         );
 
-        if (!response.ok) throw new Error("Failed to load products");
+        if (!response.ok) {
+          throw new Error("Failed to load products");
+        }
 
         const data = (await response.json()) as ProductsResponseShape;
         const normalized = normalizeProductsResponse(data);
@@ -244,7 +284,9 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => {
-    if (!sentinelRef.current) return;
+    if (!sentinelRef.current) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -264,9 +306,6 @@ export default function ProductsPage() {
       clearLongPressTimer();
       if (pulseTimerRef.current) {
         clearTimeout(pulseTimerRef.current);
-      }
-      if (quickViewNoticeTimerRef.current) {
-        clearTimeout(quickViewNoticeTimerRef.current);
       }
     };
   }, [clearLongPressTimer]);
@@ -299,47 +338,101 @@ export default function ProductsPage() {
               <ListItem title="No products match your search" />
             )}
 
-          {!isLoadingProducts &&
-            !productsError &&
-            filteredProducts.map((product) => (
-              <ListItem
-                key={product.id}
-                className={
-                  [
-                    pressedProductId === product.id
-                      ? "bg-black/5 dark:bg-white/10"
-                      : "",
-                    pulsingProductId === product.id
-                      ? "animate-[pulse_240ms_ease-out_1]"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ") || undefined
-                }
-                onTouchStart={(e) => startLongPress(product, e)}
-                onTouchEnd={clearLongPressTimer}
-                onTouchCancel={clearLongPressTimer}
-                onTouchMove={clearLongPressTimer}
-                onMouseDown={(e) => startLongPress(product, e)}
-                onMouseUp={clearLongPressTimer}
-                onMouseLeave={clearLongPressTimer}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  clearLongPressTimer();
-                  setQuickViewProduct(product);
-                }}
-                media={
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
-                    {product.sku.slice(0, 2).toUpperCase()}
-                  </div>
-                }
-                title={product.name}
-                text={product.sku}
-                after={formatPrice(product.price)}
-              />
-            ))}
+          {!isLoadingProducts && !productsError && pinnedProducts.length > 0 && (
+            <>
+              <div className="px-4 py-3 text-xs font-semibold text-[#8e8e93]">
+                PINNED
+              </div>
+              {pinnedProducts.map((product) => (
+                <ListItem
+                  key={product.id}
+                  className={
+                    [
+                      pressedProductId === product.id
+                        ? "bg-black/5 dark:bg-white/10"
+                        : "",
+                      pulsingProductId === product.id
+                        ? "animate-[pulse_240ms_ease-out_1]"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  onTouchStart={(event) => startLongPress(product, event)}
+                  onTouchEnd={clearLongPressTimer}
+                  onTouchCancel={clearLongPressTimer}
+                  onTouchMove={clearLongPressTimer}
+                  onMouseDown={(event) => startLongPress(product, event)}
+                  onMouseUp={clearLongPressTimer}
+                  onMouseLeave={clearLongPressTimer}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    clearLongPressTimer();
+                    setQuickViewProduct(product);
+                  }}
+                  media={
+                    <div className="relative flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
+                      {product.sku.slice(0, 2).toUpperCase()}
+                      <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#0a84ff] text-white">
+                        <MapPinIcon className="size-2.5" />
+                      </span>
+                    </div>
+                  }
+                  title={product.name}
+                  text={product.sku}
+                  after={formatPrice(product.price)}
+                />
+              ))}
+            </>
+          )}
 
-          {/* Sentinel element for infinite scroll */}
+          {!isLoadingProducts && !productsError && otherProducts.length > 0 && (
+            <>
+              {pinnedProducts.length > 0 && (
+                <div className="px-4 py-3 text-xs font-semibold text-[#8e8e93]">
+                  ALL PRODUCTS
+                </div>
+              )}
+              {otherProducts.map((product) => (
+                <ListItem
+                  key={product.id}
+                  className={
+                    [
+                      pressedProductId === product.id
+                        ? "bg-black/5 dark:bg-white/10"
+                        : "",
+                      pulsingProductId === product.id
+                        ? "animate-[pulse_240ms_ease-out_1]"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  onTouchStart={(event) => startLongPress(product, event)}
+                  onTouchEnd={clearLongPressTimer}
+                  onTouchCancel={clearLongPressTimer}
+                  onTouchMove={clearLongPressTimer}
+                  onMouseDown={(event) => startLongPress(product, event)}
+                  onMouseUp={clearLongPressTimer}
+                  onMouseLeave={clearLongPressTimer}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    clearLongPressTimer();
+                    setQuickViewProduct(product);
+                  }}
+                  media={
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
+                      {product.sku.slice(0, 2).toUpperCase()}
+                    </div>
+                  }
+                  title={product.name}
+                  text={product.sku}
+                  after={formatPrice(product.price)}
+                />
+              ))}
+            </>
+          )}
+
           <div ref={sentinelRef} className="py-4" />
         </List>
       )}
@@ -347,18 +440,10 @@ export default function ProductsPage() {
       <ProductQuickViewPopup
         product={quickViewProduct}
         pressTarget={pressedElementRef}
-        notice={quickViewNotice}
+        notice={null}
+        onPinProduct={handlePinProduct}
         onClose={() => {
           setQuickViewProduct(null);
-          setQuickViewNotice(null);
-        }}
-        onCopySku={() => {
-          if (!quickViewProduct) return;
-          void copyToClipboard(quickViewProduct.sku, "SKU");
-        }}
-        onCopyName={() => {
-          if (!quickViewProduct) return;
-          void copyToClipboard(quickViewProduct.name, "Name");
         }}
         formatPrice={formatPrice}
       />
