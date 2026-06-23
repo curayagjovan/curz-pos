@@ -3,7 +3,6 @@
 import { MapPinIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
-import ProductEditScreen from "../components/product-edit-screen";
 import ProductQuickViewPopup from "../components/product-quick-view-popup";
 import PageContainer from "../components/page-container";
 import { type ProductListItem } from "../types";
@@ -109,7 +108,6 @@ export default function ProductsPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -199,53 +197,13 @@ export default function ProductsPage() {
         console.error("Unable to update pinned product", error);
         setProducts((prev) =>
           prev.map((product) =>
-            product.id === productId
-              ? { ...product, isPinned }
-              : product,
+            product.id === productId ? { ...product, isPinned } : product,
           ),
         );
       }
     },
     [],
   );
-
-  const revalidateProductById = useCallback(async (productId: string) => {
-    try {
-      const response = await fetch(`/api/products/${productId}`, {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const serverProduct = (await response.json()) as {
-        id: string;
-        sku: string;
-        name: string;
-        price: number | string;
-        description: string | null;
-        isPinned?: boolean;
-      };
-
-      setProducts((prev) =>
-        prev.map((product) =>
-          product.id === serverProduct.id
-            ? {
-                ...product,
-                sku: serverProduct.sku,
-                name: serverProduct.name,
-                price: serverProduct.price,
-                description: serverProduct.description ?? undefined,
-                isPinned: serverProduct.isPinned ?? product.isPinned,
-              }
-            : product,
-        ),
-      );
-    } catch (error) {
-      console.error("Unable to revalidate product", error);
-    }
-  }, []);
 
   const refreshProducts = useCallback(async () => {
     try {
@@ -320,7 +278,11 @@ export default function ProductsPage() {
         setIsLoadingProducts(true);
         setProductsError(null);
 
-        for (let attempt = 0; attempt < INITIAL_LOAD_MAX_ATTEMPTS; attempt += 1) {
+        for (
+          let attempt = 0;
+          attempt < INITIAL_LOAD_MAX_ATTEMPTS;
+          attempt += 1
+        ) {
           try {
             const normalized = await fetchProductsPage(
               `/api/products?skip=0&limit=${ITEMS_PER_PAGE}`,
@@ -421,53 +383,55 @@ export default function ProductsPage() {
               <ListItem title="No products match your search" />
             )}
 
-          {!isLoadingProducts && !productsError && pinnedProducts.length > 0 && (
-            <>
-              <div className="px-4 py-3 text-xs font-semibold text-[#8e8e93]">
-                PINNED
-              </div>
-              {pinnedProducts.map((product) => (
-                <ListItem
-                  key={product.id}
-                  className={
-                    [
-                      pressedProductId === product.id
-                        ? "bg-black/5 dark:bg-white/10"
-                        : "",
-                      pulsingProductId === product.id
-                        ? "animate-[pulse_240ms_ease-out_1]"
-                        : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ") || undefined
-                  }
-                  onTouchStart={(event) => startLongPress(product, event)}
-                  onTouchEnd={clearLongPressTimer}
-                  onTouchCancel={clearLongPressTimer}
-                  onTouchMove={clearLongPressTimer}
-                  onMouseDown={(event) => startLongPress(product, event)}
-                  onMouseUp={clearLongPressTimer}
-                  onMouseLeave={clearLongPressTimer}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    clearLongPressTimer();
-                    setQuickViewProduct(product);
-                  }}
-                  media={
-                    <div className="relative flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
-                      {product.sku.slice(0, 2).toUpperCase()}
-                      <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#0a84ff] text-white">
-                        <MapPinIcon className="size-2.5" />
-                      </span>
-                    </div>
-                  }
-                  title={product.name}
-                  text={product.sku}
-                  after={formatPrice(product.price)}
-                />
-              ))}
-            </>
-          )}
+          {!isLoadingProducts &&
+            !productsError &&
+            pinnedProducts.length > 0 && (
+              <>
+                <div className="px-4 py-3 text-xs font-semibold text-[#8e8e93]">
+                  PINNED
+                </div>
+                {pinnedProducts.map((product) => (
+                  <ListItem
+                    key={product.id}
+                    className={
+                      [
+                        pressedProductId === product.id
+                          ? "bg-black/5 dark:bg-white/10"
+                          : "",
+                        pulsingProductId === product.id
+                          ? "animate-[pulse_240ms_ease-out_1]"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
+                    onTouchStart={(event) => startLongPress(product, event)}
+                    onTouchEnd={clearLongPressTimer}
+                    onTouchCancel={clearLongPressTimer}
+                    onTouchMove={clearLongPressTimer}
+                    onMouseDown={(event) => startLongPress(product, event)}
+                    onMouseUp={clearLongPressTimer}
+                    onMouseLeave={clearLongPressTimer}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      clearLongPressTimer();
+                      setQuickViewProduct(product);
+                    }}
+                    media={
+                      <div className="relative flex size-9 items-center justify-center rounded-xl bg-black/5 text-3 font-semibold text-(--muted) dark:bg-white/10">
+                        {product.sku.slice(0, 2).toUpperCase()}
+                        <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#0a84ff] text-white">
+                          <MapPinIcon className="size-2.5" />
+                        </span>
+                      </div>
+                    }
+                    title={product.name}
+                    text={product.sku}
+                    after={formatPrice(product.price)}
+                  />
+                ))}
+              </>
+            )}
 
           {!isLoadingProducts && !productsError && otherProducts.length > 0 && (
             <>
@@ -525,39 +489,11 @@ export default function ProductsPage() {
         pressTarget={pressedElementRef}
         notice={null}
         onPinProduct={handlePinProduct}
-        onOpenEditProduct={(productId) => {
-          setEditingProductId(productId);
-        }}
         onClose={() => {
           setQuickViewProduct(null);
         }}
         formatPrice={formatPrice}
       />
-
-      {editingProductId && (
-        <ProductEditScreen
-          productId={editingProductId}
-          onClose={() => {
-            setEditingProductId(null);
-          }}
-          onSaved={(updated) => {
-            setProducts((prev) =>
-              prev.map((product) =>
-                product.id === updated.id
-                  ? {
-                      ...product,
-                      sku: updated.sku,
-                      name: updated.name,
-                      price: updated.price,
-                      description: updated.description,
-                    }
-                  : product,
-              ),
-            );
-            void revalidateProductById(updated.id);
-          }}
-        />
-      )}
     </PageContainer>
   );
 }

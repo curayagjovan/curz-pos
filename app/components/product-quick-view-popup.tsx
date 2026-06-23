@@ -11,7 +11,6 @@ type ProductQuickViewPopupProps = {
   notice: string | null;
   onClose: () => void;
   onPinProduct?: (productId: string, isPinned: boolean) => Promise<void>;
-  onOpenEditProduct?: (productId: string) => void;
   formatPrice: (value: number | string) => string;
 };
 
@@ -21,7 +20,6 @@ export default function ProductQuickViewPopup({
   notice,
   onClose,
   onPinProduct,
-  onOpenEditProduct,
   formatPrice,
 }: ProductQuickViewPopupProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -107,10 +105,7 @@ export default function ProductQuickViewPopup({
           <button
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
-            onClick={() => {
-              onClose();
-              onOpenEditProduct?.(product.id);
-            }}
+            onClick={onClose}
           >
             <div className="px-4 py-4">
               <p className="text-[1rem] font-semibold leading-snug text-[#1c1c1e] dark:text-white">
