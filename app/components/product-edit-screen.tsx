@@ -1,7 +1,14 @@
 "use client";
 
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { type ProductListItem } from "../types";
 
 type ProductDetail = {
@@ -47,13 +54,18 @@ const INITIAL_FORM: ProductForm = {
   stock: "0",
 };
 
+const SCREEN_TRANSITION_MS = 280;
+
 export default function ProductEditScreen({
   productId,
   onClose,
   onSaved,
 }: ProductEditScreenProps) {
   const stableProductId = useMemo(() => productId, [productId]);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isClosingRef = useRef(false);
 
+  const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +75,31 @@ export default function ProductEditScreen({
   >(null);
   const [bundlePrice, setBundlePrice] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(INITIAL_FORM);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const closeScreen = useCallback(() => {
+    if (isClosingRef.current) {
+      return;
+    }
+
+    isClosingRef.current = true;
+    setIsVisible(false);
+    closeTimerRef.current = setTimeout(() => {
+      onClose();
+    }, SCREEN_TRANSITION_MS);
+  }, [onClose]);
 
   useEffect(() => {
     if (!stableProductId) return;
@@ -151,7 +188,7 @@ export default function ProductEditScreen({
         price: updated.price,
         description: updated.description ?? undefined,
       });
-      onClose();
+      closeScreen();
     } catch (saveError) {
       setError((saveError as Error).message || "Unable to save product");
     } finally {
@@ -160,11 +197,19 @@ export default function ProductEditScreen({
   };
 
   return (
-    <div className="fixed inset-0 z-70 overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground">
+    <div
+      className={[
+        "fixed inset-0 z-70 overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground",
+        "transform-gpu transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+        isVisible
+          ? "translate-x-0 opacity-100"
+          : "translate-x-full opacity-100",
+      ].join(" ")}
+    >
       <div className="mx-auto max-w-xl px-4">
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeScreen}
           className="mb-3 inline-flex items-center gap-2 rounded-full bg-black/5 px-3 py-2 text-3 font-medium dark:bg-white/10"
         >
           <ChevronLeftIcon className="size-4" />
