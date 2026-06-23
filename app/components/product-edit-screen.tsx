@@ -201,8 +201,8 @@ export default function ProductEditScreen({
     <Panel
       side="right"
       opened={isVisible}
-      backdrop={false}
-      className="z-70! h-screen! w-screen! max-w-none! duration-300! ease-[cubic-bezier(0.16,1,0.3,1)]! overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground"
+      backdrop={true}
+      className="z-70! fixed! inset-0! w-full! h-screen! max-w-none! duration-300! ease-[cubic-bezier(0.16,1,0.3,1)]! overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground"
     >
       <div className="mx-auto max-w-xl px-4">
         <button
