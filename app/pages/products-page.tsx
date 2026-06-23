@@ -3,6 +3,7 @@
 import { MapPinIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
+import ProductEditScreen from "../components/product-edit-screen";
 import ProductQuickViewPopup from "../components/product-quick-view-popup";
 import PageContainer from "../components/page-container";
 import { type ProductListItem } from "../types";
@@ -64,6 +65,7 @@ export default function ProductsPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -435,11 +437,38 @@ export default function ProductsPage() {
         pressTarget={pressedElementRef}
         notice={null}
         onPinProduct={handlePinProduct}
+        onOpenEditProduct={(productId) => {
+          setEditingProductId(productId);
+        }}
         onClose={() => {
           setQuickViewProduct(null);
         }}
         formatPrice={formatPrice}
       />
+
+      {editingProductId && (
+        <ProductEditScreen
+          productId={editingProductId}
+          onClose={() => {
+            setEditingProductId(null);
+          }}
+          onSaved={(updated) => {
+            setProducts((prev) =>
+              prev.map((product) =>
+                product.id === updated.id
+                  ? {
+                      ...product,
+                      sku: updated.sku,
+                      name: updated.name,
+                      price: updated.price,
+                      description: updated.description,
+                    }
+                  : product,
+              ),
+            );
+          }}
+        />
+      )}
     </PageContainer>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { MapPinIcon, TrashIcon, ShareIcon } from "@heroicons/react/24/outline";
@@ -12,6 +11,7 @@ type ProductQuickViewPopupProps = {
   notice: string | null;
   onClose: () => void;
   onPinProduct?: (productId: string, isPinned: boolean) => Promise<void>;
+  onOpenEditProduct?: (productId: string) => void;
   formatPrice: (value: number | string) => string;
 };
 
@@ -21,9 +21,9 @@ export default function ProductQuickViewPopup({
   notice,
   onClose,
   onPinProduct,
+  onOpenEditProduct,
   formatPrice,
 }: ProductQuickViewPopupProps) {
-  const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const mounted = useSyncExternalStore(
@@ -108,8 +108,8 @@ export default function ProductQuickViewPopup({
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
             onClick={() => {
-              router.push(`/products/${product.id}`);
               onClose();
+              onOpenEditProduct?.(product.id);
             }}
           >
             <div className="px-4 py-4">
