@@ -198,187 +198,186 @@ export default function ProductEditScreen({
 
   return (
     <>
-      {/* Backdrop */}
-      {isVisible && (
-        <div className="fixed inset-0 z-60 bg-black/50 duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform" />
-      )}
-
-      {/* Full-screen edit panel */}
+      {/* Full-screen edit screen - slides in from right */}
       <div
-        className={`fixed inset-0 z-70 overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform transform-gpu ${
+        className={`fixed inset-0 z-70 flex flex-col bg-background overflow-hidden transition-[transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform transform-gpu ${
           isVisible ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="mx-auto max-w-xl px-4">
-          <button
-            type="button"
-            onClick={closeScreen}
-            className="mb-3 inline-flex items-center gap-2 rounded-full bg-black/5 px-3 py-2 text-3 font-medium dark:bg-white/10"
-          >
-            <ChevronLeftIcon className="size-4" />
-            Back
-          </button>
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto w-full max-w-xl px-4 py-6">
+            <button
+              type="button"
+              onClick={closeScreen}
+              className="mb-6 inline-flex items-center gap-2 rounded-full bg-black/5 px-3 py-2 text-3 font-medium dark:bg-white/10"
+            >
+              <ChevronLeftIcon className="size-4" />
+              Back
+            </button>
 
-          <h1 className="text-8 font-semibold">Edit Product</h1>
+            <h1 className="mb-8 text-8 font-semibold">Edit Product</h1>
 
-          {loading ? (
-            <p className="mt-4 text-4 text-[#8e8e93]">Loading product...</p>
-          ) : (
-            <form onSubmit={onSubmit} className="mt-4 space-y-3">
-              <label className="block">
-                <span className="mb-1 block text-3 text-[#8e8e93]">SKU</span>
-                <input
-                  value={form.sku}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      sku: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                  required
-                />
-              </label>
+            {loading ? (
+              <p className="text-4 text-[#8e8e93]">Loading product...</p>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-3">
+                <label className="block">
+                  <span className="mb-1 block text-3 text-[#8e8e93]">SKU</span>
+                  <input
+                    value={form.sku}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        sku: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                    required
+                  />
+                </label>
 
-              <label className="block">
-                <span className="mb-1 block text-3 text-[#8e8e93]">Name</span>
-                <input
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      name: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                  required
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-1 block text-3 text-[#8e8e93]">Name</span>
+                  <input
+                    value={form.name}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        name: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                    required
+                  />
+                </label>
 
-              <label className="block">
-                <span className="mb-1 block text-3 text-[#8e8e93]">Unit</span>
-                <input
-                  value={form.unit}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      unit: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-1 block text-3 text-[#8e8e93]">Unit</span>
+                  <input
+                    value={form.unit}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        unit: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                  />
+                </label>
 
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block text-3 text-[#8e8e93]">
+                      Price
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          price: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                      required
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-3 text-[#8e8e93]">
+                      Stock
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={form.stock}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          stock: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block text-3 text-[#8e8e93]">
+                      Cost
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.cost}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          cost: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                      required
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-3 text-[#8e8e93]">
+                      Markup %
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.markupPercent}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          markupPercent: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
+                      required
+                    />
+                  </label>
+                </div>
+
                 <label className="block">
                   <span className="mb-1 block text-3 text-[#8e8e93]">
-                    Price
+                    Description
                   </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.price}
+                  <textarea
+                    value={form.description}
                     onChange={(event) =>
                       setForm((previous) => ({
                         ...previous,
-                        price: event.target.value,
+                        description: event.target.value,
                       }))
                     }
+                    rows={4}
                     className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                    required
                   />
                 </label>
 
-                <label className="block">
-                  <span className="mb-1 block text-3 text-[#8e8e93]">
-                    Stock
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={form.stock}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        stock: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                    required
-                  />
-                </label>
-              </div>
+                {error && <p className="text-3 text-red-500">{error}</p>}
 
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="mb-1 block text-3 text-[#8e8e93]">Cost</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.cost}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        cost: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                    required
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-1 block text-3 text-[#8e8e93]">
-                    Markup %
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.markupPercent}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        markupPercent: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                    required
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-1 block text-3 text-[#8e8e93]">
-                  Description
-                </span>
-                <textarea
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={4}
-                  className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-4 outline-none focus:border-black/20 dark:border-white/15 dark:focus:border-white/30"
-                />
-              </label>
-
-              {error && <p className="text-3 text-red-500">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-2xl bg-foreground px-4 py-3 text-4 font-semibold text-background disabled:opacity-60"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </form>
-          )}
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full rounded-2xl bg-foreground px-4 py-3 text-4 font-semibold text-background disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </>
