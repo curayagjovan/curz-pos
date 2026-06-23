@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { MapPinIcon, TrashIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { type ProductListItem } from "../types";
 
@@ -22,6 +23,7 @@ export default function ProductQuickViewPopup({
   onPinProduct,
   formatPrice,
 }: ProductQuickViewPopupProps) {
+  const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const mounted = useSyncExternalStore(
@@ -105,7 +107,10 @@ export default function ProductQuickViewPopup({
           <button
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              router.push(`/products/${product.id}`);
+            }}
           >
             <div className="px-4 py-4">
               <p className="text-[1rem] font-semibold leading-snug text-[#1c1c1e] dark:text-white">
