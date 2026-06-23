@@ -26,6 +26,22 @@ export default function ProductQuickViewPopup({
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const saveScrollAndNavigate = (productId: string) => {
+    // Save scroll position before navigating
+    const scrollableElement =
+      document.querySelector('[class*="k-page"]') || document.documentElement;
+    const scrollTop = scrollableElement?.scrollTop ?? window.scrollY;
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "products-page-scroll-position",
+        String(scrollTop),
+      );
+    }
+
+    onClose();
+    router.push(`/products/${productId}`);
+  };
+
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -107,10 +123,7 @@ export default function ProductQuickViewPopup({
           <button
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
-            onClick={() => {
-              onClose();
-              router.push(`/products/${product.id}`);
-            }}
+            onClick={() => saveScrollAndNavigate(product.id)}
           >
             <div className="px-4 py-4">
               <p className="text-[1rem] font-semibold leading-snug text-[#1c1c1e] dark:text-white">

@@ -7,6 +7,8 @@ import ProductQuickViewPopup from "../components/product-quick-view-popup";
 import PageContainer from "../components/page-container";
 import { type ProductListItem } from "../types";
 
+const SCROLL_POSITION_KEY = "products-page-scroll-position";
+
 const CURRENCY_FORMATTER = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -115,6 +117,8 @@ export default function ProductsPage() {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadMoreRetryBlockedUntilRef = useRef(0);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+  const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredProducts = searchQuery.trim()
     ? products.filter(
@@ -354,6 +358,72 @@ export default function ProductsPage() {
       }
     };
   }, [clearLongPressTimer]);
+
+  // Save scroll position to sessionStorage when navigating away
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      const scrollableElement =
+        scrollableRef.current ||
+        document.querySelector('[class*="k-page"]') ||
+        document.documentElement;
+      const scrollTop = scrollableElement?.scrollTop ?? window.scrollY;
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(SCROLL_POSITION_KEY, String(scrollTop));
+      }
+    };
+
+    // Save on beforeunload (page navigation/refresh)
+    window.addEventListener("beforeunload", saveScrollPosition);
+
+    // Also save periodically while scrolling
+    const handleScroll = () => {
+      if (scrollSaveTimerRef.current) {
+        clearTimeout(scrollSaveTimerRef.current);
+      }
+      scrollSaveTimerRef.current = setTimeout(() => {
+        const scrollableElement =
+          scrollableRef.current ||
+          document.querySelector('[class*="k-page"]') ||
+          document.documentElement;
+        const scrollTop = scrollableElement?.scrollTop ?? window.scrollY;
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(SCROLL_POSITION_KEY, String(scrollTop));
+        }
+      }, 500);
+    };
+
+    const scrollableElement =
+      scrollableRef.current || document.querySelector('[class*="k-page"]');
+    scrollableElement?.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("beforeunload", saveScrollPosition);
+      scrollableElement?.removeEventListener("scroll", handleScroll);
+      if (scrollSaveTimerRef.current) {
+        clearTimeout(scrollSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (typeof window === "undefined") return;
+
+      const savedPosition = sessionStorage.getItem(SCROLL_POSITION_KEY);
+      if (savedPosition) {
+        const scrollPosition = parseInt(savedPosition, 10);
+        const scrollableElement =
+          scrollableRef.current ||
+          document.querySelector('[class*="k-page"]') ||
+          document.documentElement;
+
+        if (scrollableElement && scrollPosition > 0) {
+          scrollableElement.scrollTop = scrollPosition;
+        }
+      }
+    });
+  }, []);
 
   return (
     <PageContainer
