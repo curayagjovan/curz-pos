@@ -104,8 +104,9 @@ export default function ProductQuickViewPopup({
           style={{ top: 0, visibility: "hidden" }}
         >
           {/* Preview card */}
-          <div
-            className="overflow-hidden rounded-[20px] bg-white shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] dark:bg-[#2c2c2e] cursor-pointer active:opacity-75"
+          <button
+            type="button"
+            className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
             onClick={() => {
               router.push(`/products/${product.id}`);
               onClose();
@@ -124,7 +125,7 @@ export default function ProductQuickViewPopup({
                 </p>
               )}
             </div>
-          </div>
+          </button>
 
           {/* Actions card */}
           <div className="mx-auto w-fit min-w-52 overflow-hidden rounded-[20px] bg-ios-light-glass shadow-ios-light-glass backdrop-blur-lg dark:bg-ios-dark-glass dark:shadow-ios-dark-glass">
