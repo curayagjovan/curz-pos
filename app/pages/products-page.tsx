@@ -24,6 +24,15 @@ function formatPrice(value: number | string) {
 
 const ITEMS_PER_PAGE = 20;
 const LONG_PRESS_DURATION_MS = 320;
+const PRODUCTS_FETCH_RETRIES = 2;
+const LOAD_MORE_RETRY_COOLDOWN_MS = 4000;
+const INITIAL_LOAD_MAX_ATTEMPTS = 4;
+const INITIAL_LOAD_RETRY_BASE_DELAY_MS = 700;
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 type ProductsResponseShape =
   | {
@@ -53,6 +62,41 @@ function normalizeProductsResponse(data: ProductsResponseShape) {
   };
 }
 
+async function fetchProductsPage(
+  url: string,
+  options?: { signal?: AbortSignal; retries?: number },
+) {
+  const retries = options?.retries ?? PRODUCTS_FETCH_RETRIES;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: options?.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load products");
+      }
+
+      const data = (await response.json()) as ProductsResponseShape;
+      return normalizeProductsResponse(data);
+    } catch (error) {
+      if ((error as Error).name === "AbortError") {
+        throw error;
+      }
+
+      if (attempt === retries) {
+        throw error;
+      }
+
+      await wait(300 * (attempt + 1));
+    }
+  }
+
+  throw new Error("Failed to load products");
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -72,6 +116,7 @@ export default function ProductsPage() {
   const pressedElementRef = useRef<HTMLElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadMoreRetryBlockedUntilRef = useRef(0);
 
   const filteredProducts = searchQuery.trim()
     ? products.filter(
@@ -164,6 +209,44 @@ export default function ProductsPage() {
     [],
   );
 
+  const revalidateProductById = useCallback(async (productId: string) => {
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const serverProduct = (await response.json()) as {
+        id: string;
+        sku: string;
+        name: string;
+        price: number | string;
+        description: string | null;
+        isPinned?: boolean;
+      };
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === serverProduct.id
+            ? {
+                ...product,
+                sku: serverProduct.sku,
+                name: serverProduct.name,
+                price: serverProduct.price,
+                description: serverProduct.description ?? undefined,
+                isPinned: serverProduct.isPinned ?? product.isPinned,
+              }
+            : product,
+        ),
+      );
+    } catch (error) {
+      console.error("Unable to revalidate product", error);
+    }
+  }, []);
+
   const refreshProducts = useCallback(async () => {
     try {
       setIsRefreshingProducts(true);
@@ -171,20 +254,13 @@ export default function ProductsPage() {
       setOffset(0);
       setHasMore(true);
 
-      const response = await fetch(
+      const normalized = await fetchProductsPage(
         `/api/products?skip=0&limit=${ITEMS_PER_PAGE}`,
-        { cache: "no-store" },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to load products");
-      }
-
-      const data = (await response.json()) as ProductsResponseShape;
-      const normalized = normalizeProductsResponse(data);
       setProducts(normalized.items);
       setTotalProducts(normalized.total ?? normalized.items.length);
       setHasMore(normalized.hasMore);
+      loadMoreRetryBlockedUntilRef.current = 0;
     } catch (error) {
       console.error("Unable to load products", error);
       if (products.length === 0) {
@@ -202,21 +278,17 @@ export default function ProductsPage() {
       return;
     }
 
+    if (Date.now() < loadMoreRetryBlockedUntilRef.current) {
+      return;
+    }
+
     try {
       setIsLoadingMore(true);
       const newOffset = offset + ITEMS_PER_PAGE;
 
-      const response = await fetch(
+      const normalized = await fetchProductsPage(
         `/api/products?skip=${newOffset}&limit=${ITEMS_PER_PAGE}`,
-        { cache: "no-store" },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to load more products");
-      }
-
-      const data = (await response.json()) as ProductsResponseShape;
-      const normalized = normalizeProductsResponse(data);
 
       if (normalized.items.length > 0) {
         setProducts((prev) => [...prev, ...normalized.items]);
@@ -227,10 +299,12 @@ export default function ProductsPage() {
       if (normalized.total !== null) {
         setTotalProducts(normalized.total);
       }
+      loadMoreRetryBlockedUntilRef.current = 0;
     } catch (error) {
       console.error("Unable to load more products", error);
-      // Stop repeated observer-triggered retries after a failed page load.
-      setHasMore(false);
+      // Prevent rapid observer-triggered retry loops after transient failures.
+      loadMoreRetryBlockedUntilRef.current =
+        Date.now() + LOAD_MORE_RETRY_COOLDOWN_MS;
     } finally {
       setIsLoadingMore(false);
     }
@@ -240,27 +314,39 @@ export default function ProductsPage() {
     const controller = new AbortController();
 
     const initialLoad = async () => {
+      let didLoad = false;
+
       try {
         setIsLoadingProducts(true);
         setProductsError(null);
 
-        const response = await fetch(
-          `/api/products?skip=0&limit=${ITEMS_PER_PAGE}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        for (let attempt = 0; attempt < INITIAL_LOAD_MAX_ATTEMPTS; attempt += 1) {
+          try {
+            const normalized = await fetchProductsPage(
+              `/api/products?skip=0&limit=${ITEMS_PER_PAGE}`,
+              {
+                signal: controller.signal,
+              },
+            );
 
-        if (!response.ok) {
-          throw new Error("Failed to load products");
+            setProducts(normalized.items);
+            setTotalProducts(normalized.total ?? normalized.items.length);
+            setHasMore(normalized.hasMore);
+            loadMoreRetryBlockedUntilRef.current = 0;
+            didLoad = true;
+            break;
+          } catch (attemptError) {
+            if ((attemptError as Error).name === "AbortError") {
+              throw attemptError;
+            }
+
+            if (attempt === INITIAL_LOAD_MAX_ATTEMPTS - 1) {
+              throw attemptError;
+            }
+
+            await wait(INITIAL_LOAD_RETRY_BASE_DELAY_MS * (attempt + 1));
+          }
         }
-
-        const data = (await response.json()) as ProductsResponseShape;
-        const normalized = normalizeProductsResponse(data);
-        setProducts(normalized.items);
-        setTotalProducts(normalized.total ?? normalized.items.length);
-        setHasMore(normalized.hasMore);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Unable to load products", error);
@@ -269,7 +355,9 @@ export default function ProductsPage() {
           setTotalProducts(0);
         }
       } finally {
-        setIsLoadingProducts(false);
+        if (didLoad || !controller.signal.aborted) {
+          setIsLoadingProducts(false);
+        }
       }
     };
 
@@ -466,6 +554,7 @@ export default function ProductsPage() {
                   : product,
               ),
             );
+            void revalidateProductById(updated.id);
           }}
         />
       )}
