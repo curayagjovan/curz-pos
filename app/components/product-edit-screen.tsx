@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
+import { Panel } from "konsta/react";
 import {
   FormEvent,
   useCallback,
@@ -197,14 +198,11 @@ export default function ProductEditScreen({
   };
 
   return (
-    <div
-      className={[
-        "fixed inset-0 z-70 overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground",
-        "transform-gpu transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-        isVisible
-          ? "translate-x-0 opacity-100"
-          : "translate-x-full opacity-100",
-      ].join(" ")}
+    <Panel
+      side="right"
+      opened={isVisible}
+      backdrop={false}
+      className="z-70! h-screen! w-screen! max-w-none! duration-300! ease-[cubic-bezier(0.16,1,0.3,1)]! overflow-y-auto bg-background pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground"
     >
       <div className="mx-auto max-w-xl px-4">
         <button
@@ -373,6 +371,6 @@ export default function ProductEditScreen({
           </form>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }
