@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }> | { id: string };
 };
+
+async function resolveId(context: RouteContext) {
+  const params = await context.params;
+  return params.id;
+}
 
 export async function GET(_: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const id = await resolveId(context);
 
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) {
@@ -29,7 +34,7 @@ export async function GET(_: Request, context: RouteContext) {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const id = await resolveId(context);
     const body = (await request.json()) as {
       sku?: string;
       name?: string;
@@ -151,9 +156,13 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 }
 
+export async function PATCH(request: Request, context: RouteContext) {
+  return PUT(request, context);
+}
+
 export async function DELETE(_: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const id = await resolveId(context);
 
     await prisma.product.update({
       where: { id },

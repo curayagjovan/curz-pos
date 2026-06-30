@@ -111,9 +111,12 @@ export default function ProductEditPopup({
       setSuccessMessage(null);
 
       try {
-        const response = await fetch(`/api/products/${productId}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/products/${encodeURIComponent(productId)}`,
+          {
+            cache: "no-store",
+          },
+        );
 
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as {
@@ -201,11 +204,14 @@ export default function ProductEditPopup({
         stock: Number(formValues.stock || 0),
       };
 
-      const response = await fetch(`/api/products/${productId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `/api/products/${encodeURIComponent(productId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as {
