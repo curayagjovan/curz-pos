@@ -2,7 +2,6 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import { MapPinIcon, TrashIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { type ProductListItem } from "../types";
 
@@ -11,9 +10,9 @@ type ProductQuickViewPopupProps = {
   pressTarget: React.RefObject<HTMLElement | null>;
   notice: string | null;
   onClose: () => void;
+  onEditProduct?: (productId: string) => void;
   onPinProduct?: (productId: string, isPinned: boolean) => Promise<void>;
   formatPrice: (value: number | string) => string;
-  onNavigating?: (isNavigating: boolean) => void;
 };
 
 export default function ProductQuickViewPopup({
@@ -21,49 +20,30 @@ export default function ProductQuickViewPopup({
   pressTarget,
   notice,
   onClose,
+  onEditProduct,
   onPinProduct,
   formatPrice,
-  onNavigating,
 }: ProductQuickViewPopupProps) {
-  const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
-  const didNavigateRef = useRef(false);
+  const didOpenEditRef = useRef(false);
 
-  const saveScrollAndNavigate = (productId: string) => {
-    if (didNavigateRef.current) {
+  const openEditPopup = (productId: string) => {
+    if (didOpenEditRef.current) {
       return;
     }
-    didNavigateRef.current = true;
-
-    // Set navigation flag to prevent cart adds during navigation
-    if (onNavigating) {
-      onNavigating(true);
-    }
-
-    // Save scroll position before navigating
-    const scrollableElement =
-      document.querySelector('[class*="k-page"]') || document.documentElement;
-    const scrollTop = scrollableElement?.scrollTop ?? window.scrollY;
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(
-        "products-page-scroll-position",
-        String(scrollTop),
-      );
-    }
-
-    // Navigate to the product edit page (don't close popup yet, navigation will unmount it)
-    router.push(`/products/${productId}`);
+    didOpenEditRef.current = true;
+    onClose();
+    onEditProduct?.(productId);
   };
 
   useEffect(() => {
     if (!product) {
-      didNavigateRef.current = false;
+      didOpenEditRef.current = false;
       return;
     }
 
-    router.prefetch(`/products/${product.id}`);
-    didNavigateRef.current = false;
-  }, [product, router]);
+    didOpenEditRef.current = false;
+  }, [product]);
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -149,12 +129,12 @@ export default function ProductQuickViewPopup({
             onPointerUp={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              saveScrollAndNavigate(product.id);
+              openEditPopup(product.id);
             }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              saveScrollAndNavigate(product.id);
+              openEditPopup(product.id);
             }}
           >
             <div className="px-4 py-4">

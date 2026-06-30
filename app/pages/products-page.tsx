@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
 import ProductQuickViewPopup from "../components/product-quick-view-popup";
 import CheckoutActionSheet from "@/app/components/checkout-action-sheet";
+import ProductEditPopup from "@/app/components/product-edit-popup";
 import PageContainer from "../components/page-container";
 import { type ProductListItem } from "../types";
 import { computeTax } from "@/lib/tax-config";
@@ -112,7 +113,7 @@ export default function ProductsPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const [cart, setCart] = useState<Map<string, number>>(new Map());
@@ -234,15 +235,10 @@ export default function ProductsPage() {
 
   const addToCart = useCallback(
     (productId: string) => {
-      // Don't add to cart if navigation is in progress, quickview is open, or we just opened quickview
-      if (
-        isNavigating ||
-        skipNextClickRef.current ||
-        quickViewProduct?.id === productId
-      ) {
+      // Don't add to cart if quickview is open, or we just opened quickview
+      if (skipNextClickRef.current || quickViewProduct?.id === productId) {
         console.log("Skipping cart add", {
           productId,
-          isNavigating,
           skipNext: skipNextClickRef.current,
           quickViewProductId: quickViewProduct?.id,
         });
@@ -258,7 +254,7 @@ export default function ProductsPage() {
       });
       setCheckoutError(null);
     },
-    [quickViewProduct, isNavigating],
+    [quickViewProduct],
   );
 
   const decrementCartItem = useCallback((productId: string) => {
@@ -712,7 +708,7 @@ export default function ProductsPage() {
           inset
           style={{
             pointerEvents:
-              quickViewProduct || isNavigating || isCheckoutOpen
+              quickViewProduct || isCheckoutOpen || editingProductId
                 ? "none"
                 : "auto",
           }}
@@ -758,8 +754,8 @@ export default function ProductsPage() {
                     onMouseUp={clearLongPressTimer}
                     onMouseLeave={clearLongPressTimer}
                     onClick={(e) => {
-                      // Ignore clicks if quickview is open or we're navigating
-                      if (quickViewProduct || isNavigating) {
+                      // Ignore clicks if quickview is open
+                      if (quickViewProduct) {
                         e.preventDefault();
                         e.stopPropagation();
                         return;
@@ -817,8 +813,8 @@ export default function ProductsPage() {
                   onMouseUp={clearLongPressTimer}
                   onMouseLeave={clearLongPressTimer}
                   onClick={(e) => {
-                    // Ignore clicks if quickview is open or we're navigating
-                    if (quickViewProduct || isNavigating) {
+                    // Ignore clicks if quickview is open
+                    if (quickViewProduct) {
                       e.preventDefault();
                       e.stopPropagation();
                       return;
@@ -852,11 +848,22 @@ export default function ProductsPage() {
         pressTarget={pressedElementRef}
         notice={null}
         onPinProduct={handlePinProduct}
+        onEditProduct={(productId) => {
+          setEditingProductId(productId);
+        }}
         onClose={() => {
           setQuickViewProduct(null);
         }}
         formatPrice={formatPrice}
-        onNavigating={setIsNavigating}
+      />
+
+      <ProductEditPopup
+        open={Boolean(editingProductId)}
+        productId={editingProductId}
+        onClose={() => {
+          setEditingProductId(null);
+        }}
+        onSaved={refreshProducts}
       />
 
       <CheckoutActionSheet
