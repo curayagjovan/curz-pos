@@ -134,8 +134,6 @@ export default function ProductsList() {
             key={product.id}
             description={
               <div style={{ fontSize: "0.875rem", color: "var(--muted)" }}>
-                <div>SKU: {product.sku}</div>
-                <div>Stock: {Number(product.stock)}</div>
                 <div>Price: ₱{Number(product.price).toFixed(2)}</div>
               </div>
             }
