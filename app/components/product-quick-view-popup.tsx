@@ -27,8 +27,14 @@ export default function ProductQuickViewPopup({
 }: ProductQuickViewPopupProps) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
+  const didNavigateRef = useRef(false);
 
   const saveScrollAndNavigate = (productId: string) => {
+    if (didNavigateRef.current) {
+      return;
+    }
+    didNavigateRef.current = true;
+
     // Set navigation flag to prevent cart adds during navigation
     if (onNavigating) {
       onNavigating(true);
@@ -48,6 +54,16 @@ export default function ProductQuickViewPopup({
     // Navigate to the product edit page (don't close popup yet, navigation will unmount it)
     router.push(`/products/${productId}`);
   };
+
+  useEffect(() => {
+    if (!product) {
+      didNavigateRef.current = false;
+      return;
+    }
+
+    router.prefetch(`/products/${product.id}`);
+    didNavigateRef.current = false;
+  }, [product, router]);
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -130,11 +146,12 @@ export default function ProductQuickViewPopup({
           <button
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
+            onPointerUp={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              saveScrollAndNavigate(product.id);
+            }}
             onClick={(e) => {
-              console.log("Preview card clicked", {
-                productId: product.id,
-                target: e.target,
-              });
               e.preventDefault();
               e.stopPropagation();
               saveScrollAndNavigate(product.id);
