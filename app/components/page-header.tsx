@@ -33,10 +33,18 @@ function formatPageName(pathname: string) {
 
 function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
   const pathname = usePathname();
+  const [menuTarget, setMenuTarget] = useState<string | HTMLElement | null>(
+    null,
+  );
   const [menuOpened, setMenuOpened] = useState(false);
   const pageName = formatPageName(pathname);
   const resolvedTitle = title ?? pageName;
   const resolvedSubtitle = subtitle ?? pageName;
+
+  const openPopover = (target: string | HTMLElement) => {
+    setMenuTarget(target);
+    setMenuOpened(true);
+  };
 
   return (
     <>
@@ -59,12 +67,9 @@ function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
         bgClassName="bg-gradient-to-b from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0"
         right={
           <Link
-            id="page-header-menu-trigger"
+            className="page-header-popover-link"
             iconOnly
-            onClick={(event) => {
-              event.preventDefault();
-              setMenuOpened(true);
-            }}
+            onClick={() => openPopover(".page-header-popover-link")}
             aria-label="Open page menu"
           >
             <EllipsisHorizontalIcon className="size-6" />
@@ -74,24 +79,21 @@ function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
 
       <Popover
         opened={menuOpened}
-        target="#page-header-menu-trigger"
+        target={menuTarget}
         onBackdropClick={() => setMenuOpened(false)}
-        backdrop
-        angle
-        className="w-56 rounded-2xl"
       >
-        <List strongIos inset className="my-0 min-w-0">
+        <List nested>
           <ListItem
             link
             title="Transactions"
-            media={<ReceiptPercentIcon className="size-5 text-[#0a84ff]" />}
+            media={<ReceiptPercentIcon className="size-5" />}
             href="/transactions"
             onClick={() => setMenuOpened(false)}
           />
           <ListItem
             link
             title="Settings"
-            media={<Cog6ToothIcon className="size-5 text-[#8e8e93]" />}
+            media={<Cog6ToothIcon className="size-5" />}
             href="/settings"
             onClick={() => setMenuOpened(false)}
           />

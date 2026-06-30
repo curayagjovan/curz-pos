@@ -276,6 +276,14 @@ export default function ProductsPage() {
     });
   }, []);
 
+  const removeCartItem = useCallback((productId: string) => {
+    setCart((prev) => {
+      const next = new Map(prev);
+      next.delete(productId);
+      return next;
+    });
+  }, []);
+
   const clearCart = useCallback(() => {
     setCart(new Map());
     setPaymentAmountInput("");
@@ -655,7 +663,9 @@ export default function ProductsPage() {
         if (!paymentAmountInput && checkoutTotal > 0) {
           setPaymentAmountInput(checkoutTotal.toFixed(2));
         }
-        setIsCheckoutOpen(true);
+        requestAnimationFrame(() => {
+          setIsCheckoutOpen(true);
+        });
       }}
       onRefresh={refreshProducts}
       isRefreshing={isRefreshingProducts}
@@ -833,6 +843,7 @@ export default function ProductsPage() {
         onClose={() => setIsCheckoutOpen(false)}
         onIncrement={addToCart}
         onDecrement={decrementCartItem}
+        onRemoveItem={removeCartItem}
         onClearCart={clearCart}
         onPaymentAmountInputChange={handlePaymentAmountInputChange}
         onQuickAmountSelect={handleQuickAmountSelect}
