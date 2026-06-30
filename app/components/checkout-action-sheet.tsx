@@ -77,6 +77,23 @@ export default function CheckoutActionSheet({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [open]);
+
   if (!mounted) {
     return null;
   }
@@ -105,7 +122,7 @@ export default function CheckoutActionSheet({
         aria-modal="true"
         aria-label="Checkout"
         className={[
-          "fixed bottom-0 left-0 right-0 z-71 max-h-[84svh] rounded-t-3xl bg-[#f7f7fa] shadow-[0_-20px_60px_rgba(0,0,0,0.22)] transition-transform duration-250 dark:bg-[#0b0b0d]",
+          "fixed bottom-0 left-0 right-0 z-71 h-[84svh] overflow-y-auto overscroll-contain rounded-t-3xl bg-[#f7f7fa] shadow-[0_-20px_60px_rgba(0,0,0,0.22)] transition-transform duration-250 dark:bg-[#0b0b0d]",
           open ? "translate-y-0" : "translate-y-[104%]",
         ].join(" ")}
       >
@@ -129,7 +146,7 @@ export default function CheckoutActionSheet({
           contentWrap={false}
           className="mx-4 mb-2 mt-1 rounded-2xl border border-black/10 bg-[#eceff3] dark:border-white/10 dark:bg-[#151518]"
         >
-          <div className="max-h-[44svh] overflow-y-auto px-3 pb-3 pt-3">
+          <div className="px-3 pb-3 pt-3">
             {items.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-8 text-center dark:border-white/15 dark:bg-[#0e0e10]">
                 <p className="text-sm text-[#6b7280] dark:text-[#b8b8c2]">
