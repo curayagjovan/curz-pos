@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useLayoutEffect } from "react";
-import { NavBar, Popover, List } from "antd-mobile";
+import { useLayoutEffect, useState } from "react";
+import { NavBar, Popover, Button, List } from "antd-mobile";
 import { MoreOutline } from "antd-mobile-icons";
 
 type PageHeaderProps = {
@@ -24,7 +24,7 @@ export default function PageHeader({ title }: PageHeaderProps) {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
-  const handleMenuItemClick = (item: string) => {
+  const handleMenuItemClick = (item: string | number) => {
     console.log(`Menu item clicked: ${item}`);
     setPopoverVisible(false);
   };
@@ -58,13 +58,9 @@ export default function PageHeader({ title }: PageHeaderProps) {
             trigger="click"
             mode={isDark ? "dark" : "light"}
           >
-            <button
-              type="button"
-              aria-label="More options"
-              style={{ background: "transparent", border: 0 }}
-            >
+            <Button fill="none">
               <MoreOutline />
-            </button>
+            </Button>
           </Popover>
         }
       >
