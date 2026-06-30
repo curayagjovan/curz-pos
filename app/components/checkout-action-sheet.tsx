@@ -302,7 +302,7 @@ export default function CheckoutActionSheet({
 
         <div
           className={[
-            "relative z-10 flex h-dvh w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] dark:bg-[#0b0b0d]",
+            "relative z-10 flex h-dvh w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] pt-[max(env(safe-area-inset-top),8px)] dark:bg-[#0b0b0d]",
             isSheetDragging ? "" : "transition-transform duration-200 ease-out",
           ].join(" ")}
           style={{ transform: `translateY(${sheetDragOffset}px)` }}
