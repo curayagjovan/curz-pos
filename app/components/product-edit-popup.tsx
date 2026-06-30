@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useSyncExternalStore } from "react";
 import {
   Block,
   BlockTitle,
@@ -90,6 +92,11 @@ export default function ProductEditPopup({
   onClose,
   onSaved,
 }: ProductEditPopupProps) {
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [formValues, setFormValues] = useState<FormValues>(EMPTY_FORM);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -232,7 +239,11 @@ export default function ProductEditPopup({
     }
   };
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <Popup opened={open} backdrop>
       <div className="flex h-full w-full flex-col overflow-y-auto bg-[#f7f7fa] pt-[max(env(safe-area-inset-top),8px)] dark:bg-[#0b0b0d]">
         <Navbar
@@ -374,6 +385,7 @@ export default function ProductEditPopup({
           </div>
         )}
       </div>
-    </Popup>
+    </Popup>,
+    document.body,
   );
 }
