@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InfiniteScroll, List, Empty, DotLoading } from "antd-mobile";
-
-type Product = {
-  id: string;
-  sku: string;
-  name: string;
-  price: number | string;
-  bundleQty?: number | string;
-  bundlePrice?: number | string;
-  stock: number | string;
-};
+import {
+  getProducts,
+  saveProducts,
+  shouldRefresh,
+  type Product,
+} from "@/lib/products-db";
 
 const InfiniteScrollContent = ({ hasMore }: { hasMore?: boolean }) => {
   return (
@@ -54,39 +50,76 @@ export default function ProductsList() {
   const initializedRef = useRef(false);
   const pageSize = 18;
 
-  const fetchProducts = useCallback(
-    async (skipValue: number): Promise<void> => {
-      try {
-        const response = await fetch(
-          `/api/products?skip=${skipValue}&limit=${pageSize}`,
+  const fetchFromAPI = async (skipValue: number): Promise<void> => {
+    try {
+      const response = await fetch(
+        `/api/products?skip=${skipValue}&limit=${pageSize}`,
+      );
+      const data = await response.json();
+
+      setProducts((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const newItems = data.items.filter(
+          (item: Product) => !existingIds.has(item.id),
         );
-        const data = await response.json();
+        const updated = [...prev, ...newItems];
+        // Save to IndexedDB when we fetch
+        if (skipValue === 0) {
+          saveProducts(updated).catch(console.error);
+        }
+        return updated;
+      });
+      setHasMore(data.hasMore);
+      setSkip(skipValue + pageSize);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    }
+  };
 
-        setProducts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const newItems = data.items.filter(
-            (item: Product) => !existingIds.has(item.id),
-          );
-          return [...prev, ...newItems];
-        });
-        setHasMore(data.hasMore);
-        setSkip(skipValue + pageSize);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
+  const refreshFromAPI = async () => {
+    try {
+      const response = await fetch("/api/products?skip=0&limit=9999");
+      const data = await response.json();
+      setProducts(data.items);
+      setSkip(data.items.length);
+      setHasMore(data.hasMore);
+      // Save to IndexedDB
+      await saveProducts(data.items);
+    } catch (error) {
+      console.error("Failed to refresh products:", error);
+    }
+  };
+
+  const loadCachedProducts = async () => {
+    try {
+      const cachedProducts = await getProducts();
+      if (cachedProducts.length > 0) {
+        setProducts(cachedProducts);
+        // Check if we should refresh in the background
+        if (shouldRefresh()) {
+          refreshFromAPI();
+        }
+      } else {
+        // No cache, fetch immediately
+        await fetchFromAPI(0);
       }
-    },
-    [pageSize],
-  );
+    } catch (error) {
+      console.error("Failed to load cached products:", error);
+      // Fall back to API fetch
+      await fetchFromAPI(0);
+    }
+  };
 
+  // Load cached products on mount
   useEffect(() => {
     if (!initializedRef.current) {
       initializedRef.current = true;
-      fetchProducts(0);
+      loadCachedProducts();
     }
   }, []);
 
   const loadMore = async () => {
-    await fetchProducts(skip);
+    await fetchFromAPI(skip);
   };
 
   if (products.length === 0 && !hasMore) {
