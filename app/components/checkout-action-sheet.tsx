@@ -306,9 +306,8 @@ export default function CheckoutActionSheet({
             isSheetDragging ? "" : "transition-transform duration-200 ease-out",
           ].join(" ")}
           style={{ transform: `translateY(${sheetDragOffset}px)` }}
-          onClickCapture={(event) => event.stopPropagation()}
-          onPointerDownCapture={(event) => event.stopPropagation()}
-          onWheelCapture={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onWheel={(event) => event.stopPropagation()}
         >
           <div
             className="pt-2"
