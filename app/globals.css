@@ -54,6 +54,10 @@ textarea {
   --tint: #007aff;
 }
 
+:root:root {
+  --adm-color-primary: var(--tint);
+}
+
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
     color-scheme: dark;
@@ -125,4 +129,60 @@ html[data-theme="dark"] {
 .app-copy {
   margin: 0 0 1rem;
   line-height: 1.5;
+}
+
+.mobile-app {
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--background) 92%, transparent);
+  backdrop-filter: saturate(160%) blur(8px);
+  -webkit-backdrop-filter: saturate(160%) blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-content {
+  min-height: 100dvh;
+  padding-top: calc(env(safe-area-inset-top) + 48px + 1rem);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 56px + 1rem);
+}
+
+.mobile-content-inner {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.mobile-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.mobile-subtitle {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  backdrop-filter: saturate(160%) blur(8px);
+  -webkit-backdrop-filter: saturate(160%) blur(8px);
+  padding-bottom: env(safe-area-inset-bottom);
 }
