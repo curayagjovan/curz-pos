@@ -182,7 +182,6 @@ export default function CheckoutActionSheet({
 
     if (deltaY > 0 && deltaY > deltaX) {
       setSheetDragOffset(Math.min(deltaY, 96));
-      event.preventDefault();
       return;
     }
 
@@ -293,7 +292,7 @@ export default function CheckoutActionSheet({
 
   return createPortal(
     <Popup opened={open} backdrop={false} className="bg-transparent!">
-      <div className="relative flex h-dvh w-full items-end">
+      <div className="fixed inset-0 z-50 flex items-stretch">
         <button
           type="button"
           aria-label="Close checkout"
@@ -303,37 +302,37 @@ export default function CheckoutActionSheet({
 
         <div
           className={[
-            "relative z-10 flex h-[75dvh] w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] dark:bg-[#0b0b0d] md:rounded-4xl",
+            "relative z-10 flex h-dvh w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] dark:bg-[#0b0b0d]",
             isSheetDragging ? "" : "transition-transform duration-200 ease-out",
           ].join(" ")}
           style={{ transform: `translateY(${sheetDragOffset}px)` }}
           onClickCapture={(event) => event.stopPropagation()}
           onPointerDownCapture={(event) => event.stopPropagation()}
-          onTouchStartCapture={(event) => event.stopPropagation()}
           onWheelCapture={(event) => event.stopPropagation()}
         >
           <div
+            className="pt-2"
             onTouchStart={onSheetTouchStart}
             onTouchMove={onSheetTouchMove}
             onTouchEnd={onSheetTouchEnd}
             onTouchCancel={onSheetTouchCancel}
           >
-            <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-black/15 dark:bg-white/20" />
-
-            <header className="flex items-center justify-between px-4 pb-3 pt-3">
-              <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[#131316] dark:text-white">
-                Checkout
-              </h2>
-              <button
-                type="button"
-                onClick={closeSheet}
-                className="rounded-full p-1.5 text-[#3a3a3f] active:bg-black/5 dark:text-[#e7e7ea] dark:active:bg-white/10"
-                aria-label="Close checkout"
-              >
-                <XMarkIcon className="size-5" />
-              </button>
-            </header>
+            <div className="mx-auto h-1.5 w-12 rounded-full bg-black/15 dark:bg-white/20" />
           </div>
+
+          <header className="flex items-center justify-between px-4 pb-3 pt-3">
+            <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[#131316] dark:text-white">
+              Checkout
+            </h2>
+            <button
+              type="button"
+              onClick={closeSheet}
+              className="rounded-full p-1.5 text-[#3a3a3f] active:bg-black/5 dark:text-[#e7e7ea] dark:active:bg-white/10"
+              aria-label="Close checkout"
+            >
+              <XMarkIcon className="size-5" />
+            </button>
+          </header>
 
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-1">
             <Card
@@ -342,7 +341,7 @@ export default function CheckoutActionSheet({
             >
               <div className="flex h-full min-h-0 flex-col px-3 pb-3 pt-3">
                 {items.length === 0 ? (
-                  <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-black/10 bg-white px-4 py-8 text-center dark:border-white/15 dark:bg-[#0e0e10]">
+                  <div className="flex h-full w-full flex-1 items-center justify-center rounded-2xl border border-dashed border-black/10 bg-white px-4 py-8 text-center dark:border-white/15 dark:bg-[#0e0e10]">
                     <p className="text-sm text-[#6b7280] dark:text-[#b8b8c2]">
                       Your cart is empty.
                     </p>

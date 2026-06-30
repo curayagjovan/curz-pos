@@ -653,6 +653,34 @@ export default function ProductsPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!isCheckoutOpen) {
+      return;
+    }
+
+    const pageElement = document.querySelector(
+      '[class*="k-page"]',
+    ) as HTMLElement | null;
+
+    if (!pageElement) {
+      return;
+    }
+
+    const previousOverflow = pageElement.style.overflow;
+    const previousOverscrollBehavior = pageElement.style.overscrollBehavior;
+    const previousTouchAction = pageElement.style.touchAction;
+
+    pageElement.style.overflow = "hidden";
+    pageElement.style.overscrollBehavior = "none";
+    pageElement.style.touchAction = "none";
+
+    return () => {
+      pageElement.style.overflow = previousOverflow;
+      pageElement.style.overscrollBehavior = previousOverscrollBehavior;
+      pageElement.style.touchAction = previousTouchAction;
+    };
+  }, [isCheckoutOpen]);
+
   return (
     <PageContainer
       subtitle={`${totalProducts} Products`}
@@ -683,7 +711,10 @@ export default function ProductsPage() {
           strongIos
           inset
           style={{
-            pointerEvents: quickViewProduct || isNavigating ? "none" : "auto",
+            pointerEvents:
+              quickViewProduct || isNavigating || isCheckoutOpen
+                ? "none"
+                : "auto",
           }}
         >
           {!isLoadingProducts && productsError && (
