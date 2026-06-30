@@ -71,6 +71,8 @@ export default function CheckoutActionSheet({
   const itemSwipeIdRef = useRef<string | null>(null);
   const itemSwipeStartXRef = useRef<number | null>(null);
   const itemSwipeStartYRef = useRef<number | null>(null);
+  const [sheetDragOffset, setSheetDragOffset] = useState(0);
+  const [isSheetDragging, setIsSheetDragging] = useState(false);
   const [swipePreview, setSwipePreview] = useState<{
     id: string;
     offset: number;
@@ -92,6 +94,32 @@ export default function CheckoutActionSheet({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [open]);
+
+  const closeSheet = () => {
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
+    onClose();
+  };
+
   const remainingAmount = Math.max(
     0,
     Number((total - paymentAmount).toFixed(2)),
@@ -107,6 +135,7 @@ export default function CheckoutActionSheet({
 
     swipeStartYRef.current = touch.clientY;
     swipeStartXRef.current = touch.clientX;
+    setIsSheetDragging(true);
   };
 
   const onSheetTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -127,14 +156,44 @@ export default function CheckoutActionSheet({
     swipeStartYRef.current = null;
     swipeStartXRef.current = null;
 
-    if (deltaY > 80 && deltaY > deltaX * 1.2) {
-      onClose();
+    if (deltaY > 60 && deltaY > deltaX * 1.2) {
+      setSheetDragOffset(0);
+      setIsSheetDragging(false);
+      closeSheet();
+      return;
     }
+
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
+  };
+
+  const onSheetTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (swipeStartYRef.current === null || swipeStartXRef.current === null) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    if (!touch) {
+      return;
+    }
+
+    const deltaY = touch.clientY - swipeStartYRef.current;
+    const deltaX = Math.abs(touch.clientX - swipeStartXRef.current);
+
+    if (deltaY > 0 && deltaY > deltaX) {
+      setSheetDragOffset(Math.min(deltaY, 96));
+      event.preventDefault();
+      return;
+    }
+
+    setSheetDragOffset(0);
   };
 
   const onSheetTouchCancel = () => {
     swipeStartYRef.current = null;
     swipeStartXRef.current = null;
+    setSheetDragOffset(0);
+    setIsSheetDragging(false);
   };
 
   const onItemTouchStart = (
@@ -234,39 +293,47 @@ export default function CheckoutActionSheet({
 
   return createPortal(
     <Popup opened={open} backdrop={false} className="bg-transparent!">
-      <div className="relative flex h-full w-full items-end">
+      <div className="relative flex h-dvh w-full items-end">
         <button
           type="button"
           aria-label="Close checkout"
           className="absolute inset-0 bg-transparent [backdrop-filter:blur(8px)]"
-          onClick={onClose}
+          onClick={closeSheet}
         />
 
         <div
-          className="relative z-10 flex h-[75vh] w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] dark:bg-[#0b0b0d] md:rounded-4xl"
+          className={[
+            "relative z-10 flex h-[75dvh] w-full flex-col overflow-hidden overscroll-contain bg-[#f7f7fa] dark:bg-[#0b0b0d] md:rounded-4xl",
+            isSheetDragging ? "" : "transition-transform duration-200 ease-out",
+          ].join(" ")}
+          style={{ transform: `translateY(${sheetDragOffset}px)` }}
           onClickCapture={(event) => event.stopPropagation()}
           onPointerDownCapture={(event) => event.stopPropagation()}
           onTouchStartCapture={(event) => event.stopPropagation()}
           onWheelCapture={(event) => event.stopPropagation()}
-          onTouchStart={onSheetTouchStart}
-          onTouchEnd={onSheetTouchEnd}
-          onTouchCancel={onSheetTouchCancel}
         >
-          <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-black/15 dark:bg-white/20" />
+          <div
+            onTouchStart={onSheetTouchStart}
+            onTouchMove={onSheetTouchMove}
+            onTouchEnd={onSheetTouchEnd}
+            onTouchCancel={onSheetTouchCancel}
+          >
+            <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-black/15 dark:bg-white/20" />
 
-          <header className="flex items-center justify-between px-4 pb-3 pt-3">
-            <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[#131316] dark:text-white">
-              Checkout
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-[#3a3a3f] active:bg-black/5 dark:text-[#e7e7ea] dark:active:bg-white/10"
-              aria-label="Close checkout"
-            >
-              <XMarkIcon className="size-5" />
-            </button>
-          </header>
+            <header className="flex items-center justify-between px-4 pb-3 pt-3">
+              <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[#131316] dark:text-white">
+                Checkout
+              </h2>
+              <button
+                type="button"
+                onClick={closeSheet}
+                className="rounded-full p-1.5 text-[#3a3a3f] active:bg-black/5 dark:text-[#e7e7ea] dark:active:bg-white/10"
+                aria-label="Close checkout"
+              >
+                <XMarkIcon className="size-5" />
+              </button>
+            </header>
+          </div>
 
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-1">
             <Card
