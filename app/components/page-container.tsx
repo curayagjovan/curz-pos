@@ -10,6 +10,7 @@ type PageContainerProps = {
   title?: string;
   subtitle?: string | React.ReactNode;
   onSearch?: (query: string) => void;
+  onCartClick?: () => void;
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
   isLoading?: boolean;
@@ -21,6 +22,7 @@ export default function PageContainer({
   title,
   subtitle,
   onSearch,
+  onCartClick,
   onRefresh,
   isRefreshing = false,
   isLoading = false,
@@ -151,7 +153,11 @@ export default function PageContainer({
       >
         {children}
       </main>
-      <BottomSearchBar onSearch={onSearch} cartCount={cartCount} />
+      <BottomSearchBar
+        onSearch={onSearch}
+        cartCount={cartCount}
+        onCartClick={onCartClick}
+      />
     </Page>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { MapPinIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, ListItem } from "konsta/react";
 import ProductQuickViewPopup from "../components/product-quick-view-popup";
+import CheckoutActionSheet from "@/app/components/checkout-action-sheet";
 import PageContainer from "../components/page-container";
 import { type ProductListItem } from "../types";
+import { computeTax } from "@/lib/tax-config";
 
 const SCROLL_POSITION_KEY = "products-page-scroll-position";
 
@@ -114,6 +116,10 @@ export default function ProductsPage() {
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
   const [cart, setCart] = useState<Map<string, number>>(new Map());
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [paymentAmountInput, setPaymentAmountInput] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
   const pressedElementRef = useRef<HTMLElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,9 +129,87 @@ export default function ProductsPage() {
   const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextClickRef = useRef(false);
 
-  const cartCount = Array.from(cart.values()).reduce(
-    (sum, qty) => sum + qty,
-    0,
+  const productById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
+
+  const checkoutItems = useMemo(
+    () =>
+      Array.from(cart.entries())
+        .map(([productId, quantity]) => {
+          const product = productById.get(productId);
+          if (!product || quantity <= 0) {
+            return null;
+          }
+
+          return {
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            unitPrice: Number(product.price) || 0,
+            quantity,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null),
+    [cart, productById],
+  );
+
+  const checkoutSubtotal = useMemo(
+    () =>
+      Number(
+        checkoutItems
+          .reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+          .toFixed(2),
+      ),
+    [checkoutItems],
+  );
+  const checkoutTax = useMemo(
+    () => computeTax(checkoutSubtotal),
+    [checkoutSubtotal],
+  );
+  const checkoutTotal = useMemo(
+    () => Number((checkoutSubtotal + checkoutTax).toFixed(2)),
+    [checkoutSubtotal, checkoutTax],
+  );
+
+  const paymentAmount = useMemo(() => {
+    const parsed = Number(paymentAmountInput);
+    if (
+      paymentAmountInput.trim() === "" ||
+      Number.isNaN(parsed) ||
+      parsed < 0
+    ) {
+      return 0;
+    }
+
+    return Number(parsed.toFixed(2));
+  }, [paymentAmountInput]);
+
+  const changeAmount = useMemo(
+    () => Number(Math.max(0, paymentAmount - checkoutTotal).toFixed(2)),
+    [paymentAmount, checkoutTotal],
+  );
+
+  const quickAmounts = useMemo(() => {
+    const roundedToNearestTen = Math.ceil(checkoutTotal / 10) * 10;
+    const roundedToNearestFifty = Math.ceil(checkoutTotal / 50) * 50;
+    const roundedToNearestHundred = Math.ceil(checkoutTotal / 100) * 100;
+    const base = [
+      checkoutTotal,
+      roundedToNearestTen,
+      roundedToNearestFifty,
+      roundedToNearestHundred,
+    ]
+      .filter((amount) => amount > 0)
+      .map((amount) => Number(amount.toFixed(2)));
+
+    return Array.from(new Set(base)).sort((a, b) => a - b);
+  }, [checkoutTotal]);
+
+  const cartCount = useMemo(
+    () => checkoutItems.reduce((sum, item) => sum + item.quantity, 0),
+    [checkoutItems],
   );
 
   const filteredProducts = searchQuery.trim()
@@ -172,9 +256,31 @@ export default function ProductsPage() {
         newCart.set(productId, currentQty + 1);
         return newCart;
       });
+      setCheckoutError(null);
     },
     [quickViewProduct, isNavigating],
   );
+
+  const decrementCartItem = useCallback((productId: string) => {
+    setCart((prev) => {
+      const next = new Map(prev);
+      const currentQty = next.get(productId) ?? 0;
+
+      if (currentQty <= 1) {
+        next.delete(productId);
+      } else {
+        next.set(productId, currentQty - 1);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const clearCart = useCallback(() => {
+    setCart(new Map());
+    setPaymentAmountInput("");
+    setCheckoutError(null);
+  }, []);
 
   const startLongPress = useCallback(
     (product: ProductListItem, event: React.TouchEvent | React.MouseEvent) => {
@@ -270,6 +376,72 @@ export default function ProductsPage() {
       setIsRefreshingProducts(false);
     }
   }, [products.length]);
+
+  const submitCheckout = useCallback(async () => {
+    if (checkoutItems.length === 0 || isSubmittingCheckout) {
+      return;
+    }
+
+    if (paymentAmount < checkoutTotal) {
+      setCheckoutError("Payment amount is not enough.");
+      return;
+    }
+
+    setIsSubmittingCheckout(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "PAID",
+          note: `Paid ${formatPrice(paymentAmount)} | Change ${formatPrice(changeAmount)}`,
+          items: checkoutItems.map((item) => ({
+            productId: item.id,
+            productName: item.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(errorBody?.message || "Unable to checkout");
+      }
+
+      setCart(new Map());
+      setPaymentAmountInput("");
+      setIsCheckoutOpen(false);
+      await refreshProducts();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to checkout";
+      setCheckoutError(message);
+    } finally {
+      setIsSubmittingCheckout(false);
+    }
+  }, [
+    changeAmount,
+    checkoutItems,
+    checkoutTotal,
+    isSubmittingCheckout,
+    paymentAmount,
+    refreshProducts,
+  ]);
+
+  const handlePaymentAmountInputChange = useCallback((value: string) => {
+    setCheckoutError(null);
+    setPaymentAmountInput(value);
+  }, []);
+
+  const handleQuickAmountSelect = useCallback((value: number) => {
+    setCheckoutError(null);
+    setPaymentAmountInput(value.toFixed(2));
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) {
@@ -478,6 +650,13 @@ export default function ProductsPage() {
       subtitle={`${totalProducts} Products`}
       cartCount={cartCount}
       onSearch={setSearchQuery}
+      onCartClick={() => {
+        setCheckoutError(null);
+        if (!paymentAmountInput && checkoutTotal > 0) {
+          setPaymentAmountInput(checkoutTotal.toFixed(2));
+        }
+        setIsCheckoutOpen(true);
+      }}
       onRefresh={refreshProducts}
       isRefreshing={isRefreshingProducts}
       isLoading={isLoadingProducts || isLoadingMore}
@@ -637,6 +816,28 @@ export default function ProductsPage() {
         }}
         formatPrice={formatPrice}
         onNavigating={setIsNavigating}
+      />
+
+      <CheckoutActionSheet
+        open={isCheckoutOpen}
+        items={checkoutItems}
+        subtotal={checkoutSubtotal}
+        tax={checkoutTax}
+        total={checkoutTotal}
+        paymentAmountInput={paymentAmountInput}
+        paymentAmount={paymentAmount}
+        changeAmount={changeAmount}
+        quickAmounts={quickAmounts}
+        isSubmitting={isSubmittingCheckout}
+        errorMessage={checkoutError}
+        onClose={() => setIsCheckoutOpen(false)}
+        onIncrement={addToCart}
+        onDecrement={decrementCartItem}
+        onClearCart={clearCart}
+        onPaymentAmountInputChange={handlePaymentAmountInputChange}
+        onQuickAmountSelect={handleQuickAmountSelect}
+        onCheckout={submitCheckout}
+        formatPrice={formatPrice}
       />
     </PageContainer>
   );
