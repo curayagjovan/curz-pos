@@ -1,3 +1,5 @@
+import ProductsPage from "./pages/products-page";
+
 export default function Page() {
-  return <main className="mobile-app" />;
+  return <ProductsPage />;
 }
