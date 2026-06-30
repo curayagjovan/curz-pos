@@ -2,16 +2,20 @@
 
 import { useLayoutEffect, useState } from "react";
 import { usePageContext } from "@/app/context/page-context";
-import { NavBar, Popover, Button, List } from "antd-mobile";
+import { NavBar, Popover, Button } from "antd-mobile";
 import { MoreOutline } from "antd-mobile-icons";
 
 type PageHeaderProps = {
   title: string;
 };
 
+type MenuItem = {
+  key: string;
+  text: string;
+};
+
 export default function PageHeader({ title }: PageHeaderProps) {
   const { currentPage, setCurrentPage } = usePageContext();
-  const [popoverVisible, setPopoverVisible] = useState(false);
   const [isDark, setIsDark] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -30,36 +34,27 @@ export default function PageHeader({ title }: PageHeaderProps) {
     setCurrentPage("products");
   };
 
-  const handleMenuItemClick = (item: string | number) => {
-    setPopoverVisible(false);
+  const menuActions: MenuItem[] = [
+    { key: "transactions", text: "Transactions" },
+    { key: "inventory", text: "Inventory" },
+    { key: "settings", text: "Settings" },
+  ];
 
+  const handleMenuAction = (action: MenuItem | unknown) => {
+    const item = action as MenuItem;
     const pageMap: Record<string, "transactions" | "inventory" | "settings"> = {
       transactions: "transactions",
       inventory: "inventory",
       settings: "settings",
     };
 
-    const page = pageMap[String(item)];
-    if (page) {
-      setCurrentPage(page);
+    if (item.key) {
+      const page = pageMap[item.key];
+      if (page) {
+        setCurrentPage(page);
+      }
     }
   };
-
-  const menuItems = [
-    { label: "Transactions", key: "transactions" },
-    { label: "Inventory", key: "inventory" },
-    { label: "Settings", key: "settings" },
-  ];
-
-  const menuContent = (
-    <List>
-      {menuItems.map((item) => (
-        <List.Item key={item.key} onClick={() => handleMenuItemClick(item.key)}>
-          {item.label}
-        </List.Item>
-      ))}
-    </List>
-  );
 
   return (
     <header className="mobile-header">
@@ -68,18 +63,17 @@ export default function PageHeader({ title }: PageHeaderProps) {
         onBack={handleBackClick}
         right={
           currentPage === "products" ? (
-            <Popover
-              content={menuContent}
-              placement="bottom-end"
-              visible={popoverVisible}
-              onVisibleChange={setPopoverVisible}
-              trigger="click"
+            <Popover.Menu
               mode={isDark ? "dark" : "light"}
+              actions={menuActions}
+              placement="bottom-end"
+              onAction={handleMenuAction}
+              trigger="click"
             >
               <Button fill="none">
                 <MoreOutline />
               </Button>
-            </Popover>
+            </Popover.Menu>
           ) : null
         }
       >
