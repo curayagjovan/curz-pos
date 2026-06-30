@@ -2,6 +2,7 @@
 
 import { ConfigProvider } from "antd-mobile";
 import { useEffect } from "react";
+import { PageProvider } from "@/app/context/page-context";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -31,5 +32,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <ConfigProvider>{children}</ConfigProvider>;
+  return (
+    <PageProvider>
+      <ConfigProvider>{children}</ConfigProvider>
+    </PageProvider>
+  );
 }

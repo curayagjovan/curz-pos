@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { usePageContext } from "@/app/context/page-context";
 import { NavBar, Popover, Button, List } from "antd-mobile";
 import { MoreOutline } from "antd-mobile-icons";
 
@@ -9,6 +10,7 @@ type PageHeaderProps = {
 };
 
 export default function PageHeader({ title }: PageHeaderProps) {
+  const { currentPage, setCurrentPage } = usePageContext();
   const [popoverVisible, setPopoverVisible] = useState(false);
   const [isDark, setIsDark] = useState(
     () =>
@@ -24,9 +26,23 @@ export default function PageHeader({ title }: PageHeaderProps) {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
+  const handleBackClick = () => {
+    setCurrentPage("products");
+  };
+
   const handleMenuItemClick = (item: string | number) => {
-    console.log(`Menu item clicked: ${item}`);
     setPopoverVisible(false);
+
+    const pageMap: Record<string, "transactions" | "inventory" | "settings"> = {
+      transactions: "transactions",
+      inventory: "inventory",
+      settings: "settings",
+    };
+
+    const page = pageMap[String(item)];
+    if (page) {
+      setCurrentPage(page);
+    }
   };
 
   const menuItems = [
@@ -48,20 +64,23 @@ export default function PageHeader({ title }: PageHeaderProps) {
   return (
     <header className="mobile-header">
       <NavBar
-        back={null}
+        back={currentPage !== "products" ? "" : null}
+        onBack={handleBackClick}
         right={
-          <Popover
-            content={menuContent}
-            placement="bottom-end"
-            visible={popoverVisible}
-            onVisibleChange={setPopoverVisible}
-            trigger="click"
-            mode={isDark ? "dark" : "light"}
-          >
-            <Button fill="none">
-              <MoreOutline />
-            </Button>
-          </Popover>
+          currentPage === "products" ? (
+            <Popover
+              content={menuContent}
+              placement="bottom-end"
+              visible={popoverVisible}
+              onVisibleChange={setPopoverVisible}
+              trigger="click"
+              mode={isDark ? "dark" : "light"}
+            >
+              <Button fill="none">
+                <MoreOutline />
+              </Button>
+            </Popover>
+          ) : null
         }
       >
         {title}
