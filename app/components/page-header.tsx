@@ -1,8 +1,13 @@
 "use client";
 
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+import {
+  Cog6ToothIcon,
+  EllipsisHorizontalIcon,
+  ReceiptPercentIcon,
+} from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
-import { Link, Navbar, Preloader } from "konsta/react";
+import { useRef, useState } from "react";
+import { Link, List, ListItem, Navbar, Popover, Preloader } from "konsta/react";
 
 type PageHeaderProps = {
   title?: string;
@@ -28,6 +33,8 @@ function formatPageName(pathname: string) {
 
 function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
   const pathname = usePathname();
+  const menuTriggerRef = useRef<HTMLElement | null>(null);
+  const [menuOpened, setMenuOpened] = useState(false);
   const pageName = formatPageName(pathname);
   const resolvedTitle = title ?? pageName;
   const resolvedSubtitle = subtitle ?? pageName;
@@ -51,11 +58,45 @@ function PageHeader({ title, subtitle, isLoading = false }: PageHeaderProps) {
       large
       bgClassName="bg-gradient-to-b from-[#f8f8fb]/96 via-[#f8f8fb]/80 to-[#f8f8fb]/0 dark:from-[#06070b]/97 dark:via-[#0a0b10]/78 dark:to-[#0a0b10]/0"
       right={
-        <Link iconOnly>
+        <Link
+          iconOnly
+          ref={menuTriggerRef}
+          onClick={(event) => {
+            event.preventDefault();
+            setMenuOpened(true);
+          }}
+          aria-label="Open page menu"
+        >
           <EllipsisHorizontalIcon className="size-6" />
         </Link>
       }
-    />
+    >
+      <Popover
+        opened={menuOpened}
+        target={menuTriggerRef}
+        onBackdropClick={() => setMenuOpened(false)}
+        backdrop
+        angle
+        className="w-56 rounded-2xl"
+      >
+        <List strongIos inset className="my-0 min-w-0">
+          <ListItem
+            link
+            title="Transactions"
+            media={<ReceiptPercentIcon className="size-5 text-[#0a84ff]" />}
+            href="/transactions"
+            onClick={() => setMenuOpened(false)}
+          />
+          <ListItem
+            link
+            title="Settings"
+            media={<Cog6ToothIcon className="size-5 text-[#8e8e93]" />}
+            href="/settings"
+            onClick={() => setMenuOpened(false)}
+          />
+        </List>
+      </Popover>
+    </Navbar>
   );
 }
 
