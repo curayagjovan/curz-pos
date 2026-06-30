@@ -71,6 +71,7 @@ export default function CheckoutActionSheet({
   const itemSwipeIdRef = useRef<string | null>(null);
   const itemSwipeStartXRef = useRef<number | null>(null);
   const itemSwipeStartYRef = useRef<number | null>(null);
+  const quickAmountTouchedRef = useRef(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [isSheetDragging, setIsSheetDragging] = useState(false);
   const [swipePreview, setSwipePreview] = useState<{
@@ -286,6 +287,20 @@ export default function CheckoutActionSheet({
     );
   };
 
+  const onQuickAmountTouchEnd = (value: number) => {
+    quickAmountTouchedRef.current = true;
+    onQuickAmountSelect(value);
+  };
+
+  const onQuickAmountClick = (value: number) => {
+    if (quickAmountTouchedRef.current) {
+      quickAmountTouchedRef.current = false;
+      return;
+    }
+
+    onQuickAmountSelect(value);
+  };
+
   if (!mounted) {
     return null;
   }
@@ -479,7 +494,8 @@ export default function CheckoutActionSheet({
                       key={value}
                       type="button"
                       className="rounded-full border border-black/10 bg-[#f3f4f6] px-3 py-1.5 text-xs font-semibold text-[#111827] active:bg-black/5 dark:border-white/15 dark:bg-[#151518] dark:text-white dark:active:bg-white/10"
-                      onClick={() => onQuickAmountSelect(value)}
+                      onClick={() => onQuickAmountClick(value)}
+                      onTouchEnd={() => onQuickAmountTouchEnd(value)}
                     >
                       {formatPrice(value)}
                     </button>
