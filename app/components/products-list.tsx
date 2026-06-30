@@ -127,7 +127,10 @@ export default function ProductsList() {
   }
 
   return (
-    <div className="products-list" style={{ paddingTop: "7rem" }}>
+    <div
+      className="products-list"
+      style={{ paddingTop: "6.5rem", paddingBottom: "5rem" }}
+    >
       <List>
         {products.map((product) => (
           <List.Item
