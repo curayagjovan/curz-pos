@@ -88,19 +88,6 @@ function findAvailableSkuFromSet(
   throw new Error("Unable to generate a unique SKU");
 }
 
-function validateNumericField(value: unknown, fieldName: string): number {
-  const num = Number(value);
-  if (Number.isNaN(num)) {
-    throw new Error(
-      `Invalid ${fieldName}: '${value}' cannot be converted to a number`,
-    );
-  }
-  if (!Number.isFinite(num)) {
-    throw new Error(`Invalid ${fieldName}: '${value}' is not a finite number`);
-  }
-  return num;
-}
-
 export async function POST(request: Request) {
   let importJobId: string | undefined;
 

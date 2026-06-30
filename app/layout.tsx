@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import KonstaProvider from "./providers";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "SHOPMAE",
   description:
-    "SHOPMAE point-of-sale app built with Next.js, Tailwind CSS, Prisma, and Supabase.",
+    "SHOPMAE point-of-sale app built with Next.js, Prisma, and Supabase.",
   applicationName: "SHOPMAE",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -38,8 +38,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        <KonstaProvider>{children}</KonstaProvider>
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
