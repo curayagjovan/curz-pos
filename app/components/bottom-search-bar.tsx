@@ -4,9 +4,13 @@ import { useState } from "react";
 
 type BottomSearchBarProps = {
   onSearch?: (query: string) => void;
+  cartCount?: number;
 };
 
-export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
+export default function BottomSearchBar({
+  onSearch,
+  cartCount = 0,
+}: BottomSearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
 
@@ -44,8 +48,13 @@ export default function BottomSearchBar({ onSearch }: BottomSearchBarProps) {
       }
       right={
         !isSearchActive && (
-          <Link iconOnly>
+          <Link iconOnly className="relative">
             <ShoppingCartIcon className="size-6" />
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-semibold text-white">
+                {cartCount}
+              </span>
+            )}
           </Link>
         )
       }

@@ -13,6 +13,7 @@ type PageContainerProps = {
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
   isLoading?: boolean;
+  cartCount?: number;
 };
 
 export default function PageContainer({
@@ -23,6 +24,7 @@ export default function PageContainer({
   onRefresh,
   isRefreshing = false,
   isLoading = false,
+  cartCount = 0,
 }: PageContainerProps) {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const pullStartYRef = useRef<number | null>(null);
@@ -149,7 +151,7 @@ export default function PageContainer({
       >
         {children}
       </main>
-      <BottomSearchBar onSearch={onSearch} />
+      <BottomSearchBar onSearch={onSearch} cartCount={cartCount} />
     </Page>
   );
 }

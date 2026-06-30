@@ -110,8 +110,10 @@ export default function ProductsPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [quickViewProduct, setQuickViewProduct] =
     useState<ProductListItem | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [pressedProductId, setPressedProductId] = useState<string | null>(null);
   const [pulsingProductId, setPulsingProductId] = useState<string | null>(null);
+  const [cart, setCart] = useState<Map<string, number>>(new Map());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const pressedElementRef = useRef<HTMLElement | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -119,6 +121,12 @@ export default function ProductsPage() {
   const loadMoreRetryBlockedUntilRef = useRef(0);
   const scrollableRef = useRef<HTMLDivElement>(null);
   const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextClickRef = useRef(false);
+
+  const cartCount = Array.from(cart.values()).reduce(
+    (sum, qty) => sum + qty,
+    0,
+  );
 
   const filteredProducts = searchQuery.trim()
     ? products.filter(
@@ -139,6 +147,34 @@ export default function ProductsPage() {
     }
     setPressedProductId(null);
   }, []);
+
+  const addToCart = useCallback(
+    (productId: string) => {
+      // Don't add to cart if navigation is in progress, quickview is open, or we just opened quickview
+      if (
+        isNavigating ||
+        skipNextClickRef.current ||
+        quickViewProduct?.id === productId
+      ) {
+        console.log("Skipping cart add", {
+          productId,
+          isNavigating,
+          skipNext: skipNextClickRef.current,
+          quickViewProductId: quickViewProduct?.id,
+        });
+        return;
+      }
+
+      console.log("Adding to cart", productId);
+      setCart((prev) => {
+        const newCart = new Map(prev);
+        const currentQty = newCart.get(productId) ?? 0;
+        newCart.set(productId, currentQty + 1);
+        return newCart;
+      });
+    },
+    [quickViewProduct, isNavigating],
+  );
 
   const startLongPress = useCallback(
     (product: ProductListItem, event: React.TouchEvent | React.MouseEvent) => {
@@ -359,6 +395,18 @@ export default function ProductsPage() {
     };
   }, [clearLongPressTimer]);
 
+  // Prevent ListItem clicks when quickview is open
+  useEffect(() => {
+    if (quickViewProduct) {
+      skipNextClickRef.current = true;
+      // Clear the flag after quickview animation completes
+      const timer = setTimeout(() => {
+        skipNextClickRef.current = false;
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [quickViewProduct]);
+
   // Save scroll position to sessionStorage when navigating away
   useEffect(() => {
     const saveScrollPosition = () => {
@@ -428,6 +476,7 @@ export default function ProductsPage() {
   return (
     <PageContainer
       subtitle={`${totalProducts} Products`}
+      cartCount={cartCount}
       onSearch={setSearchQuery}
       onRefresh={refreshProducts}
       isRefreshing={isRefreshingProducts}
@@ -441,7 +490,13 @@ export default function ProductsPage() {
           </p>
         </div>
       ) : (
-        <List strongIos inset>
+        <List
+          strongIos
+          inset
+          style={{
+            pointerEvents: quickViewProduct || isNavigating ? "none" : "auto",
+          }}
+        >
           {!isLoadingProducts && productsError && (
             <ListItem title={productsError} />
           )}
@@ -482,6 +537,15 @@ export default function ProductsPage() {
                     onMouseDown={(event) => startLongPress(product, event)}
                     onMouseUp={clearLongPressTimer}
                     onMouseLeave={clearLongPressTimer}
+                    onClick={(e) => {
+                      // Ignore clicks if quickview is open or we're navigating
+                      if (quickViewProduct || isNavigating) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                      }
+                      addToCart(product.id);
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       clearLongPressTimer();
@@ -532,6 +596,15 @@ export default function ProductsPage() {
                   onMouseDown={(event) => startLongPress(product, event)}
                   onMouseUp={clearLongPressTimer}
                   onMouseLeave={clearLongPressTimer}
+                  onClick={(e) => {
+                    // Ignore clicks if quickview is open or we're navigating
+                    if (quickViewProduct || isNavigating) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    addToCart(product.id);
+                  }}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     clearLongPressTimer();
@@ -563,6 +636,7 @@ export default function ProductsPage() {
           setQuickViewProduct(null);
         }}
         formatPrice={formatPrice}
+        onNavigating={setIsNavigating}
       />
     </PageContainer>
   );

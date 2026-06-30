@@ -13,6 +13,7 @@ type ProductQuickViewPopupProps = {
   onClose: () => void;
   onPinProduct?: (productId: string, isPinned: boolean) => Promise<void>;
   formatPrice: (value: number | string) => string;
+  onNavigating?: (isNavigating: boolean) => void;
 };
 
 export default function ProductQuickViewPopup({
@@ -22,11 +23,17 @@ export default function ProductQuickViewPopup({
   onClose,
   onPinProduct,
   formatPrice,
+  onNavigating,
 }: ProductQuickViewPopupProps) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const saveScrollAndNavigate = (productId: string) => {
+    // Set navigation flag to prevent cart adds during navigation
+    if (onNavigating) {
+      onNavigating(true);
+    }
+
     // Save scroll position before navigating
     const scrollableElement =
       document.querySelector('[class*="k-page"]') || document.documentElement;
@@ -38,7 +45,7 @@ export default function ProductQuickViewPopup({
       );
     }
 
-    onClose();
+    // Navigate to the product edit page (don't close popup yet, navigation will unmount it)
     router.push(`/products/${productId}`);
   };
 
@@ -119,11 +126,19 @@ export default function ProductQuickViewPopup({
           className="fixed left-4 right-4 z-50 mx-auto flex max-w-sm flex-col gap-3"
           style={{ top: 0, visibility: "hidden" }}
         >
-          {/* Preview card */}
+          {/* Preview card - click to navigate to edit page */}
           <button
             type="button"
             className="overflow-hidden rounded-[20px] bg-white text-left shadow-[0_16px_48px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.12)] active:opacity-75 dark:bg-[#2c2c2e]"
-            onClick={() => saveScrollAndNavigate(product.id)}
+            onClick={(e) => {
+              console.log("Preview card clicked", {
+                productId: product.id,
+                target: e.target,
+              });
+              e.preventDefault();
+              e.stopPropagation();
+              saveScrollAndNavigate(product.id);
+            }}
           >
             <div className="px-4 py-4">
               <p className="text-[1rem] font-semibold leading-snug text-[#1c1c1e] dark:text-white">
