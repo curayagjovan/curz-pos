@@ -1,13 +1,35 @@
 "use client";
 
 import { SearchBar } from "antd-mobile";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Footer() {
   const [value, setValue] = useState("");
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const reposition = () => {
+      if (!footerRef.current) return;
+      // Pin footer to bottom of visual viewport
+      const offsetY = window.innerHeight - vv.height - vv.offsetTop;
+      footerRef.current.style.transform = `translateY(-${offsetY}px)`;
+    };
+
+    vv.addEventListener("resize", reposition);
+    vv.addEventListener("scroll", reposition);
+
+    return () => {
+      vv.removeEventListener("resize", reposition);
+      vv.removeEventListener("scroll", reposition);
+    };
+  }, []);
 
   return (
     <div
+      ref={footerRef}
       style={{
         position: "fixed",
         bottom: 0,
