@@ -74,7 +74,9 @@ export async function GET(request: Request) {
     const limit =
       Number.isNaN(limitParam) || limitParam < 1
         ? 18
-        : Math.min(limitParam, 60);
+        : limitParam >= 1000
+          ? 99999
+          : Math.min(limitParam, 60);
     const baseWhere: Prisma.ProductWhereInput = {
       isActive: true,
       ...(query

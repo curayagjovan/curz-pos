@@ -165,7 +165,7 @@ html[data-theme="dark"] {
   flex: 1;
   overflow: hidden;
   padding-top: calc(env(safe-area-inset-top) + 48px);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 56px);
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }
 
 .app-bottom {

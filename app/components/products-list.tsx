@@ -16,7 +16,6 @@ export default function ProductsList() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const displayedProducts = useMemo(() => {
@@ -40,14 +39,20 @@ export default function ProductsList() {
     const load = async () => {
       try {
         const cached = await getProducts();
+        console.log("Cached products:", cached.length);
         if (cached.length > 0) {
           setAllProducts(cached);
           setIsLoading(false);
-          if (shouldRefresh()) refreshAll();
+          if (shouldRefresh()) {
+            console.log("Cache expired, refreshing...");
+            refreshAll();
+          }
         } else {
+          console.log("No cache, fetching from API...");
           await refreshAll();
         }
       } catch {
+        console.log("Error loading cache, fetching from API...");
         await refreshAll();
       }
     };
@@ -59,18 +64,17 @@ export default function ProductsList() {
       const response = await fetch("/api/products?skip=0&limit=9999");
       const data = await response.json();
       const items: Product[] = data.items ?? data;
+      console.log("Loaded products:", items.length, "items");
       setAllProducts(items);
       saveProducts(items).catch(console.error);
     } catch (error) {
       console.error("Failed to load products:", error);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     await refreshAll();
   };
 

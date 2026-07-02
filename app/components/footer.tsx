@@ -29,11 +29,6 @@ export default function Footer() {
     <TabBar
       activeKey={currentPage}
       onChange={(key) => setCurrentPage(key as PageKey)}
-      style={{
-        height: 56,
-        display: "flex",
-        alignItems: "center",
-      }}
     >
       {tabs.map((tab) => (
         <TabBar.Item key={tab.key} icon={tab.icon} title={tab.title} />
