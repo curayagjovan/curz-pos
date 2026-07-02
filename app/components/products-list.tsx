@@ -110,6 +110,7 @@ export default function ProductsList() {
             minHeight: 0,
             width: "100%",
             overflowY: "auto",
+            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
             WebkitOverflowScrolling: "touch" as const,
           }}
         >
