@@ -75,7 +75,6 @@ export default function ProductsList() {
           padding: "0.5rem 0.75rem",
           flexShrink: 0,
           background: "var(--background)",
-          borderBottom: "1px solid var(--border)",
         }}
       >
         <SearchBar
