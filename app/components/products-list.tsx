@@ -160,13 +160,12 @@ export default function ProductsList() {
         axis="x"
         magnetic="x"
         style={{
-          "--initial-position-bottom": "80px",
+          "--initial-position-bottom": "150px",
           "--initial-position-right": "24px",
           "--edge-distance": "24px",
-          padding: "0.5rem",
         }}
       >
-        <ShoppingCartIcon fontSize={32} />
+        <ShoppingCartIcon width={28} height={28} />
       </FloatingBubble>
     </div>
   );
