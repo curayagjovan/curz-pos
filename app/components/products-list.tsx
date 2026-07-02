@@ -79,8 +79,15 @@ export default function ProductsList() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Sticky search bar */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        width: "100%",
+      }}
+    >
       <div
         style={{
           padding: "0.5rem 0.75rem",
@@ -95,12 +102,13 @@ export default function ProductsList() {
         />
       </div>
 
-      {/* Scroll container for virtualizer */}
       <PullToRefresh onRefresh={handleRefresh}>
         <div
           ref={parentRef}
           style={{
             flex: 1,
+            minHeight: 0,
+            width: "100%",
             overflowY: "auto",
             WebkitOverflowScrolling: "touch" as const,
           }}
