@@ -10,7 +10,6 @@ import {
   List,
   FloatingBubble,
 } from "antd-mobile";
-import { MessageFill } from "antd-mobile-icons";
 import {
   getProducts,
   saveProducts,
@@ -18,6 +17,7 @@ import {
   type Product,
 } from "@/lib/products-db";
 import { usePageContext } from "@/app/context/page-context";
+import { ShoppingCartIcon } from "@heroicons/react/24/solid";
 
 export default function ProductsList() {
   const { searchQuery, setSearchQuery } = usePageContext();
@@ -160,12 +160,13 @@ export default function ProductsList() {
         axis="x"
         magnetic="x"
         style={{
-          "--initial-position-bottom": "24px",
+          "--initial-position-bottom": "80px",
           "--initial-position-right": "24px",
           "--edge-distance": "24px",
+          padding: "0.5rem",
         }}
       >
-        <MessageFill fontSize={32} />
+        <ShoppingCartIcon fontSize={32} />
       </FloatingBubble>
     </div>
   );
