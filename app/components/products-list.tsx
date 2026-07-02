@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InfiniteScroll, List, Empty, DotLoading } from "antd-mobile";
 import {
   getProducts,
@@ -46,22 +46,46 @@ const InfiniteScrollContent = ({ hasMore }: { hasMore?: boolean }) => {
 
 export default function ProductsList() {
   const { searchQuery } = usePageContext();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const initializedRef = useRef(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = 18;
 
-  // Filter products from cache when search query changes
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    const q = searchQuery.toLowerCase();
-    return allProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q),
-    );
-  }, [searchQuery, allProducts, products]);
+  // Debounced API search
+  useEffect(() => {
+    if (!initializedRef.current) return;
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (!searchQuery.trim()) {
+      // Reset to cached/paginated list
+      loadCachedProducts();
+      return;
+    }
+
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/products?q=${encodeURIComponent(searchQuery)}&skip=0&limit=60`,
+        );
+        const data = await response.json();
+        setProducts(data.items ?? []);
+        setHasMore(false);
+      } catch (error) {
+        console.error("Search failed:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
 
   const fetchFromAPI = async (skipValue: number): Promise<void> => {
     try {
@@ -78,15 +102,6 @@ export default function ProductsList() {
         const updated = [...prev, ...newItems];
         if (skipValue === 0) {
           saveProducts(updated).catch(console.error);
-          setAllProducts(updated);
-        } else {
-          setAllProducts((prevAll) => {
-            const allIds = new Set(prevAll.map((p) => p.id));
-            return [
-              ...prevAll,
-              ...newItems.filter((item: Product) => !allIds.has(item.id)),
-            ];
-          });
         }
         return updated;
       });
@@ -102,7 +117,6 @@ export default function ProductsList() {
       const response = await fetch("/api/products?skip=0&limit=9999");
       const data = await response.json();
       setProducts(data.items);
-      setAllProducts(data.items);
       setSkip(data.items.length);
       setHasMore(data.hasMore);
       await saveProducts(data.items);
@@ -116,7 +130,7 @@ export default function ProductsList() {
       const cachedProducts = await getProducts();
       if (cachedProducts.length > 0) {
         setProducts(cachedProducts);
-        setAllProducts(cachedProducts);
+        setHasMore(false);
         if (shouldRefresh()) {
           refreshFromAPI();
         }
@@ -141,11 +155,32 @@ export default function ProductsList() {
     await fetchFromAPI(skip);
   };
 
-  if (filteredProducts.length === 0 && !hasMore && !searchQuery) {
+  if (products.length === 0 && !hasMore && !searchQuery && !isSearching) {
     return <Empty description="No products found" />;
   }
 
-  if (filteredProducts.length === 0 && searchQuery) {
+  if (isSearching) {
+    return (
+      <div
+        style={{
+          paddingTop: "6.5rem",
+          paddingBottom: "5rem",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "0.5rem",
+          padding: "2rem",
+        }}
+      >
+        <span style={{ color: "var(--muted)", fontSize: "0.875rem" }}>
+          Searching
+        </span>
+        <DotLoading />
+      </div>
+    );
+  }
+
+  if (products.length === 0 && searchQuery && !isSearching) {
     return (
       <div style={{ paddingTop: "6.5rem", paddingBottom: "5rem" }}>
         <Empty description={`No results for "${searchQuery}"`} />
@@ -159,7 +194,7 @@ export default function ProductsList() {
       style={{ paddingTop: "6.5rem", paddingBottom: "5rem" }}
     >
       <List>
-        {filteredProducts.map((product) => (
+        {products.map((product) => (
           <List.Item
             key={product.id}
             description={
