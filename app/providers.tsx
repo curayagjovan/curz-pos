@@ -3,6 +3,7 @@
 import { ConfigProvider } from "antd-mobile";
 import { useEffect } from "react";
 import { PageProvider } from "@/app/context/page-context";
+import { CartProvider } from "@/app/context/cart-context";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -34,7 +35,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <PageProvider>
-      <ConfigProvider>{children}</ConfigProvider>
+      <CartProvider>
+        <ConfigProvider>{children}</ConfigProvider>
+      </CartProvider>
     </PageProvider>
   );
 }

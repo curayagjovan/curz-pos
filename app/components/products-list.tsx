@@ -9,6 +9,8 @@ import {
   ErrorBlock,
   List,
   FloatingBubble,
+  Badge,
+  Toast,
 } from "antd-mobile";
 import {
   getProducts,
@@ -17,10 +19,12 @@ import {
   type Product,
 } from "@/lib/products-db";
 import { usePageContext } from "@/app/context/page-context";
+import { useCart } from "@/app/context/cart-context";
 import { ShoppingCartIcon } from "@heroicons/react/24/solid";
 
 export default function ProductsList() {
   const { searchQuery, setSearchQuery } = usePageContext();
+  const { addToCart, cartCount } = useCart();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -75,6 +79,20 @@ export default function ProductsList() {
 
   const handleRefresh = async () => {
     await refreshAll();
+  };
+
+  const handleAddToCart = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: Number(product.price),
+      quantity: 1,
+    });
+    Toast.show({
+      content: `${product.name} added to cart`,
+      duration: 1,
+    });
   };
 
   return (
@@ -148,6 +166,8 @@ export default function ProductsList() {
                   key={product.id}
                   description={`${product.sku} · Stock: ${Number(product.stock)}`}
                   extra={`₱${Number(product.price).toFixed(2)}`}
+                  clickable
+                  onClick={() => handleAddToCart(product)}
                 >
                   {product.name}
                 </List.Item>
@@ -160,12 +180,17 @@ export default function ProductsList() {
         axis="x"
         magnetic="x"
         style={{
-          "--initial-position-bottom": "150px",
+          "--initial-position-bottom": "120px",
           "--initial-position-right": "24px",
           "--edge-distance": "24px",
         }}
       >
-        <ShoppingCartIcon width={28} height={28} />
+        <Badge
+          content={cartCount}
+          style={{ "--badge-text-color": "#fff" } as React.CSSProperties}
+        >
+          <ShoppingCartIcon width={28} height={28} />
+        </Badge>
       </FloatingBubble>
     </div>
   );
