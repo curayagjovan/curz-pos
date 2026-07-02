@@ -102,7 +102,13 @@ export default function ProductsList() {
         />
       </div>
 
-      <PullToRefresh onRefresh={handleRefresh}>
+      <PullToRefresh
+        refreshingText="Refreshing..."
+        pullingText="Pull to refresh"
+        canReleaseText="Release to refresh"
+        completeText="Refresh complete"
+        onRefresh={handleRefresh}
+      >
         <div
           ref={parentRef}
           style={{
