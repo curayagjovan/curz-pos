@@ -1,4 +1,4 @@
-const CACHE_VERSION = "shopmae-v5";
+const CACHE_VERSION = "shopmae-v6";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg"];
 
 function isStaticAsset(pathname) {
