@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { InfiniteScroll, List, Empty, DotLoading } from "antd-mobile";
+import {
+  InfiniteScroll,
+  List,
+  Empty,
+  DotLoading,
+  SearchBar,
+} from "antd-mobile";
 import {
   getProducts,
   saveProducts,
@@ -45,7 +51,7 @@ const InfiniteScrollContent = ({ hasMore }: { hasMore?: boolean }) => {
 };
 
 export default function ProductsList() {
-  const { searchQuery } = usePageContext();
+  const { searchQuery, setSearchQuery } = usePageContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
@@ -66,8 +72,9 @@ export default function ProductsList() {
       return;
     }
 
-    setIsSearching(true);
+    setIsSearching(false);
     searchTimerRef.current = setTimeout(async () => {
+      setIsSearching(true);
       try {
         const response = await fetch(
           `/api/products?q=${encodeURIComponent(searchQuery)}&skip=0&limit=60`,
@@ -80,7 +87,7 @@ export default function ProductsList() {
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 600);
 
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -182,17 +189,29 @@ export default function ProductsList() {
 
   if (products.length === 0 && searchQuery && !isSearching) {
     return (
-      <div style={{ paddingTop: "6.5rem", paddingBottom: "5rem" }}>
+      <div>
         <Empty description={`No results for "${searchQuery}"`} />
       </div>
     );
   }
 
   return (
-    <div
-      className="products-list"
-      style={{ paddingTop: "6.5rem", paddingBottom: "5rem" }}
-    >
+    <div className="products-list">
+      <div
+        style={{
+          padding: "0.5rem 0.75rem",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          background: "var(--background)",
+        }}
+      >
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search products"
+        />
+      </div>
       <List>
         {products.map((product) => (
           <List.Item

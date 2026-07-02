@@ -13,10 +13,14 @@ export default function MobilePageWrapper({
   children,
 }: MobilePageWrapperProps) {
   return (
-    <main className="mobile-app">
-      <PageHeader title={title} />
-      {children}
-      <Footer />
-    </main>
+    <div className="app-shell">
+      <div className="app-top">
+        <PageHeader title={title} />
+      </div>
+      <div className="app-body">{children}</div>
+      <div className="app-bottom">
+        <Footer />
+      </div>
+    </div>
   );
 }
