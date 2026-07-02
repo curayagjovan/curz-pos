@@ -1,8 +1,7 @@
 "use client";
 "use no memo";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useState, useEffect, useMemo } from "react";
 import {
   DotLoading,
   SearchBar,
@@ -22,7 +21,6 @@ export default function ProductsList() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const parentRef = useRef<HTMLDivElement>(null);
 
   const displayedProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -33,12 +31,20 @@ export default function ProductsList() {
     );
   }, [searchQuery, allProducts]);
 
-  const virtualizer = useVirtualizer({
-    count: displayedProducts.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 68,
-    overscan: 8,
-  });
+  const refreshAll = async () => {
+    try {
+      const response = await fetch("/api/products?skip=0&limit=9999");
+      const data = await response.json();
+      const items: Product[] = data.items ?? data;
+      console.log("Loaded products:", items.length, "items");
+      setAllProducts(items);
+      saveProducts(items).catch(console.error);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Load all products on mount
   useEffect(() => {
@@ -64,21 +70,6 @@ export default function ProductsList() {
     };
     load();
   }, []);
-
-  const refreshAll = async () => {
-    try {
-      const response = await fetch("/api/products?skip=0&limit=9999");
-      const data = await response.json();
-      const items: Product[] = data.items ?? data;
-      console.log("Loaded products:", items.length, "items");
-      setAllProducts(items);
-      saveProducts(items).catch(console.error);
-    } catch (error) {
-      console.error("Failed to load products:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleRefresh = async () => {
     await refreshAll();
@@ -110,7 +101,6 @@ export default function ProductsList() {
         onRefresh={handleRefresh}
       >
         <div
-          ref={parentRef}
           style={{
             flex: 1,
             minHeight: 0,
@@ -147,32 +137,15 @@ export default function ProductsList() {
             />
           ) : (
             <List>
-              <div
-                style={{
-                  height: virtualizer.getTotalSize(),
-                  position: "relative",
-                }}
-              >
-                {virtualizer.getVirtualItems().map((virtualRow) => {
-                  const product = displayedProducts[virtualRow.index];
-                  return (
-                    <List.Item
-                      key={product.id}
-                      description={`${product.sku} · Stock: ${Number(product.stock)}`}
-                      extra={`₱${Number(product.price).toFixed(2)}`}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      {product.name}
-                    </List.Item>
-                  );
-                })}
-              </div>
+              {displayedProducts.map((product) => (
+                <List.Item
+                  key={product.id}
+                  description={`${product.sku} · Stock: ${Number(product.stock)}`}
+                  extra={`₱${Number(product.price).toFixed(2)}`}
+                >
+                  {product.name}
+                </List.Item>
+              ))}
             </List>
           )}
         </div>
