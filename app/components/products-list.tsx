@@ -3,7 +3,13 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Empty, DotLoading, SearchBar, PullToRefresh } from "antd-mobile";
+import {
+  DotLoading,
+  SearchBar,
+  PullToRefresh,
+  ErrorBlock,
+  List,
+} from "antd-mobile";
 import {
   getProducts,
   saveProducts,
@@ -88,13 +94,7 @@ export default function ProductsList() {
         width: "100%",
       }}
     >
-      <div
-        style={{
-          padding: "0.5rem 0.75rem",
-          flexShrink: 0,
-          background: "var(--background)",
-        }}
-      >
+      <div style={{ flexShrink: 0 }}>
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
@@ -130,57 +130,44 @@ export default function ProductsList() {
               <DotLoading />
             </div>
           ) : displayedProducts.length === 0 ? (
-            <div style={{ padding: "2rem" }}>
-              <Empty
-                description={
-                  searchQuery
-                    ? `No results for "${searchQuery}"`
-                    : "No products found"
-                }
-              />
-            </div>
+            <ErrorBlock
+              status="empty"
+              title="No products found"
+              description={
+                searchQuery
+                  ? `No results for "${searchQuery}"`
+                  : "Try refreshing"
+              }
+            />
           ) : (
-            <div
-              style={{
-                height: virtualizer.getTotalSize(),
-                position: "relative",
-              }}
-            >
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const product = displayedProducts[virtualRow.index];
-                return (
-                  <div
-                    key={product.id}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                      borderBottom: "1px solid var(--border)",
-                      padding: "0.75rem 1rem",
-                      background: "var(--background)",
-                    }}
-                  >
-                    <div
+            <List>
+              <div
+                style={{
+                  height: virtualizer.getTotalSize(),
+                  position: "relative",
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const product = displayedProducts[virtualRow.index];
+                  return (
+                    <List.Item
+                      key={product.id}
+                      description={`${product.sku} · Stock: ${Number(product.stock)}`}
+                      extra={`₱${Number(product.price).toFixed(2)}`}
                       style={{
-                        fontWeight: 500,
-                        color: "var(--foreground)",
-                        marginBottom: "0.25rem",
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
                       }}
                     >
                       {product.name}
-                    </div>
-                    <div
-                      style={{ fontSize: "0.8125rem", color: "var(--muted)" }}
-                    >
-                      {product.sku} · ₱{Number(product.price).toFixed(2)} ·
-                      Stock: {Number(product.stock)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    </List.Item>
+                  );
+                })}
+              </div>
+            </List>
           )}
         </div>
       </PullToRefresh>
