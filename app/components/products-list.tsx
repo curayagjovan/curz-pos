@@ -8,7 +8,9 @@ import {
   PullToRefresh,
   ErrorBlock,
   List,
+  FloatingBubble,
 } from "antd-mobile";
+import { MessageFill } from "antd-mobile-icons";
 import {
   getProducts,
   saveProducts,
@@ -85,11 +87,15 @@ export default function ProductsList() {
         width: "100%",
       }}
     >
-      <div style={{ flexShrink: 0 }}>
+      <div style={{ flexShrink: 0, padding: "1rem 1.5rem" }}>
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Search products"
+          clearable
+          style={{
+            "--height": "32px",
+          }}
         />
       </div>
 
@@ -150,6 +156,17 @@ export default function ProductsList() {
           )}
         </div>
       </PullToRefresh>
+      <FloatingBubble
+        axis="x"
+        magnetic="x"
+        style={{
+          "--initial-position-bottom": "24px",
+          "--initial-position-right": "24px",
+          "--edge-distance": "24px",
+        }}
+      >
+        <MessageFill fontSize={32} />
+      </FloatingBubble>
     </div>
   );
 }
