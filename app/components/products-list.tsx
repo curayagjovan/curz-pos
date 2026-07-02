@@ -110,6 +110,7 @@ export default function ProductsList() {
             minHeight: 0,
             width: "100%",
             overflowY: "auto",
+            paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
             WebkitOverflowScrolling: "touch" as const,
           }}
         >
@@ -143,7 +144,6 @@ export default function ProductsList() {
               style={{
                 height: virtualizer.getTotalSize(),
                 position: "relative",
-                paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
               }}
             >
               {virtualizer.getVirtualItems().map((virtualRow) => {
