@@ -1,10 +1,11 @@
 "use client";
 
 import { SearchBar } from "antd-mobile";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { usePageContext } from "@/app/context/page-context";
 
 export default function Footer() {
-  const [value, setValue] = useState("");
+  const { searchQuery, setSearchQuery } = usePageContext();
   const footerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,8 +48,8 @@ export default function Footer() {
     >
       <div style={{ padding: "0.75rem" }}>
         <SearchBar
-          value={value}
-          onChange={setValue}
+          value={searchQuery}
+          onChange={setSearchQuery}
           placeholder="Search products"
         />
       </div>
