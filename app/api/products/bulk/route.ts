@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { calculateSellingPrice } from "@/lib/price-calculator";
 import { setImportProgress } from "@/lib/import-progress-store";
 import { normalizeUnit } from "@/lib/units";
 
@@ -34,25 +33,8 @@ type BulkResult = {
 
 type BulkMarkupPayload = {
   products: BulkProductData[];
-  markupPercent?: number;
-  filterType?: "all" | "unit" | "category" | "productType";
-  filterValue?: string;
   fileHash?: string;
   jobId?: string;
-};
-
-type AppSettingSnapshot = {
-  globalMarkupPercent: number | string;
-  globalMarkupFilterType: "all" | "unit" | "category" | "productType";
-  globalMarkupFilterValue: string | null;
-};
-
-type PrismaWithAppSettingDelegate = typeof prisma & {
-  appSetting: {
-    findUnique: (args: {
-      where: { id: number };
-    }) => Promise<AppSettingSnapshot | null>;
-  };
 };
 
 type ProductSnapshot = {
@@ -108,20 +90,6 @@ export async function POST(request: Request) {
 
     const { products, fileHash, jobId } = body;
     importJobId = jobId;
-    const prismaWithAppSetting = prisma as PrismaWithAppSettingDelegate;
-    const appSettings = await prismaWithAppSetting.appSetting.findUnique({
-      where: { id: 1 },
-    });
-    const fallbackMarkup = Number(body.markupPercent ?? 0);
-    const markupPercent = Number(
-      appSettings?.globalMarkupPercent ?? fallbackMarkup,
-    );
-    const filterType =
-      appSettings?.globalMarkupFilterType ?? body.filterType ?? "all";
-    const filterValue =
-      appSettings?.globalMarkupFilterValue?.trim() ??
-      body.filterValue?.trim() ??
-      "";
 
     // Detect re-import: allow processing but skip stock additions
     let isDuplicateFile = false;
@@ -136,36 +104,6 @@ export async function POST(request: Request) {
           `[Bulk Import] Duplicate file detected (hash ${fileHash}). Stock additions will be skipped.`,
         );
       }
-    }
-
-    if (Number.isNaN(markupPercent) || markupPercent < 0) {
-      if (jobId) {
-        setImportProgress(jobId, {
-          status: "failed",
-          phase: "failed",
-          message: "Invalid markupPercent. It must be 0 or higher.",
-        });
-      }
-
-      return NextResponse.json(
-        { message: "Invalid markupPercent. It must be 0 or higher." },
-        { status: 400 },
-      );
-    }
-
-    if (markupPercent > 0 && filterType !== "all" && filterValue.length === 0) {
-      if (jobId) {
-        setImportProgress(jobId, {
-          status: "failed",
-          phase: "failed",
-          message: "Filter value is required for this markup filter.",
-        });
-      }
-
-      return NextResponse.json(
-        { message: "Filter value is required for this markup filter." },
-        { status: 400 },
-      );
     }
 
     if (!Array.isArray(products) || products.length === 0) {
@@ -398,21 +336,11 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const matchesMarkupFilter = (() => {
-        if (markupPercent <= 0) return false;
-        if (filterType === "all") return true;
-        if (filterType === "unit")
-          return (unit ?? "").toLowerCase() === filterValue.toLowerCase();
-        const keyword = filterValue.toLowerCase();
-        const haystack = `${name} ${description ?? ""}`.toLowerCase();
-        return haystack.includes(keyword);
-      })();
-
-      const appliedMarkup = matchesMarkupFilter ? markupPercent : 0;
-      const usesGlobalMarkup = matchesMarkupFilter;
+      const appliedMarkup = 0;
+      const usesGlobalMarkup = false;
       const importedCost = price;
       const importedStock = Math.round(stock);
-      const sellingPrice = calculateSellingPrice(importedCost, appliedMarkup);
+      const sellingPrice = importedCost;
       const skuForError = rawSku || "(generated)";
 
       try {
@@ -421,15 +349,8 @@ export async function POST(request: Request) {
           : existingProductByNameUnit.get(toNameUnitKey(name, unit));
 
         if (existingByNameAndUnit) {
-          const existingCost = Number(existingByNameAndUnit.cost);
-          const hasSameCost =
-            existingCost.toFixed(2) === importedCost.toFixed(2);
-          const nextMarkup = hasSameCost
-            ? Number(existingByNameAndUnit.markupPct)
-            : appliedMarkup;
-          const nextPrice = hasSameCost
-            ? Number(existingByNameAndUnit.price)
-            : sellingPrice;
+          const nextMarkup = appliedMarkup;
+          const nextPrice = sellingPrice;
           const priceChanged =
             Number(existingByNameAndUnit.price) !== nextPrice;
           const newStock = isDuplicateFile
@@ -441,7 +362,7 @@ export async function POST(request: Request) {
             name,
             unit: unit || null,
             description: description || existingByNameAndUnit.description,
-            cost: new Prisma.Decimal(hasSameCost ? existingCost : importedCost),
+            cost: new Prisma.Decimal(importedCost),
             markupPct: new Prisma.Decimal(nextMarkup),
             price: new Prisma.Decimal(nextPrice),
             stock: newStock,
@@ -477,7 +398,7 @@ export async function POST(request: Request) {
                   name,
                   unit: unit || undefined,
                   description: description || existingDescription,
-                  cost: hasSameCost ? undefined : importedCost,
+                  cost: importedCost,
                   markupPct: nextMarkup,
                   stock: newStock,
                   price: nextPrice,
@@ -584,15 +505,8 @@ export async function POST(request: Request) {
           }
 
           if (isDuplicateFile) {
-            const existingCostBySku = Number(existingBySku.cost);
-            const hasSameCostBySku =
-              existingCostBySku.toFixed(2) === importedCost.toFixed(2);
-            const nextMarkupBySku = hasSameCostBySku
-              ? Number(existingBySku.markupPct)
-              : appliedMarkup;
-            const nextPriceBySku = hasSameCostBySku
-              ? Number(existingBySku.price)
-              : sellingPrice;
+            const nextMarkupBySku = appliedMarkup;
+            const nextPriceBySku = sellingPrice;
             const priceChangedBySku =
               Number(existingBySku.price) !== nextPriceBySku;
 
@@ -601,9 +515,7 @@ export async function POST(request: Request) {
               name,
               unit: unit || null,
               description: description || existingBySku.description,
-              cost: new Prisma.Decimal(
-                hasSameCostBySku ? existingCostBySku : importedCost,
-              ),
+              cost: new Prisma.Decimal(importedCost),
               markupPct: new Prisma.Decimal(nextMarkupBySku),
               price: new Prisma.Decimal(nextPriceBySku),
               stock: existingBySku.stock,
@@ -634,7 +546,7 @@ export async function POST(request: Request) {
                     name,
                     unit: unit || undefined,
                     description: description || existingDescriptionBySku,
-                    cost: hasSameCostBySku ? undefined : importedCost,
+                    cost: importedCost,
                     markupPct: nextMarkupBySku,
                     price: nextPriceBySku,
                     usesGlobalMarkup,
@@ -645,15 +557,8 @@ export async function POST(request: Request) {
             continue;
           }
 
-          const existingCostBySku = Number(existingBySku.cost);
-          const hasSameCostBySku =
-            existingCostBySku.toFixed(2) === importedCost.toFixed(2);
-          const nextMarkupBySku = hasSameCostBySku
-            ? Number(existingBySku.markupPct)
-            : appliedMarkup;
-          const nextPriceBySku = hasSameCostBySku
-            ? Number(existingBySku.price)
-            : sellingPrice;
+          const nextMarkupBySku = appliedMarkup;
+          const nextPriceBySku = sellingPrice;
           const priceChangedBySku =
             Number(existingBySku.price) !== nextPriceBySku;
           const newStockBySku = existingBySku.stock + importedStock;
@@ -663,9 +568,7 @@ export async function POST(request: Request) {
             name,
             unit: unit || null,
             description: description || existingBySku.description,
-            cost: new Prisma.Decimal(
-              hasSameCostBySku ? existingCostBySku : importedCost,
-            ),
+            cost: new Prisma.Decimal(importedCost),
             markupPct: new Prisma.Decimal(nextMarkupBySku),
             price: new Prisma.Decimal(nextPriceBySku),
             stock: newStockBySku,
@@ -699,7 +602,7 @@ export async function POST(request: Request) {
                   name,
                   unit: unit || undefined,
                   description: description || existingDescriptionBySku,
-                  cost: hasSameCostBySku ? undefined : importedCost,
+                  cost: importedCost,
                   markupPct: nextMarkupBySku,
                   stock: newStockBySku,
                   price: nextPriceBySku,

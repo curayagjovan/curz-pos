@@ -3,9 +3,6 @@ import { prisma } from "@/lib/prisma";
 
 type SettingsPayload = {
   themeMode?: "light" | "dark";
-  globalMarkupPercent?: number;
-  globalMarkupFilterType?: "all" | "unit" | "category" | "productType";
-  globalMarkupFilterValue?: string;
 };
 
 async function getOrCreateSettings() {
@@ -15,9 +12,6 @@ async function getOrCreateSettings() {
     create: {
       id: 1,
       themeMode: "light",
-      globalMarkupPercent: 0,
-      globalMarkupFilterType: "all",
-      globalMarkupFilterValue: "",
     },
   });
 }
@@ -28,9 +22,6 @@ export async function GET() {
 
     return NextResponse.json({
       themeMode: settings.themeMode,
-      globalMarkupPercent: Number(settings.globalMarkupPercent),
-      globalMarkupFilterType: settings.globalMarkupFilterType,
-      globalMarkupFilterValue: settings.globalMarkupFilterValue ?? "",
     });
   } catch (error) {
     console.error("Failed to load app settings", error);
@@ -47,9 +38,6 @@ export async function PUT(request: Request) {
 
     const updateData: {
       themeMode?: "light" | "dark";
-      globalMarkupPercent?: number;
-      globalMarkupFilterType?: "all" | "unit" | "category" | "productType";
-      globalMarkupFilterValue?: string;
     } = {};
 
     if (body.themeMode !== undefined) {
@@ -62,49 +50,17 @@ export async function PUT(request: Request) {
       updateData.themeMode = body.themeMode;
     }
 
-    if (body.globalMarkupPercent !== undefined) {
-      const nextMarkup = Number(body.globalMarkupPercent);
-      if (Number.isNaN(nextMarkup) || nextMarkup < 0) {
-        return NextResponse.json(
-          { message: "Invalid globalMarkupPercent. It must be 0 or higher." },
-          { status: 400 },
-        );
-      }
-      updateData.globalMarkupPercent = nextMarkup;
-    }
-
-    if (body.globalMarkupFilterType !== undefined) {
-      const validFilterTypes = ["all", "unit", "category", "productType"];
-      if (!validFilterTypes.includes(body.globalMarkupFilterType)) {
-        return NextResponse.json(
-          { message: "Invalid globalMarkupFilterType value." },
-          { status: 400 },
-        );
-      }
-      updateData.globalMarkupFilterType = body.globalMarkupFilterType;
-    }
-
-    if (body.globalMarkupFilterValue !== undefined) {
-      updateData.globalMarkupFilterValue = body.globalMarkupFilterValue.trim();
-    }
-
     const settings = await prisma.appSetting.upsert({
       where: { id: 1 },
       update: updateData,
       create: {
         id: 1,
         themeMode: updateData.themeMode ?? "light",
-        globalMarkupPercent: updateData.globalMarkupPercent ?? 0,
-        globalMarkupFilterType: updateData.globalMarkupFilterType ?? "all",
-        globalMarkupFilterValue: updateData.globalMarkupFilterValue ?? "",
       },
     });
 
     return NextResponse.json({
       themeMode: settings.themeMode,
-      globalMarkupPercent: Number(settings.globalMarkupPercent),
-      globalMarkupFilterType: settings.globalMarkupFilterType,
-      globalMarkupFilterValue: settings.globalMarkupFilterValue ?? "",
     });
   } catch (error) {
     console.error("Failed to save app settings", error);

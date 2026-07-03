@@ -33,7 +33,6 @@ type ProductFormState = {
   description: string;
   price: string;
   bundleQty: string;
-  bundleMarkdownPercent: string;
   bundlePrice: string;
 };
 
@@ -51,7 +50,6 @@ const EMPTY_FORM: ProductFormState = {
   description: "",
   price: "0",
   bundleQty: "",
-  bundleMarkdownPercent: "",
   bundlePrice: "",
 };
 
@@ -161,7 +159,6 @@ export default function InventoryPage() {
         product.bundleQty === null || product.bundleQty === undefined
           ? ""
           : String(product.bundleQty),
-      bundleMarkdownPercent: "",
       bundlePrice:
         product.bundlePrice === null || product.bundlePrice === undefined
           ? ""
@@ -212,9 +209,6 @@ export default function InventoryPage() {
     const name = form.name.trim();
     const price = Number(form.price);
     const bundleQty = form.bundleQty.trim() ? Number(form.bundleQty) : null;
-    const bundleMarkdownPercent = form.bundleMarkdownPercent.trim()
-      ? Number(form.bundleMarkdownPercent)
-      : null;
     const bundlePrice = form.bundlePrice.trim()
       ? Number(form.bundlePrice)
       : null;
@@ -250,10 +244,7 @@ export default function InventoryPage() {
         unit: form.unit.trim() || undefined,
         description: form.description.trim() || undefined,
         price,
-        cost: 0,
-        markupPercent: 0,
         bundleQty,
-        bundleMarkdownPercent,
         bundlePrice,
       };
 
@@ -323,7 +314,7 @@ export default function InventoryPage() {
           position: "fixed",
           right: "calc(env(safe-area-inset-right) + 16px)",
           bottom: "calc(env(safe-area-inset-bottom) + 88px)",
-          zIndex: 1201,
+          zIndex: (theme) => theme.zIndex.drawer - 1,
         }}
       >
         <AddRounded />
@@ -341,12 +332,12 @@ export default function InventoryPage() {
           },
         }}
       >
-        <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
+        <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
           <Stack
             direction="row"
             alignItems="center"
             justifyContent="space-between"
-            sx={{ mb: 1 }}
+            sx={{ mb: 1.5 }}
           >
             <Typography variant="h6">
               {form.id ? "Edit Product" : "Add Product"}
@@ -356,7 +347,21 @@ export default function InventoryPage() {
             </IconButton>
           </Stack>
 
-          <Stack spacing={1.1}>
+          <Stack
+            spacing={1.6}
+            sx={{
+              "& .MuiInputBase-root": {
+                minHeight: 56,
+              },
+              "& .MuiInputBase-input": {
+                fontSize: "1rem",
+              },
+              "& .MuiFormHelperText-root": {
+                mt: 0.75,
+                fontSize: "0.8rem",
+              },
+            }}
+          >
             <TextField
               label="Name"
               value={form.name}
@@ -452,25 +457,6 @@ export default function InventoryPage() {
               helperText="Optional, requires Bundle Price"
             />
             <TextField
-              label="Bundle Markdown %"
-              value={form.bundleMarkdownPercent}
-              onChange={(event) =>
-                handleFieldChange("bundleMarkdownPercent", event.target.value)
-              }
-              size="medium"
-              fullWidth
-              type="number"
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  max: 100,
-                  step: "0.01",
-                  inputMode: "decimal",
-                },
-              }}
-              helperText="Optional"
-            />
-            <TextField
               label="Bundle Price"
               value={form.bundlePrice}
               onChange={(event) =>
@@ -490,13 +476,14 @@ export default function InventoryPage() {
             />
           </Stack>
 
-          <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+          <Stack direction="row" spacing={1.25} sx={{ mt: 2 }}>
             <Button
               variant="outlined"
               color="inherit"
               fullWidth
               onClick={handleCloseDrawer}
               disabled={saving}
+              size="large"
             >
               Cancel
             </Button>
@@ -505,6 +492,7 @@ export default function InventoryPage() {
               fullWidth
               onClick={handleSaveProduct}
               disabled={saving}
+              size="large"
             >
               {saving ? "Saving..." : "Save"}
             </Button>

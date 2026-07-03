@@ -40,10 +40,7 @@ export async function PUT(request: Request, context: RouteContext) {
       name?: string;
       unit?: string;
       description?: string;
-      cost?: number;
-      markupPercent?: number;
       bundleQty?: number | null;
-      bundleMarkdownPercent?: number | null;
       bundlePrice?: number | null;
       price?: number;
     };
@@ -52,17 +49,10 @@ export async function PUT(request: Request, context: RouteContext) {
     const name = body.name?.trim();
     const unit = body.unit?.trim();
     const description = body.description?.trim();
-    const cost = Number(body.cost ?? 0);
-    const markupPercent = Number(body.markupPercent ?? 0);
     const bundleQty =
       body.bundleQty === null || body.bundleQty === undefined
         ? null
         : Number(body.bundleQty);
-    const bundleMarkdownPercent =
-      body.bundleMarkdownPercent === null ||
-      body.bundleMarkdownPercent === undefined
-        ? null
-        : Number(body.bundleMarkdownPercent);
     const bundlePrice =
       body.bundlePrice === null || body.bundlePrice === undefined
         ? null
@@ -72,10 +62,6 @@ export async function PUT(request: Request, context: RouteContext) {
     const hasBundle = bundleQty !== null || bundlePrice !== null;
     const hasInvalidBundle =
       (bundleQty !== null && (Number.isNaN(bundleQty) || bundleQty < 2)) ||
-      (bundleMarkdownPercent !== null &&
-        (Number.isNaN(bundleMarkdownPercent) ||
-          bundleMarkdownPercent < 0 ||
-          bundleMarkdownPercent > 100)) ||
       (bundlePrice !== null && (Number.isNaN(bundlePrice) || bundlePrice < 0));
     const hasIncompleteBundle =
       hasBundle && (bundleQty === null || bundlePrice === null);
@@ -83,10 +69,6 @@ export async function PUT(request: Request, context: RouteContext) {
     if (
       !sku ||
       !name ||
-      Number.isNaN(cost) ||
-      cost < 0 ||
-      Number.isNaN(markupPercent) ||
-      markupPercent < 0 ||
       hasInvalidBundle ||
       hasIncompleteBundle ||
       Number.isNaN(price) ||
@@ -107,10 +89,10 @@ export async function PUT(request: Request, context: RouteContext) {
         name,
         unit: unit || null,
         description: description || null,
-        cost,
-        markupPct: markupPercent,
+        cost: price,
+        markupPct: 0,
         bundleQty,
-        bundleMarkdownPct: bundleMarkdownPercent,
+        bundleMarkdownPct: null,
         bundlePrice,
         price,
         usesGlobalMarkup: false,
