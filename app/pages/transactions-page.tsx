@@ -23,6 +23,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -65,6 +66,17 @@ export default function TransactionsPage() {
 
     return () => {
       active = false;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    const handlePullToRefresh = () => {
+      setRefreshToken((current) => current + 1);
+    };
+
+    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
+    return () => {
+      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
     };
   }, []);
 

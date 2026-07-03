@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import AppBar from "@mui/material/AppBar";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
@@ -28,6 +29,74 @@ export default function MobilePageWrapper({
   children,
 }: MobilePageWrapperProps) {
   const { currentPage, setCurrentPage } = usePageContext();
+  const mainRef = useRef<HTMLElement | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const resetPullState = useCallback(() => {
+    touchStartYRef.current = null;
+    setPullDistance(0);
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLElement>) => {
+      if (refreshing) {
+        return;
+      }
+
+      const scrollTop = mainRef.current?.scrollTop ?? 0;
+      if (scrollTop > 0) {
+        touchStartYRef.current = null;
+        return;
+      }
+
+      touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    },
+    [refreshing],
+  );
+
+  const handleTouchMove = useCallback(
+    (event: React.TouchEvent<HTMLElement>) => {
+      if (refreshing || touchStartYRef.current === null) {
+        return;
+      }
+
+      const currentY = event.touches[0]?.clientY;
+      if (typeof currentY !== "number") {
+        return;
+      }
+
+      const delta = currentY - touchStartYRef.current;
+      if (delta <= 0) {
+        setPullDistance(0);
+        return;
+      }
+
+      const dampedDistance = Math.min(96, delta * 0.45);
+      setPullDistance(dampedDistance);
+      event.preventDefault();
+    },
+    [refreshing],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (refreshing) {
+      resetPullState();
+      return;
+    }
+
+    if (pullDistance >= 64) {
+      setRefreshing(true);
+      window.dispatchEvent(new CustomEvent("app:pull-to-refresh"));
+
+      window.setTimeout(() => {
+        setRefreshing(false);
+      }, 700);
+    }
+
+    resetPullState();
+  }, [pullDistance, refreshing, resetPullState]);
 
   return (
     <Box
@@ -73,6 +142,11 @@ export default function MobilePageWrapper({
 
       <Box
         component="main"
+        ref={mainRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         sx={{
           height: "100vh",
           boxSizing: "border-box",
@@ -83,6 +157,27 @@ export default function MobilePageWrapper({
           WebkitOverflowScrolling: "touch",
         }}
       >
+        <Box
+          sx={{
+            height: pullDistance,
+            minHeight: refreshing ? 36 : 0,
+            transition: "height 150ms ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "text.secondary",
+            typography: "caption",
+            pointerEvents: "none",
+          }}
+        >
+          {refreshing
+            ? "Refreshing..."
+            : pullDistance >= 64
+              ? "Release to refresh"
+              : pullDistance > 12
+                ? "Pull down to refresh"
+                : ""}
+        </Box>
         {children}
       </Box>
 

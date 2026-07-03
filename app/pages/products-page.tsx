@@ -55,6 +55,7 @@ export default function ProductsPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
+  const [refreshToken, setRefreshToken] = useState(0);
   const [analysisTimeMs] = useState(() => Date.now());
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -100,7 +101,7 @@ export default function ProductsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshToken]);
 
   useEffect(() => {
     let active = true;
@@ -134,6 +135,17 @@ export default function ProductsPage() {
 
     return () => {
       active = false;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    const handlePullToRefresh = () => {
+      setRefreshToken((current) => current + 1);
+    };
+
+    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
+    return () => {
+      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
     };
   }, []);
 

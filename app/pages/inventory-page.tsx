@@ -59,6 +59,7 @@ export default function InventoryPage() {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
 
@@ -127,6 +128,17 @@ export default function InventoryPage() {
 
     return () => {
       active = false;
+    };
+  }, [refreshToken]);
+
+  useEffect(() => {
+    const handlePullToRefresh = () => {
+      setRefreshToken((current) => current + 1);
+    };
+
+    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
+    return () => {
+      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
     };
   }, []);
 
