@@ -74,7 +74,8 @@ export default function MobilePageWrapper({
       <Box
         component="main"
         sx={{
-          minHeight: "100vh",
+          height: "100vh",
+          boxSizing: "border-box",
           pt: `calc(env(safe-area-inset-top) + ${APP_BAR_HEIGHT}px)`,
           pb: `calc(env(safe-area-inset-bottom) + ${BOTTOM_NAV_HEIGHT + 12}px)`,
           px: 0,
