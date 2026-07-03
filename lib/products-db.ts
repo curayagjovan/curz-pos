@@ -11,7 +11,6 @@ export type Product = {
   price: number | string;
   bundleQty?: number | string;
   bundlePrice?: number | string;
-  stock: number | string;
 };
 
 export type ProductsCache = {

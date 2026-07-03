@@ -150,6 +150,7 @@ export default function ProductsPage() {
     try {
       const payload = {
         status: "PAID" as const,
+        amountPaid: parsedPaidAmount,
         items: cartItems.map((item) => ({
           productId: item.id,
           productName: item.name,
@@ -171,26 +172,6 @@ export default function ProductsPage() {
       if (!response.ok) {
         throw new Error(data?.message || "Checkout failed");
       }
-
-      const soldById = new Map<string, number>();
-      for (const item of cartItems) {
-        soldById.set(item.id, (soldById.get(item.id) ?? 0) + item.quantity);
-      }
-
-      setProducts((prev) =>
-        prev.map((product) => {
-          const sold = soldById.get(product.id) ?? 0;
-          if (sold <= 0) {
-            return product;
-          }
-
-          const nextStock = Math.max(0, Number(product.stock) - sold);
-          return {
-            ...product,
-            stock: nextStock,
-          };
-        }),
-      );
 
       clearCart();
       setPaidAmountInput("0");

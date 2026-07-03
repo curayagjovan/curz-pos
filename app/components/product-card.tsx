@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
@@ -16,37 +15,12 @@ type ProductCardProps = {
   onAddToCart: (product: Product) => void;
 };
 
-function getProductInitials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length === 0) {
-    return "--";
-  }
-
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${words[0][0]}${words[1][0]}`.toUpperCase();
-}
-
 const ProductCard = memo(function ProductCard({
   product,
   onAddToCart,
 }: ProductCardProps) {
-  const bundleQty =
-    product.bundleQty == null ? null : Number(product.bundleQty);
-  const bundlePrice =
-    product.bundlePrice == null ? null : Number(product.bundlePrice);
-
-  const bundleDealText =
-    bundleQty != null &&
-    Number.isFinite(bundleQty) &&
-    bundleQty > 0 &&
-    bundlePrice != null &&
-    Number.isFinite(bundlePrice)
-      ? `${bundleQty} for ₱${bundlePrice.toFixed(2)}`
-      : "N/A";
+  const hasUnit = Boolean(product.unit?.trim());
+  const hasDescription = Boolean(product.description?.trim());
 
   return (
     <ListItem disablePadding sx={{ mb: 1 }}>
@@ -68,52 +42,44 @@ const ProductCard = memo(function ProductCard({
             },
           }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Avatar
-              variant="rounded"
-              sx={{
-                width: 34,
-                height: 34,
-                fontSize: 12,
-                fontWeight: 700,
-                bgcolor: "action.selected",
-                color: "text.primary",
-              }}
+          <Stack spacing={1.1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              justifyContent="space-between"
             >
-              {getProductInitials(product.name)}
-            </Avatar>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="body1"
+                  sx={{ fontWeight: 700, lineHeight: 1.2 }}
+                >
+                  {product.name}
+                </Typography>
+                {hasDescription ? (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 0.25 }}
+                  >
+                    {product.description}
+                  </Typography>
+                ) : null}
+              </Box>
+            </Stack>
 
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant="body1"
-                sx={{ fontWeight: 700, lineHeight: 1.25 }}
-              >
-                {product.name}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.25 }}
-              >
-                Tap to add to cart
-              </Typography>
-            </Box>
-
-            <Stack alignItems="flex-end" spacing={0.75}>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+              {hasUnit ? (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`Unit ${product.unit}`}
+                />
+              ) : null}
               <Chip
                 size="small"
-                label={`Unit ₱${Number(product.price).toFixed(2)}`}
+                label={`₱${Number(product.price).toFixed(2)}`}
                 sx={{ fontWeight: 700 }}
-              />
-              <Chip
-                size="small"
-                variant="outlined"
-                color={bundleDealText === "N/A" ? "default" : "success"}
-                label={
-                  bundleDealText === "N/A"
-                    ? "Bundle N/A"
-                    : `Bundle ${bundleDealText}`
-                }
               />
             </Stack>
           </Stack>

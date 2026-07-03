@@ -9,11 +9,15 @@ import SearchIcon from "@mui/icons-material/Search";
 type ProductsSearchBarProps = {
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
+  ariaLabel?: string;
 };
 
 export default function ProductsSearchBar({
   value,
   onChange,
+  placeholder = "Search products",
+  ariaLabel = "search products",
 }: ProductsSearchBarProps) {
   return (
     <Box
@@ -38,8 +42,8 @@ export default function ProductsSearchBar({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           sx={{ ml: 1, flex: 1 }}
-          placeholder="Search products"
-          inputProps={{ "aria-label": "search products" }}
+          placeholder={placeholder}
+          inputProps={{ "aria-label": ariaLabel }}
         />
         <IconButton type="button" sx={{ p: 1 }} aria-label="search">
           <SearchIcon fontSize="small" />

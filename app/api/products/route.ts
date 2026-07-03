@@ -7,10 +7,11 @@ const PRODUCT_LIST_SELECT = {
   id: true,
   sku: true,
   name: true,
+  unit: true,
+  description: true,
   price: true,
   bundleQty: true,
   bundlePrice: true,
-  stock: true,
 } as const;
 
 function isMissingPinnedColumn(error: unknown) {
@@ -268,7 +269,6 @@ export async function POST(request: Request) {
       bundleMarkdownPercent?: number | null;
       bundlePrice?: number | null;
       price?: number;
-      stock?: number;
     };
 
     const rawSku = body.sku?.trim();
@@ -291,7 +291,6 @@ export async function POST(request: Request) {
         ? null
         : Number(body.bundlePrice);
     const price = Number(body.price);
-    const stock = Number(body.stock ?? 0);
 
     const hasBundle = bundleQty !== null || bundlePrice !== null;
 
@@ -315,13 +314,11 @@ export async function POST(request: Request) {
       hasInvalidBundle ||
       hasIncompleteBundle ||
       Number.isNaN(price) ||
-      price < 0 ||
-      Number.isNaN(stock) ||
-      stock < 0
+      price < 0
     ) {
       return NextResponse.json(
         {
-          message: "Invalid payload. name, price, and stock are required.",
+          message: "Invalid payload. name and price are required.",
         },
         { status: 400 },
       );
@@ -346,19 +343,8 @@ export async function POST(request: Request) {
               bundleMarkdownPct: bundleMarkdownPercent,
               bundlePrice,
               price,
-              stock,
               isActive: true,
               usesGlobalMarkup: false,
-              inventoryMovements: {
-                create: {
-                  movementType: "RESTOCK",
-                  quantityDelta: stock,
-                  previousStock: 0,
-                  newStock: stock,
-                  referenceType: "PRODUCT_CREATE",
-                  note: `Initial stock for ${nextSku}`,
-                },
-              },
             },
           });
 
@@ -395,19 +381,8 @@ export async function POST(request: Request) {
         bundleMarkdownPct: bundleMarkdownPercent,
         bundlePrice,
         price,
-        stock,
         isActive: true,
         usesGlobalMarkup: false,
-        inventoryMovements: {
-          create: {
-            movementType: "RESTOCK",
-            quantityDelta: stock,
-            previousStock: 0,
-            newStock: stock,
-            referenceType: "PRODUCT_CREATE",
-            note: `Initial stock for ${rawSku}`,
-          },
-        },
       },
     });
 

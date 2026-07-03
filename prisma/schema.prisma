@@ -46,10 +46,9 @@ model AppSetting {
 model Order {
   id         String      @id @default(cuid())
   orderNo    String      @unique
-  status     OrderStatus @default(PENDING)
-  subtotal   Decimal     @db.Decimal(10, 2)
-  tax        Decimal     @db.Decimal(10, 2)
+  status     OrderStatus @default(PAID)
   total      Decimal     @db.Decimal(10, 2)
+  amountPaid Decimal?    @db.Decimal(10, 2)
   note       String?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -105,9 +104,9 @@ model ImportLog {
 }
 
 enum OrderStatus {
-  PENDING
   PAID
-  CANCELLED
+  REFUNDED
+  VOIDED
 }
 
 enum MovementType {

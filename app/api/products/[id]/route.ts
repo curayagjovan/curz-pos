@@ -46,7 +46,6 @@ export async function PUT(request: Request, context: RouteContext) {
       bundleMarkdownPercent?: number | null;
       bundlePrice?: number | null;
       price?: number;
-      stock?: number;
     };
 
     const sku = body.sku?.trim();
@@ -69,7 +68,6 @@ export async function PUT(request: Request, context: RouteContext) {
         ? null
         : Number(body.bundlePrice);
     const price = Number(body.price);
-    const stock = Number(body.stock ?? 0);
 
     const hasBundle = bundleQty !== null || bundlePrice !== null;
     const hasInvalidBundle =
@@ -92,13 +90,11 @@ export async function PUT(request: Request, context: RouteContext) {
       hasInvalidBundle ||
       hasIncompleteBundle ||
       Number.isNaN(price) ||
-      price < 0 ||
-      Number.isNaN(stock) ||
-      stock < 0
+      price < 0
     ) {
       return NextResponse.json(
         {
-          message: "Invalid payload. sku, name, price, and stock are required.",
+          message: "Invalid payload. sku, name, and price are required.",
         },
         { status: 400 },
       );
@@ -117,7 +113,6 @@ export async function PUT(request: Request, context: RouteContext) {
         bundleMarkdownPct: bundleMarkdownPercent,
         bundlePrice,
         price,
-        stock,
         usesGlobalMarkup: false,
       },
     });

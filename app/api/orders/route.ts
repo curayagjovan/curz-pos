@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { computeTax } from "@/lib/tax-config";
 
 type OrderItemInput = {
   productId?: string;
@@ -13,13 +12,66 @@ type OrderItemInput = {
 };
 
 type OrderPayload = {
-  status?: "PAID" | "CANCELLED" | "PENDING";
-  subtotal?: number;
-  tax?: number;
+  status?: "PAID" | "REFUNDED" | "VOIDED";
   total?: number;
+  amountPaid?: number;
   note?: string;
   items?: OrderItemInput[];
 };
+
+const orderItemSelect = {
+  id: true,
+  productName: true,
+  quantity: true,
+  unitPrice: true,
+  lineTotal: true,
+} as const;
+
+const orderListSelectBase = {
+  id: true,
+  orderNo: true,
+  status: true,
+  total: true,
+  note: true,
+  createdAt: true,
+  items: {
+    select: orderItemSelect,
+  },
+} as const;
+
+const orderListSelectWithAmountPaid = {
+  ...orderListSelectBase,
+  amountPaid: true,
+} as const;
+
+const orderCreateSelectBase = {
+  id: true,
+  orderNo: true,
+  status: true,
+  total: true,
+  note: true,
+  createdAt: true,
+} as const;
+
+const orderCreateSelectWithAmountPaid = {
+  ...orderCreateSelectBase,
+  amountPaid: true,
+} as const;
+
+function isMissingAmountPaidColumnError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2022" &&
+    String(error.meta?.column ?? "").includes("Order.amountPaid")
+  );
+}
+
+function withNullAmountPaid<T extends Record<string, unknown>>(order: T) {
+  return {
+    ...order,
+    amountPaid: null,
+  };
+}
 
 function createOrderNo() {
   const now = new Date();
@@ -70,8 +122,8 @@ export async function GET(request: Request) {
 
     const status: OrderStatus | null =
       statusParam === "PAID" ||
-      statusParam === "CANCELLED" ||
-      statusParam === "PENDING"
+      statusParam === "REFUNDED" ||
+      statusParam === "VOIDED"
         ? (statusParam as OrderStatus)
         : null;
 
@@ -80,44 +132,64 @@ export async function GET(request: Request) {
       : undefined;
 
     if (!hasPaginationParams) {
-      const orders = await prisma.order.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          orderNo: true,
-          status: true,
-          subtotal: true,
-          tax: true,
-          total: true,
-          note: true,
-          createdAt: true,
-        },
-      });
+      let orders: unknown[];
+      try {
+        orders = await prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: orderListSelectWithAmountPaid,
+        });
+      } catch (error) {
+        if (!isMissingAmountPaidColumnError(error)) {
+          throw error;
+        }
+
+        const fallbackOrders = await prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: orderListSelectBase,
+        });
+        orders = fallbackOrders.map(withNullAmountPaid);
+      }
 
       return NextResponse.json(orders);
     }
 
-    const [orders, total] = await prisma.$transaction([
-      prisma.order.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          orderNo: true,
-          status: true,
-          subtotal: true,
-          tax: true,
-          total: true,
-          note: true,
-          createdAt: true,
-        },
-      }),
-      prisma.order.count({ where }),
-    ]);
+    let orders: unknown[];
+    let total: number;
+
+    try {
+      [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          select: orderListSelectWithAmountPaid,
+        }),
+        prisma.order.count({ where }),
+      ]);
+    } catch (error) {
+      if (!isMissingAmountPaidColumnError(error)) {
+        throw error;
+      }
+
+      const [fallbackOrders, fallbackTotal] = await prisma.$transaction([
+        prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          select: orderListSelectBase,
+        }),
+        prisma.order.count({ where }),
+      ]);
+
+      orders = fallbackOrders.map(withNullAmountPaid);
+      total = fallbackTotal;
+    }
 
     return NextResponse.json({
       items: orders,
@@ -138,11 +210,15 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderPayload;
     const status = body.status ?? "PAID";
+    const requestedAmountPaid =
+      body.amountPaid === undefined || body.amountPaid === null
+        ? null
+        : Number(body.amountPaid);
     const note = body.note?.trim() || null;
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (
-      !["PAID", "CANCELLED", "PENDING"].includes(status) ||
+      !["PAID", "REFUNDED", "VOIDED"].includes(status) ||
       items.length === 0
     ) {
       return NextResponse.json(
@@ -169,44 +245,26 @@ export async function POST(request: Request) {
       }
     }
 
-    const itemTotalsByProduct = new Map<string, number>();
-    for (const item of items) {
-      const productId = item.productId as string;
-      const quantity = Number(item.quantity);
-      itemTotalsByProduct.set(
-        productId,
-        (itemTotalsByProduct.get(productId) ?? 0) + quantity,
-      );
-    }
-
-    const productIds = Array.from(itemTotalsByProduct.keys());
-    const stockSnapshot = await prisma.product.findMany({
+    const productIds = Array.from(
+      new Set(items.map((item) => item.productId as string)),
+    );
+    const productSnapshot = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: {
         id: true,
         name: true,
-        stock: true,
         price: true,
         bundleQty: true,
         bundlePrice: true,
       },
     });
 
-    const stockById = new Map(stockSnapshot.map((p) => [p.id, p]));
-    for (const [productId, quantity] of itemTotalsByProduct) {
-      const current = stockById.get(productId);
-      if (!current) {
-        throw new Error("Product not found during checkout");
-      }
-      if (status === "PAID" && current.stock < quantity) {
-        throw new Error(`Insufficient stock for ${current.name}`);
-      }
-    }
+    const productById = new Map(productSnapshot.map((p) => [p.id, p]));
 
     const orderItems = items.map((item) => {
       const productId = item.productId as string;
       const quantity = Number(item.quantity);
-      const current = stockById.get(productId);
+      const current = productById.get(productId);
 
       if (!current) {
         throw new Error("Product not found during checkout");
@@ -231,74 +289,69 @@ export async function POST(request: Request) {
       };
     });
 
-    const computedSubtotal = Number(
+    const computedTotal = Number(
       orderItems.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2),
     );
-    const computedTax = computeTax(computedSubtotal);
-    const computedTotal = Number((computedSubtotal + computedTax).toFixed(2));
+    const amountPaid =
+      status === "PAID"
+        ? requestedAmountPaid === null
+          ? computedTotal
+          : Number(requestedAmountPaid.toFixed(2))
+        : null;
+
+    if (
+      amountPaid !== null &&
+      (!Number.isFinite(amountPaid) || amountPaid < computedTotal)
+    ) {
+      return NextResponse.json(
+        { message: "Invalid amount paid" },
+        { status: 400 },
+      );
+    }
 
     const orderId = crypto.randomUUID();
     const orderNo = createOrderNo();
-    const operations: Prisma.PrismaPromise<unknown>[] = [
+    const createOrderOperation = (includeAmountPaid: boolean) =>
       prisma.order.create({
         data: {
           id: orderId,
           orderNo,
           status,
-          subtotal: computedSubtotal,
-          tax: computedTax,
           total: computedTotal,
+          ...(includeAmountPaid ? { amountPaid } : {}),
           note,
           items: {
             create: orderItems,
           },
         },
-        select: {
-          id: true,
-          orderNo: true,
-          status: true,
-          subtotal: true,
-          tax: true,
-          total: true,
-          note: true,
-          createdAt: true,
-        },
-      }),
-    ];
+        select: includeAmountPaid
+          ? orderCreateSelectWithAmountPaid
+          : orderCreateSelectBase,
+      });
 
-    if (status === "PAID") {
-      for (const [productId, quantity] of itemTotalsByProduct) {
-        const current = stockById.get(productId);
-        if (!current) {
-          continue;
-        }
+    const createSideEffects = () => {
+      return [] as Prisma.PrismaPromise<unknown>[];
+    };
 
-        const newStock = current.stock - quantity;
-        operations.push(
-          prisma.product.update({
-            where: { id: productId },
-            data: { stock: newStock },
-          }),
-        );
-
-        operations.push(
-          prisma.inventoryMovement.create({
-            data: {
-              productId,
-              movementType: "SALE",
-              quantityDelta: -quantity,
-              previousStock: current.stock,
-              newStock,
-              referenceType: "ORDER",
-              referenceId: orderId,
-              note: `Checkout sale (${orderNo})`,
-            },
-          }),
-        );
+    let result: unknown;
+    try {
+      const operations: Prisma.PrismaPromise<unknown>[] = [
+        createOrderOperation(true),
+        ...createSideEffects(),
+      ];
+      [result] = await prisma.$transaction(operations);
+    } catch (error) {
+      if (!isMissingAmountPaidColumnError(error)) {
+        throw error;
       }
-    }
 
-    const [result] = await prisma.$transaction(operations);
+      const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
+        createOrderOperation(false),
+        ...createSideEffects(),
+      ];
+      const [fallbackResult] = await prisma.$transaction(fallbackOperations);
+      result = withNullAmountPaid(fallbackResult as Record<string, unknown>);
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
@@ -306,10 +359,7 @@ export async function POST(request: Request) {
       error instanceof Error ? error.message : "Unable to create order";
     console.error("Failed to create order", error);
 
-    if (
-      message.includes("Insufficient stock") ||
-      message.includes("Product not found")
-    ) {
+    if (message.includes("Product not found")) {
       return NextResponse.json({ message }, { status: 409 });
     }
 
