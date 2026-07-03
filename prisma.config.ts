@@ -13,12 +13,20 @@ if (!databaseUrl) {
 }
 
 function resolveCliUrl() {
+  const resolvedDatabaseUrl = databaseUrl;
+
+  if (!resolvedDatabaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not set. Add it to your environment variables.",
+    );
+  }
+
   if (!directUrl) {
-    return databaseUrl;
+    return resolvedDatabaseUrl;
   }
 
   try {
-    const pooledUrl = new URL(databaseUrl);
+    const pooledUrl = new URL(resolvedDatabaseUrl);
     const configuredDirectUrl = new URL(directUrl);
 
     const isSupabasePooler = pooledUrl.hostname.endsWith(
