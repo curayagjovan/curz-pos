@@ -32,6 +32,9 @@ type ProductFormState = {
   unit: string;
   description: string;
   price: string;
+  bundleQty: string;
+  bundleMarkdownPercent: string;
+  bundlePrice: string;
 };
 
 type ProductFormErrors = {
@@ -47,6 +50,9 @@ const EMPTY_FORM: ProductFormState = {
   unit: "",
   description: "",
   price: "0",
+  bundleQty: "",
+  bundleMarkdownPercent: "",
+  bundlePrice: "",
 };
 
 export default function InventoryPage() {
@@ -151,6 +157,15 @@ export default function InventoryPage() {
       unit: product.unit?.toString() ?? "",
       description: product.description?.toString() ?? "",
       price: Number(product.price).toFixed(2),
+      bundleQty:
+        product.bundleQty === null || product.bundleQty === undefined
+          ? ""
+          : String(product.bundleQty),
+      bundleMarkdownPercent: "",
+      bundlePrice:
+        product.bundlePrice === null || product.bundlePrice === undefined
+          ? ""
+          : Number(product.bundlePrice).toFixed(2),
     });
     setFormErrors({});
     setDrawerOpen(true);
@@ -196,6 +211,13 @@ export default function InventoryPage() {
   const handleSaveProduct = useCallback(async () => {
     const name = form.name.trim();
     const price = Number(form.price);
+    const bundleQty = form.bundleQty.trim() ? Number(form.bundleQty) : null;
+    const bundleMarkdownPercent = form.bundleMarkdownPercent.trim()
+      ? Number(form.bundleMarkdownPercent)
+      : null;
+    const bundlePrice = form.bundlePrice.trim()
+      ? Number(form.bundlePrice)
+      : null;
     const nextErrors: ProductFormErrors = {};
 
     if (!name) {
@@ -230,9 +252,9 @@ export default function InventoryPage() {
         price,
         cost: 0,
         markupPercent: 0,
-        bundleQty: null,
-        bundleMarkdownPercent: null,
-        bundlePrice: null,
+        bundleQty,
+        bundleMarkdownPercent,
+        bundlePrice,
       };
 
       const response = await fetch(
@@ -351,37 +373,46 @@ export default function InventoryPage() {
               label="SKU"
               value={form.sku}
               onChange={(event) => handleFieldChange("sku", event.target.value)}
+              slotProps={{
+                input: {
+                  readOnly: Boolean(form.id),
+                },
+              }}
               helperText={
                 formErrors.sku
                   ? formErrors.sku
                   : form.id
-                    ? "Required for editing"
+                    ? "SKU is read-only when editing"
                     : "Optional (auto-generate if blank)"
               }
               size="medium"
               fullWidth
               error={Boolean(formErrors.sku)}
             />
-            <TextField
-              label="Unit"
-              value={form.unit}
-              onChange={(event) =>
-                handleFieldChange("unit", event.target.value)
-              }
-              size="medium"
-              fullWidth
-            />
-            <TextField
-              label="Description"
-              value={form.description}
-              onChange={(event) =>
-                handleFieldChange("description", event.target.value)
-              }
-              size="medium"
-              fullWidth
-              multiline
-              minRows={2}
-            />
+            {!form.id ? (
+              <TextField
+                label="Unit"
+                value={form.unit}
+                onChange={(event) =>
+                  handleFieldChange("unit", event.target.value)
+                }
+                size="medium"
+                fullWidth
+              />
+            ) : null}
+            {!form.id ? (
+              <TextField
+                label="Description"
+                value={form.description}
+                onChange={(event) =>
+                  handleFieldChange("description", event.target.value)
+                }
+                size="medium"
+                fullWidth
+                multiline
+                minRows={2}
+              />
+            ) : null}
             <TextField
               label="Price"
               value={form.price}
@@ -401,6 +432,61 @@ export default function InventoryPage() {
                 },
               }}
               required
+            />
+            <TextField
+              label="Bundle Qty"
+              value={form.bundleQty}
+              onChange={(event) =>
+                handleFieldChange("bundleQty", event.target.value)
+              }
+              size="medium"
+              fullWidth
+              type="number"
+              slotProps={{
+                htmlInput: {
+                  min: 2,
+                  step: "1",
+                  inputMode: "numeric",
+                },
+              }}
+              helperText="Optional, requires Bundle Price"
+            />
+            <TextField
+              label="Bundle Markdown %"
+              value={form.bundleMarkdownPercent}
+              onChange={(event) =>
+                handleFieldChange("bundleMarkdownPercent", event.target.value)
+              }
+              size="medium"
+              fullWidth
+              type="number"
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  max: 100,
+                  step: "0.01",
+                  inputMode: "decimal",
+                },
+              }}
+              helperText="Optional"
+            />
+            <TextField
+              label="Bundle Price"
+              value={form.bundlePrice}
+              onChange={(event) =>
+                handleFieldChange("bundlePrice", event.target.value)
+              }
+              size="medium"
+              fullWidth
+              type="number"
+              slotProps={{
+                htmlInput: {
+                  min: 0,
+                  step: "0.01",
+                  inputMode: "decimal",
+                },
+              }}
+              helperText="Optional, requires Bundle Qty"
             />
           </Stack>
 
