@@ -1,8 +1,10 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef, useState, type TouchEvent } from "react";
+import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
@@ -14,8 +16,12 @@ import CardActionArea from "@mui/material/CardActionArea";
 type ProductCardProps = {
   product: Product;
   onAddToCart: (product: Product) => void;
+  onRequestDelete?: (product: Product) => void;
+  deleteDisabled?: boolean;
   variant?: "catalog" | "inventory";
 };
+
+const SWIPE_ACTION_WIDTH = 92;
 
 function getProductInitials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -55,95 +61,231 @@ function getBundleMeta(product: Product) {
 const ProductCard = memo(function ProductCard({
   product,
   onAddToCart,
+  onRequestDelete,
+  deleteDisabled = false,
   variant = "catalog",
 }: ProductCardProps) {
   const hasUnit = Boolean(product.unit?.trim());
   const hasDescription = Boolean(product.description?.trim());
   const { hasBundle, label: bundleLabel } = getBundleMeta(product);
+  const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const swipingRef = useRef(false);
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (variant !== "inventory" || !onRequestDelete) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    swipingRef.current = false;
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (
+      variant !== "inventory" ||
+      !onRequestDelete ||
+      touchStartXRef.current === null ||
+      touchStartYRef.current === null
+    ) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - touchStartXRef.current;
+    const deltaY = touch.clientY - touchStartYRef.current;
+
+    if (!swipingRef.current) {
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        return;
+      }
+
+      if (Math.abs(deltaX) > 8) {
+        swipingRef.current = true;
+      }
+    }
+
+    if (!swipingRef.current) {
+      return;
+    }
+
+    const baseOffset = isDeleteRevealed ? -SWIPE_ACTION_WIDTH : 0;
+    const nextOffset = Math.min(
+      0,
+      Math.max(-SWIPE_ACTION_WIDTH, baseOffset + deltaX),
+    );
+    setDragOffset(nextOffset);
+  };
+
+  const handleTouchEnd = () => {
+    if (variant !== "inventory" || !onRequestDelete) {
+      return;
+    }
+
+    const shouldReveal = dragOffset <= -SWIPE_ACTION_WIDTH / 2;
+    setIsDeleteRevealed(shouldReveal);
+    setDragOffset(shouldReveal ? -SWIPE_ACTION_WIDTH : 0);
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    swipingRef.current = false;
+  };
+
+  const handleInventoryCardTap = () => {
+    if (isDeleteRevealed) {
+      setIsDeleteRevealed(false);
+      setDragOffset(0);
+      return;
+    }
+
+    onAddToCart(product);
+  };
+
+  const handleDeleteTap = () => {
+    if (!onRequestDelete || deleteDisabled) {
+      return;
+    }
+
+    setIsDeleteRevealed(false);
+    setDragOffset(0);
+    onRequestDelete(product);
+  };
 
   if (variant === "inventory") {
     return (
       <ListItem disablePadding sx={{ mb: 1 }}>
-        <Card
-          variant="outlined"
+        <Box
           sx={{
             width: "100%",
+            position: "relative",
+            overflow: "hidden",
             borderRadius: 2,
-            borderColor: "divider",
-            bgcolor: "background.paper",
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
         >
-          <CardActionArea
-            onClick={() => onAddToCart(product)}
+          <Box
             sx={{
-              px: 1.4,
-              py: 1.25,
-              textAlign: "left",
-              "&:last-child": {
-                pb: 1.25,
-              },
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "stretch",
+              pointerEvents: isDeleteRevealed ? "auto" : "none",
             }}
           >
-            <Stack spacing={1.1}>
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="flex-start"
-                justifyContent="space-between"
-              >
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: 700, lineHeight: 1.25 }}
-                  >
-                    {product.name}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", mt: 0.3 }}
-                  >
-                    Tap to edit product details
-                  </Typography>
-                </Box>
+            <Button
+              onClick={handleDeleteTap}
+              disabled={deleteDisabled}
+              startIcon={<DeleteOutlineRounded fontSize="small" />}
+              color="error"
+              variant="contained"
+              sx={{
+                width: SWIPE_ACTION_WIDTH,
+                borderRadius: 0,
+                boxShadow: "none",
+              }}
+            >
+              Delete
+            </Button>
+          </Box>
 
-                <Typography
-                  variant="subtitle2"
-                  sx={{ fontWeight: 800, whiteSpace: "nowrap", pl: 1 }}
+          <Card
+            variant="outlined"
+            sx={{
+              width: "100%",
+              borderRadius: 2,
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              transform: `translateX(${dragOffset}px)`,
+              transition: swipingRef.current
+                ? "none"
+                : "transform 0.18s ease-out",
+            }}
+          >
+            <CardActionArea
+              onClick={handleInventoryCardTap}
+              sx={{
+                px: 1.4,
+                py: 1.25,
+                textAlign: "left",
+                "&:last-child": {
+                  pb: 1.25,
+                },
+              }}
+            >
+              <Stack spacing={1.1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="flex-start"
+                  justifyContent="space-between"
                 >
-                  ₱{Number(product.price).toFixed(2)}
-                </Typography>
-              </Stack>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 700, lineHeight: 1.25 }}
+                    >
+                      {product.name}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.3 }}
+                    >
+                      Tap to edit product details
+                    </Typography>
+                  </Box>
 
-              {hasDescription ? (
-                <Typography variant="caption" color="text.secondary">
-                  {product.description}
-                </Typography>
-              ) : null}
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 800, whiteSpace: "nowrap", pl: 1 }}
+                  >
+                    ₱{Number(product.price).toFixed(2)}
+                  </Typography>
+                </Stack>
 
-              <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label={`SKU ${product.sku}`}
-                />
-                {hasUnit ? (
+                {hasDescription ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {product.description}
+                  </Typography>
+                ) : null}
+
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  useFlexGap
+                  flexWrap="wrap"
+                >
                   <Chip
                     size="small"
                     variant="outlined"
-                    label={`Unit ${product.unit}`}
+                    label={`SKU ${product.sku}`}
                   />
-                ) : null}
-                <Chip
-                  size="small"
-                  color={hasBundle ? "success" : "default"}
-                  variant={hasBundle ? "filled" : "outlined"}
-                  label={bundleLabel}
-                />
+                  {hasUnit ? (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`Unit ${product.unit}`}
+                    />
+                  ) : null}
+                  <Chip
+                    size="small"
+                    color={hasBundle ? "success" : "default"}
+                    variant={hasBundle ? "filled" : "outlined"}
+                    label={bundleLabel}
+                  />
+                </Stack>
               </Stack>
-            </Stack>
-          </CardActionArea>
-        </Card>
+            </CardActionArea>
+          </Card>
+        </Box>
       </ListItem>
     );
   }

@@ -12,6 +12,11 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
@@ -95,6 +100,10 @@ export default function InventoryPage() {
     useState<SnackbarSeverity>("success");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(
+    null,
+  );
+  const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
@@ -191,6 +200,69 @@ export default function InventoryPage() {
     setFormErrors({});
     setDrawerOpen(true);
   }, []);
+
+  const handleRequestDelete = useCallback((product: Product) => {
+    setDeleteCandidate(product);
+  }, []);
+
+  const handleCloseDeleteDialog = useCallback(() => {
+    if (deletingProductId) {
+      return;
+    }
+
+    setDeleteCandidate(null);
+  }, [deletingProductId]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteCandidate) {
+      return;
+    }
+
+    setDeletingProductId(deleteCandidate.id);
+
+    try {
+      const response = await fetch(`/api/products/${deleteCandidate.id}`, {
+        method: "DELETE",
+      });
+
+      let message = "Unable to delete product";
+      try {
+        const payload = (await response.json()) as { message?: string };
+        if (payload?.message) {
+          message = payload.message;
+        }
+      } catch {
+        // Ignore response parse failures and keep fallback message.
+      }
+
+      if (!response.ok) {
+        throw new Error(message);
+      }
+
+      setProducts((current) =>
+        current.filter((product) => product.id !== deleteCandidate.id),
+      );
+
+      if (form.id === deleteCandidate.id) {
+        setDrawerOpen(false);
+        setForm(EMPTY_FORM);
+        setFormErrors({});
+      }
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Product deleted");
+      setSnackbarOpen(true);
+      setDeleteCandidate(null);
+    } catch (err) {
+      setSnackbarSeverity("error");
+      setSnackbarMessage(
+        err instanceof Error ? err.message : "Unable to delete product",
+      );
+      setSnackbarOpen(true);
+    } finally {
+      setDeletingProductId(null);
+    }
+  }, [deleteCandidate, form.id]);
 
   const handleCloseDrawer = useCallback(() => {
     if (saving) {
@@ -325,6 +397,8 @@ export default function InventoryPage() {
             loading={loading}
             error={error}
             onAddToCart={handleProductTap}
+            onRequestDelete={handleRequestDelete}
+            deletingProductId={deletingProductId}
             variant="inventory"
           />
         </Stack>
@@ -496,6 +570,39 @@ export default function InventoryPage() {
           </Stack>
         </Box>
       </Drawer>
+
+      <Dialog
+        open={Boolean(deleteCandidate)}
+        onClose={handleCloseDeleteDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Delete Product?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteCandidate
+              ? `Delete ${deleteCandidate.name}? This removes it from inventory.`
+              : "Delete this product?"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            onClick={handleCloseDeleteDialog}
+            color="inherit"
+            disabled={Boolean(deletingProductId)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={Boolean(deletingProductId)}
+          >
+            {deletingProductId ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbarOpen}
