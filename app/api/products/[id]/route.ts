@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateSmartSku } from "@/lib/sku-generator";
 
 type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
@@ -36,7 +37,6 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const id = await resolveId(context);
     const body = (await request.json()) as {
-      sku?: string;
       name?: string;
       unit?: string;
       description?: string;
@@ -45,7 +45,6 @@ export async function PUT(request: Request, context: RouteContext) {
       price?: number;
     };
 
-    const sku = body.sku?.trim();
     const name = body.name?.trim();
     const unit = body.unit?.trim();
     const description = body.description?.trim();
@@ -67,7 +66,6 @@ export async function PUT(request: Request, context: RouteContext) {
       hasBundle && (bundleQty === null || bundlePrice === null);
 
     if (
-      !sku ||
       !name ||
       hasInvalidBundle ||
       hasIncompleteBundle ||
@@ -76,30 +74,58 @@ export async function PUT(request: Request, context: RouteContext) {
     ) {
       return NextResponse.json(
         {
-          message: "Invalid payload. sku, name, and price are required.",
+          message: "Invalid payload. name and price are required.",
         },
         { status: 400 },
       );
     }
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: {
-        sku,
-        name,
-        unit: unit || null,
-        description: description || null,
-        cost: price,
-        markupPct: 0,
-        bundleQty,
-        bundleMarkdownPct: null,
-        bundlePrice,
-        price,
-        usesGlobalMarkup: false,
-      },
-    });
+    // Always regenerate SKU from the latest name/price during edits.
+    const baseSku = generateSmartSku(name, price);
 
-    return NextResponse.json(product);
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const nextSku =
+        attempt === 0
+          ? baseSku
+          : `${baseSku}-${String(attempt + 1).padStart(2, "0")}`;
+
+      try {
+        const product = await prisma.product.update({
+          where: { id },
+          data: {
+            sku: nextSku,
+            name,
+            unit: unit || null,
+            description: description || null,
+            cost: price,
+            markupPct: 0,
+            bundleQty,
+            bundleMarkdownPct: null,
+            bundlePrice,
+            price,
+            usesGlobalMarkup: false,
+          },
+        });
+
+        return NextResponse.json(product);
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          (error as { code?: string }).code === "P2002"
+        ) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    return NextResponse.json(
+      { message: "Unable to generate a unique SKU. Please try again." },
+      { status: 409 },
+    );
   } catch (error) {
     if (
       typeof error === "object" &&
