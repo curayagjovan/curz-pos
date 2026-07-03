@@ -14,6 +14,7 @@ type ProductsCatalogProps = {
   loading: boolean;
   error: string | null;
   onAddToCart: (product: Product) => void;
+  variant?: "catalog" | "inventory";
 };
 
 const ProductsCatalog = memo(function ProductsCatalog({
@@ -21,6 +22,7 @@ const ProductsCatalog = memo(function ProductsCatalog({
   loading,
   error,
   onAddToCart,
+  variant = "catalog",
 }: ProductsCatalogProps) {
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -45,6 +47,7 @@ const ProductsCatalog = memo(function ProductsCatalog({
           key={product.id}
           product={product}
           onAddToCart={onAddToCart}
+          variant={variant}
         />
       ))}
     </List>

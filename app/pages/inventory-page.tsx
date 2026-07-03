@@ -325,6 +325,7 @@ export default function InventoryPage() {
             loading={loading}
             error={error}
             onAddToCart={handleProductTap}
+            variant="inventory"
           />
         </Stack>
       </Container>
