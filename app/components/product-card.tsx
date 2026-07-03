@@ -21,7 +21,7 @@ type ProductCardProps = {
   variant?: "catalog" | "inventory";
 };
 
-const SWIPE_ACTION_WIDTH = 92;
+const SWIPE_ACTION_WIDTH = "100%";
 
 function getProductInitials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
