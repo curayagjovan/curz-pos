@@ -1,14 +1,31 @@
 import { createTheme } from "@mui/material/styles";
 
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#0b6bcb",
+const appTheme = createTheme({
+  cssVariables: {
+    colorSchemeSelector: "data",
+  },
+  colorSchemes: {
+    light: {
+      palette: {
+        primary: {
+          main: "#0b6bcb",
+        },
+        background: {
+          default: "#f8fafc",
+          paper: "#ffffff",
+        },
+      },
     },
-    background: {
-      default: "#f8fafc",
-      paper: "#ffffff",
+    dark: {
+      palette: {
+        primary: {
+          main: "#5aa8ff",
+        },
+        background: {
+          default: "#0b0f16",
+          paper: "#131a24",
+        },
+      },
     },
   },
   shape: {
@@ -32,11 +49,6 @@ const theme = createTheme({
         disableRipple: true,
       },
     },
-    MuiUseMediaQuery: {
-      defaultProps: {
-        noSsr: true,
-      },
-    },
     MuiCssBaseline: {
       styleOverrides: {
         html: {
@@ -57,7 +69,8 @@ const theme = createTheme({
         root: {
           backdropFilter: "saturate(160%) blur(10px)",
           WebkitBackdropFilter: "saturate(160%) blur(10px)",
-          backgroundColor: "rgba(255,255,255,0.88)",
+          backgroundColor:
+            "rgba(var(--mui-palette-background-paperChannel) / 0.88)",
         },
       },
     },
@@ -71,7 +84,8 @@ const theme = createTheme({
     MuiBottomNavigation: {
       styleOverrides: {
         root: {
-          backgroundColor: "rgba(255,255,255,0.95)",
+          backgroundColor:
+            "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
         },
       },
     },
@@ -91,4 +105,4 @@ const theme = createTheme({
   },
 });
 
-export default theme;
+export default appTheme;

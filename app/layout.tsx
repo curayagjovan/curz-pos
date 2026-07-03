@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -37,8 +38,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
+        <InitColorSchemeScript defaultMode="system" attribute="data" />
         <Providers>{children}</Providers>
       </body>
     </html>
