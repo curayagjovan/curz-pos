@@ -2,12 +2,10 @@
 
 import { memo } from "react";
 import Alert from "@mui/material/Alert";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
+import ListEmptyState from "@/app/components/list-empty-state";
 import ProductCard from "@/app/components/product-card";
 import type { Product } from "@/types/product";
 
@@ -37,15 +35,7 @@ const ProductsCatalog = memo(function ProductsCatalog({
   }
 
   if (products.length === 0) {
-    return (
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="body2" color="text.secondary">
-            No products found.
-          </Typography>
-        </CardContent>
-      </Card>
-    );
+    return <ListEmptyState description="No products found." />;
   }
 
   return (
