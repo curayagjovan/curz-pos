@@ -310,7 +310,7 @@ export async function POST(request: Request) {
 
     if (shouldAutoGenerateSku) {
       for (let attempt = 0; attempt < 5; attempt += 1) {
-        const nextSku = generateSmartSku(name, unit);
+        const nextSku = generateSmartSku(name, price);
 
         try {
           const product = await prisma.product.create({

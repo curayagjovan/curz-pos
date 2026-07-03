@@ -1,10 +1,7 @@
 /**
- * Smart SKU Generator using "Order to Specific" format
- * Format: CAT-BRD-VAR-SZ
- * - CAT: Category (2-3 chars)
- * - BRD: Brand (2-3 chars)
- * - VAR: Variant/Flavor/Type (2-3 chars)
- * - SZ: Size/Package (2-4 chars)
+ * Smart SKU Generator using product abbreviation + date added + price
+ * Format: ABB-DATE-PRICE
+ * Example: CCB-20260703-2450
  */
 
 interface ParsedProduct {
@@ -250,9 +247,84 @@ export function parseProductForSku(
  * Generate a smart SKU from product details
  * Format: CAT-BRD-VAR-SZ
  */
-export function generateSmartSku(productName: string, unit?: string): string {
-  const parsed = parseProductForSku(productName, unit);
-  return `${parsed.category}-${parsed.brand}-${parsed.variant}-${parsed.size}`;
+function toProductAbbreviation(productName: string): string {
+  const normalizedWords = productName
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => !/^(THE|AND|OF|WITH|FOR|IN|ON|BY|TO|A|AN)$/.test(word));
+
+  if (normalizedWords.length === 0) {
+    return "ITEM";
+  }
+
+  if (normalizedWords.length === 1) {
+    return normalizedWords[0].slice(0, 3).padEnd(3, "X");
+  }
+
+  const initials = normalizedWords.map((word) => word[0]).join("");
+  return initials.slice(0, 3).padEnd(3, "X");
+}
+
+function toDateAddedToken(dateAdded?: Date | string | null): string {
+  const resolved = dateAdded ? new Date(dateAdded) : new Date();
+  if (Number.isNaN(resolved.getTime())) {
+    const fallback = new Date();
+    const fallbackParts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(fallback);
+    const year = fallbackParts.find((part) => part.type === "year")?.value;
+    const month = fallbackParts.find((part) => part.type === "month")?.value;
+    const day = fallbackParts.find((part) => part.type === "day")?.value;
+
+    if (!year || !month || !day) {
+      return "19700101";
+    }
+
+    return `${year}${month}${day}`;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(resolved);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return "19700101";
+  }
+
+  return `${year}${month}${day}`;
+}
+
+function toPriceToken(price?: number | string | null): string {
+  const numericPrice = Number(price);
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+    return "000";
+  }
+
+  // Store price with 2 decimal precision but without punctuation.
+  return numericPrice.toFixed(2).replace(".", "");
+}
+
+export function generateSmartSku(
+  productName: string,
+  price?: number | string | null,
+  dateAdded?: Date | string | null,
+): string {
+  const abbr = toProductAbbreviation(productName);
+  const dateToken = toDateAddedToken(dateAdded);
+  const priceToken = toPriceToken(price);
+  return `${abbr}-${dateToken}-${priceToken}`;
 }
 
 /**

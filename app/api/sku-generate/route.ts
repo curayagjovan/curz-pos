@@ -5,11 +5,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       name?: string;
-      unit?: string;
+      price?: number | string;
     };
 
     const name = body.name?.trim();
-    const unit = body.unit?.trim();
+    const price = body.price;
 
     if (!name) {
       return NextResponse.json(
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const sku = generateSmartSku(name, unit);
+    const sku = generateSmartSku(name, price);
 
     return NextResponse.json({ sku }, { status: 200 });
   } catch (error) {

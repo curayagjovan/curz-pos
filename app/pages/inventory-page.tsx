@@ -29,8 +29,6 @@ type ProductFormState = {
   id: string | null;
   sku: string;
   name: string;
-  unit: string;
-  description: string;
   price: string;
   bundleQty: string;
   bundlePrice: string;
@@ -46,8 +44,6 @@ const EMPTY_FORM: ProductFormState = {
   id: null,
   sku: "",
   name: "",
-  unit: "",
-  description: "",
   price: "0",
   bundleQty: "",
   bundlePrice: "",
@@ -152,8 +148,6 @@ export default function InventoryPage() {
       id: product.id,
       sku: product.sku,
       name: product.name,
-      unit: product.unit?.toString() ?? "",
-      description: product.description?.toString() ?? "",
       price: Number(product.price).toFixed(2),
       bundleQty:
         product.bundleQty === null || product.bundleQty === undefined
@@ -241,8 +235,6 @@ export default function InventoryPage() {
       const payload = {
         ...(form.sku.trim() ? { sku: form.sku.trim() } : {}),
         name,
-        unit: form.unit.trim() || undefined,
-        description: form.description.trim() || undefined,
         price,
         bundleQty,
         bundlePrice,
@@ -362,6 +354,23 @@ export default function InventoryPage() {
               },
             }}
           >
+            {form.id ? (
+              <TextField
+                label="SKU"
+                value={form.sku}
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                  },
+                }}
+                helperText={
+                  formErrors.sku ? formErrors.sku : "SKU is read-only"
+                }
+                size="medium"
+                fullWidth
+                error={Boolean(formErrors.sku)}
+              />
+            ) : null}
             <TextField
               label="Name"
               value={form.name}
@@ -374,50 +383,6 @@ export default function InventoryPage() {
               error={Boolean(formErrors.name)}
               helperText={formErrors.name}
             />
-            <TextField
-              label="SKU"
-              value={form.sku}
-              onChange={(event) => handleFieldChange("sku", event.target.value)}
-              slotProps={{
-                input: {
-                  readOnly: Boolean(form.id),
-                },
-              }}
-              helperText={
-                formErrors.sku
-                  ? formErrors.sku
-                  : form.id
-                    ? "SKU is read-only when editing"
-                    : "Optional (auto-generate if blank)"
-              }
-              size="medium"
-              fullWidth
-              error={Boolean(formErrors.sku)}
-            />
-            {!form.id ? (
-              <TextField
-                label="Unit"
-                value={form.unit}
-                onChange={(event) =>
-                  handleFieldChange("unit", event.target.value)
-                }
-                size="medium"
-                fullWidth
-              />
-            ) : null}
-            {!form.id ? (
-              <TextField
-                label="Description"
-                value={form.description}
-                onChange={(event) =>
-                  handleFieldChange("description", event.target.value)
-                }
-                size="medium"
-                fullWidth
-                multiline
-                minRows={2}
-              />
-            ) : null}
             <TextField
               label="Price"
               value={form.price}

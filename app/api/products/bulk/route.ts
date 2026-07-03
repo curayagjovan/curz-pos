@@ -173,7 +173,7 @@ export async function POST(request: Request) {
           nameUnitKeysToLookup.add(toNameUnitKey(name, unit));
 
           try {
-            rawSkusToLookup.add(generateSmartSku(name, unit));
+            rawSkusToLookup.add(generateSmartSku(name, item.price));
           } catch {
             // Validation for SKU generation is handled per-row below.
           }
@@ -425,7 +425,7 @@ export async function POST(request: Request) {
         const targetSku = (() => {
           if (rawSku) return rawSku;
           try {
-            return generateSmartSku(name, unit);
+            return generateSmartSku(name, price);
           } catch (error) {
             const reason =
               error instanceof Error ? error.message : "Unknown SKU error";
