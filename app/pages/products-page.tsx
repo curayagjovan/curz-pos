@@ -542,15 +542,15 @@ export default function ProductsPage() {
 
           <TextField
             fullWidth
-            size="small"
             type="number"
-            label="Amount Paid"
             value={activePaidAmountInput}
             onChange={(event) => setPaidAmountInput(event.target.value)}
-            inputProps={{
-              min: 0,
-              step: "0.01",
-              inputMode: "decimal",
+            slotProps={{
+              htmlInput: {
+                min: 0,
+                step: "0.01",
+                inputMode: "decimal",
+              },
             }}
           />
 
