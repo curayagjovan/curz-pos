@@ -8,11 +8,16 @@ import {
   useState,
 } from "react";
 import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Badge from "@mui/material/Badge";
+import Typography from "@mui/material/Typography";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
@@ -22,6 +27,14 @@ import { useCart } from "@/app/context/cart-context";
 import { useCheckoutCalculations } from "@/app/hooks/use-checkout-calculations";
 import { usePageContext } from "@/app/context/page-context";
 import type { Product } from "@/types/product";
+import type { Transaction } from "@/types/transaction";
+
+function normalizeTransaction(transaction: Transaction): Transaction {
+  return {
+    ...transaction,
+    items: Array.isArray(transaction.items) ? transaction.items : [],
+  };
+}
 
 export default function ProductsPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
@@ -34,6 +47,7 @@ export default function ProductsPage() {
     clearCart,
   } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -41,6 +55,7 @@ export default function ProductsPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
+  const [analysisTimeMs] = useState(() => Date.now());
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   useEffect(() => {
@@ -87,6 +102,41 @@ export default function ProductsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadTransactions = async () => {
+      try {
+        const response = await fetch("/api/orders", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const items: Transaction[] = (
+          Array.isArray(data) ? data : (data.items ?? [])
+        ).map(normalizeTransaction);
+
+        if (active) {
+          setTransactions(items);
+        }
+      } catch {
+        if (active) {
+          setTransactions([]);
+        }
+      }
+    };
+
+    loadTransactions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const filteredProducts = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
     if (!query) {
@@ -99,6 +149,177 @@ export default function ProductsPage() {
       return name.includes(query) || sku.includes(query);
     });
   }, [products, deferredSearchQuery]);
+
+  const popularItems = useMemo(() => {
+    const paidTransactions = transactions.filter(
+      (transaction) => transaction.status === "PAID",
+    );
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    const countInWindow = (days: number) =>
+      paidTransactions.filter((transaction) => {
+        const createdAtMs = new Date(transaction.createdAt).getTime();
+        return (
+          Number.isFinite(createdAtMs) &&
+          createdAtMs >= analysisTimeMs - days * DAY_MS &&
+          createdAtMs <= analysisTimeMs
+        );
+      }).length;
+
+    const count14 = countInWindow(14);
+    let selectedWindowDays = 14;
+    if (count14 < 40) {
+      const count30 = countInWindow(30);
+      selectedWindowDays = 30;
+
+      if (count30 < 80) {
+        const count60 = countInWindow(60);
+        selectedWindowDays = count60 < 80 ? 90 : 60;
+      }
+    }
+
+    const selectedTransactions = paidTransactions.filter((transaction) => {
+      const createdAtMs = new Date(transaction.createdAt).getTime();
+      return (
+        Number.isFinite(createdAtMs) &&
+        createdAtMs >= analysisTimeMs - selectedWindowDays * DAY_MS &&
+        createdAtMs <= analysisTimeMs
+      );
+    });
+
+    const summaryByProduct = new Map<
+      string,
+      {
+        productName: string;
+        quantitySold: number;
+        orderCount: number;
+        revenue: number;
+        activeDays: Set<string>;
+        velocity: number;
+        penetration: number;
+        consistency: number;
+        score: number;
+      }
+    >();
+
+    for (const transaction of selectedTransactions) {
+      const countedInOrder = new Set<string>();
+      const orderDate = new Date(transaction.createdAt);
+      const orderDayToken = Number.isNaN(orderDate.getTime())
+        ? null
+        : orderDate.toISOString().slice(0, 10);
+
+      for (const item of transaction.items) {
+        const key = item.productName.trim().toLowerCase();
+        if (!key) {
+          continue;
+        }
+
+        const quantity = Number(item.quantity);
+        const lineTotal = Number(item.lineTotal);
+        const current = summaryByProduct.get(key) ?? {
+          productName: item.productName,
+          quantitySold: 0,
+          orderCount: 0,
+          revenue: 0,
+          activeDays: new Set<string>(),
+          velocity: 0,
+          penetration: 0,
+          consistency: 0,
+          score: 0,
+        };
+
+        current.quantitySold += Number.isFinite(quantity) ? quantity : 0;
+        current.revenue += Number.isFinite(lineTotal) ? lineTotal : 0;
+
+        if (!countedInOrder.has(key)) {
+          current.orderCount += 1;
+          countedInOrder.add(key);
+        }
+
+        if (orderDayToken) {
+          current.activeDays.add(orderDayToken);
+        }
+
+        summaryByProduct.set(key, current);
+      }
+    }
+
+    const windowOrderCount = selectedTransactions.length;
+    const candidates = Array.from(summaryByProduct.values()).map((item) => {
+      const velocity = item.quantitySold / selectedWindowDays;
+      const penetration =
+        windowOrderCount > 0 ? item.orderCount / windowOrderCount : 0;
+      const consistency = item.activeDays.size / selectedWindowDays;
+
+      return {
+        ...item,
+        velocity,
+        penetration,
+        consistency,
+      };
+    });
+
+    const normalize = (values: number[]) => {
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+
+      return (value: number) => {
+        if (!Number.isFinite(value)) {
+          return 0;
+        }
+        if (max === min) {
+          return value > 0 ? 1 : 0;
+        }
+        return (value - min) / (max - min);
+      };
+    };
+
+    const normalizeVelocity = normalize(
+      candidates.map((item) => item.velocity),
+    );
+    const normalizePenetration = normalize(
+      candidates.map((item) => item.penetration),
+    );
+
+    const scoredCandidates = candidates.map((item) => {
+      const score =
+        0.6 * normalizeVelocity(item.velocity) +
+        0.25 * normalizePenetration(item.penetration) +
+        0.15 * item.consistency;
+
+      return {
+        ...item,
+        score,
+      };
+    });
+
+    const eligibleItems = scoredCandidates.filter(
+      (item) => item.quantitySold >= 8 && item.orderCount >= 5,
+    );
+
+    const rankedEligibleItems = eligibleItems.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      if (b.quantitySold !== a.quantitySold) {
+        return b.quantitySold - a.quantitySold;
+      }
+      return a.productName.localeCompare(b.productName);
+    });
+
+    const topPercentCount =
+      rankedEligibleItems.length > 0
+        ? Math.ceil(rankedEligibleItems.length * 0.2)
+        : 0;
+    const takeCount = Math.min(5, Math.max(1, topPercentCount));
+
+    return {
+      selectedWindowDays,
+      totalPaidOrdersInWindow: windowOrderCount,
+      items: rankedEligibleItems.slice(0, takeCount),
+    };
+  }, [analysisTimeMs, transactions]);
 
   const handleAddToCart = useCallback(
     (product: Product) => {
@@ -213,6 +434,64 @@ export default function ProductsPage() {
               ? "Loading products..."
               : `${filteredProducts.length.toLocaleString()} products`}
           </Box>
+
+          {!loading && !error && popularItems.items.length > 0 ? (
+            <Card variant="outlined">
+              <CardContent sx={{ py: 1.5 }}>
+                <Stack spacing={1}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    spacing={1}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Popular Items
+                    </Typography>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`Adaptive ${popularItems.selectedWindowDays}d window`}
+                    />
+                  </Stack>
+
+                  <Stack divider={<Divider flexItem />}>
+                    {popularItems.items.map((item, index) => (
+                      <Stack
+                        key={item.productName}
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ py: 1 }}
+                        spacing={1}
+                      >
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 700 }}
+                            noWrap
+                          >
+                            {index + 1}. {item.productName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {item.orderCount} orders
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {item.quantitySold} sold
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ₱{item.revenue.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Stack>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <ProductsCatalog
             products={filteredProducts}
