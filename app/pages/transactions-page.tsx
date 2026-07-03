@@ -3,8 +3,8 @@ import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 
 export default function TransactionsPage() {
   return (
-    <MobilePageWrapper title="Transactions">
-      <PagePlaceholder subtitle="Transactions page scaffold is ready." />
+    <MobilePageWrapper title="Sales">
+      <PagePlaceholder subtitle="Frontend reset complete. Sales page is empty." />
     </MobilePageWrapper>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { usePageContext } from "@/app/context/page-context";
-import { NavBar } from "antd-mobile";
 
 type PageHeaderProps = {
   title: string;
@@ -15,11 +14,31 @@ export default function PageHeader({ title }: PageHeaderProps) {
   };
 
   return (
-    <NavBar
-      back={currentPage !== "products" ? "" : null}
-      onBack={handleBackClick}
+    <header
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "12px 16px",
+        borderBottom: "1px solid #e5e7eb",
+        background: "#ffffff",
+      }}
     >
+      {currentPage !== "products" ? (
+        <button
+          type="button"
+          onClick={handleBackClick}
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: "8px",
+            background: "#ffffff",
+            padding: "4px 8px",
+          }}
+        >
+          Back
+        </button>
+      ) : null}
       {title}
-    </NavBar>
+    </header>
   );
 }

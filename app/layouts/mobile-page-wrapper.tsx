@@ -13,12 +13,12 @@ export default function MobilePageWrapper({
   children,
 }: MobilePageWrapperProps) {
   return (
-    <div className="app-shell">
-      <div className="app-top">
+    <div>
+      <div>
         <PageHeader title={title} />
       </div>
-      <div className="app-body">{children}</div>
-      <div className="app-bottom">
+      <main>{children}</main>
+      <div>
         <Footer />
       </div>
     </div>

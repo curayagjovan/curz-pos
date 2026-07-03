@@ -1,38 +1,45 @@
 "use client";
 
-import { TabBar } from "antd-mobile";
-import {
-  AppOutline,
-  BillOutline,
-  UnorderedListOutline,
-  SetOutline,
-} from "antd-mobile-icons";
 import { usePageContext } from "@/app/context/page-context";
 
 type PageKey = "products" | "transactions" | "inventory" | "settings";
 
 const tabs = [
-  { key: "products" as PageKey, title: "Products", icon: <AppOutline /> },
-  { key: "transactions" as PageKey, title: "Sales", icon: <BillOutline /> },
-  {
-    key: "inventory" as PageKey,
-    title: "Inventory",
-    icon: <UnorderedListOutline />,
-  },
-  { key: "settings" as PageKey, title: "Settings", icon: <SetOutline /> },
+  { key: "products" as PageKey, title: "Products" },
+  { key: "transactions" as PageKey, title: "Sales" },
+  { key: "inventory" as PageKey, title: "Inventory" },
+  { key: "settings" as PageKey, title: "Settings" },
 ];
 
 export default function Footer() {
   const { currentPage, setCurrentPage } = usePageContext();
 
   return (
-    <TabBar
-      activeKey={currentPage}
-      onChange={(key) => setCurrentPage(key as PageKey)}
+    <nav
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        borderTop: "1px solid #e5e7eb",
+        background: "#ffffff",
+      }}
     >
       {tabs.map((tab) => (
-        <TabBar.Item key={tab.key} icon={tab.icon} title={tab.title} />
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => setCurrentPage(tab.key)}
+          style={{
+            border: "none",
+            background: "transparent",
+            padding: "12px 8px",
+            fontSize: "12px",
+            fontWeight: currentPage === tab.key ? 700 : 500,
+            color: currentPage === tab.key ? "#111111" : "#6b7280",
+          }}
+        >
+          {tab.title}
+        </button>
       ))}
-    </TabBar>
+    </nav>
   );
 }

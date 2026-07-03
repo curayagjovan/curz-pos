@@ -3,13 +3,11 @@ type PagePlaceholderProps = {
 };
 
 export default function PagePlaceholder({
-  subtitle = "Page scaffold is ready.",
+  subtitle = "This page has been reset.",
 }: PagePlaceholderProps) {
   return (
-    <section className="mobile-content" aria-label="Page content">
-      <div className="mobile-content-inner">
-        <p className="mobile-subtitle">{subtitle}</p>
-      </div>
+    <section aria-label="Page content" style={{ padding: "16px" }}>
+      <p style={{ margin: 0, color: "#4b5563" }}>{subtitle}</p>
     </section>
   );
 }

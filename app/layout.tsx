@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import "antd-mobile/es/global";
 import "./globals.css";
 import Providers from "./providers";
 
