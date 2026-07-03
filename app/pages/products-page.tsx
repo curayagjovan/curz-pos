@@ -1,10 +1,13 @@
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
-import PagePlaceholder from "../components/page-placeholder";
+import PagePlaceholder from "@/app/components/page-placeholder";
 
 export default function ProductsPage() {
   return (
     <MobilePageWrapper title="Products">
-      <PagePlaceholder subtitle="Frontend reset complete. Settings page is empty." />
+      <PagePlaceholder
+        heading="Product Catalog"
+        subtitle="Products view is reset and ready for MUI list and search components."
+      />
     </MobilePageWrapper>
   );
 }
