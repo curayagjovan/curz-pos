@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -40,6 +41,8 @@ type ProductFormErrors = {
   price?: string;
 };
 
+type SnackbarSeverity = "success" | "error";
+
 const EMPTY_FORM: ProductFormState = {
   id: null,
   sku: "",
@@ -49,6 +52,37 @@ const EMPTY_FORM: ProductFormState = {
   bundlePrice: "",
 };
 
+function upsertProduct(products: Product[], nextProduct: Product) {
+  const existingIndex = products.findIndex(
+    (product) => product.id === nextProduct.id,
+  );
+
+  const nextProducts = [...products];
+
+  if (existingIndex === -1) {
+    nextProducts.push(nextProduct);
+  } else {
+    nextProducts[existingIndex] = nextProduct;
+  }
+
+  return nextProducts.sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+}
+
+function matchesSearch(product: Product, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return (
+    product.name.toLowerCase().includes(normalizedQuery) ||
+    product.sku.toLowerCase().includes(normalizedQuery)
+  );
+}
+
 export default function InventoryPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -57,35 +91,13 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] =
+    useState<SnackbarSeverity>("success");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
-
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/products?skip=0&limit=9999", {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch products");
-      }
-
-      const data = await response.json();
-      const items: Product[] = Array.isArray(data) ? data : (data.items ?? []);
-
-      setProducts(items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load inventory");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -234,6 +246,7 @@ export default function InventoryPage() {
 
     if (Object.keys(nextErrors).length > 0) {
       setFormErrors(nextErrors);
+      setSnackbarSeverity("error");
       setSnackbarMessage("Please fix the highlighted fields");
       setSnackbarOpen(true);
       return;
@@ -263,18 +276,24 @@ export default function InventoryPage() {
         },
       );
 
-      const data = await response.json();
+      const data = (await response.json()) as Product & { message?: string };
       if (!response.ok) {
         throw new Error(data?.message || "Unable to save product");
       }
 
-      await loadProducts();
+      setProducts((current) => upsertProduct(current, data));
 
+      if (!matchesSearch(data, searchQuery)) {
+        setSearchQuery("");
+      }
+
+      setSnackbarSeverity("success");
       setSnackbarMessage(form.id ? "Product updated" : "Product created");
       setSnackbarOpen(true);
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
     } catch (err) {
+      setSnackbarSeverity("error");
       setSnackbarMessage(
         err instanceof Error ? err.message : "Unable to save product",
       );
@@ -282,7 +301,7 @@ export default function InventoryPage() {
     } finally {
       setSaving(false);
     }
-  }, [form, loadProducts]);
+  }, [form, searchQuery, setSearchQuery]);
 
   return (
     <MobilePageWrapper title="Inventory">
@@ -479,10 +498,19 @@ export default function InventoryPage() {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={1400}
+        autoHideDuration={2800}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
-      />
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </MobilePageWrapper>
   );
 }
