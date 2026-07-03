@@ -184,12 +184,12 @@ const ProductCard = memo(function ProductCard({
               onClick={handleDeleteTap}
               disabled={deleteDisabled}
               startIcon={<DeleteOutlineRounded fontSize="small" />}
-              color="error"
               variant="contained"
               sx={{
                 width: SWIPE_ACTION_WIDTH,
                 borderRadius: 0,
                 boxShadow: "none",
+                color: "red.700",
               }}
             >
               Delete
@@ -201,6 +201,8 @@ const ProductCard = memo(function ProductCard({
             sx={{
               width: "100%",
               borderRadius: 2,
+              borderTopRightRadius: swipingRef.current ? 0 : 2,
+              borderBottomRightRadius: swipingRef.current ? 0 : 2,
               borderColor: "divider",
               bgcolor: "background.paper",
               transform: `translateX(${dragOffset}px)`,
