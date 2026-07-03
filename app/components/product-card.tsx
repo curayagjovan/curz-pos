@@ -185,6 +185,7 @@ const ProductCard = memo(function ProductCard({
               disabled={deleteDisabled}
               startIcon={<DeleteOutlineRounded fontSize="small" />}
               variant="contained"
+              color="error"
               sx={{
                 width: SWIPE_ACTION_WIDTH,
                 borderRadius: 0,
