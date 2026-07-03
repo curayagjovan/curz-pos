@@ -4,11 +4,39 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 const databaseUrl = process.env["DATABASE_URL"];
+const directUrl = process.env["DIRECT_URL"];
 
 if (!databaseUrl) {
   throw new Error(
     "DATABASE_URL is not set. Add it to your environment variables.",
   );
+}
+
+function resolveCliUrl() {
+  if (!directUrl) {
+    return databaseUrl;
+  }
+
+  try {
+    const pooledUrl = new URL(databaseUrl);
+    const configuredDirectUrl = new URL(directUrl);
+
+    const isSupabasePooler = pooledUrl.hostname.endsWith(
+      ".pooler.supabase.com",
+    );
+    const isTransactionPooler = pooledUrl.port === "6543";
+    const isRawSupabaseHost = configuredDirectUrl.hostname.startsWith("db.");
+
+    if (isSupabasePooler && isTransactionPooler && isRawSupabaseHost) {
+      pooledUrl.port = "5432";
+      pooledUrl.search = "";
+      return pooledUrl.toString();
+    }
+  } catch {
+    return directUrl;
+  }
+
+  return directUrl;
 }
 
 export default defineConfig({
@@ -18,6 +46,6 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: databaseUrl,
+    url: resolveCliUrl(),
   },
 });
