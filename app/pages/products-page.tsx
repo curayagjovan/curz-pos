@@ -396,7 +396,9 @@ export default function ProductsPage() {
     setCheckoutLoading(true);
 
     try {
+      const requestId = crypto.randomUUID();
       const payload = {
+        requestId,
         status: "PAID" as const,
         amountPaid: parsedPaidAmount,
         items: cartItems.map((item) => ({
@@ -407,13 +409,19 @@ export default function ProductsPage() {
         })),
       };
 
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const submitOrder = () =>
+        fetch("/api/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+      let response = await submitOrder();
+      if (!response.ok && response.status >= 500) {
+        response = await submitOrder();
+      }
 
       const data = await response.json();
 

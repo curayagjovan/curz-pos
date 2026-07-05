@@ -45,6 +45,7 @@ type OrderItemInput = {
 };
 
 type OrderPayload = {
+  requestId?: string;
   status?: "PAID" | "REFUNDED" | "VOIDED";
   total?: number;
   amountPaid?: number;
@@ -319,6 +320,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderPayload;
+    const normalizedRequestId =
+      typeof body.requestId === "string" && body.requestId.trim().length > 0
+        ? body.requestId.trim().slice(0, 64)
+        : null;
     const status = body.status ?? "PAID";
     const requestedAmountPaid =
       body.amountPaid === undefined || body.amountPaid === null
@@ -448,13 +453,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const orderId = crypto.randomUUID();
+    const orderId = normalizedRequestId ?? crypto.randomUUID();
     let orderNo = createOrderNo();
     const checkoutAttemptId = crypto.randomUUID();
+
+    if (normalizedRequestId) {
+      const existingByRequestId = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: orderCreateSelectWithAmountPaid,
+      });
+
+      if (existingByRequestId) {
+        checkoutLog("order_create_idempotent_replay", {
+          checkoutAttemptId,
+          orderId,
+          requestId: normalizedRequestId,
+          orderNo: existingByRequestId.orderNo,
+        });
+
+        return NextResponse.json(existingByRequestId, { status: 200 });
+      }
+    }
 
     checkoutLog("order_create_started", {
       checkoutAttemptId,
       orderId,
+      requestId: normalizedRequestId,
       orderNo,
       status,
       itemCount: orderItems.length,
@@ -698,6 +722,7 @@ export async function POST(request: Request) {
     checkoutLog("order_create_succeeded", {
       checkoutAttemptId,
       orderId,
+      requestId: normalizedRequestId,
       orderNo,
     });
 
