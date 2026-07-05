@@ -29,7 +29,7 @@ export default function MobilePageWrapper({
   title,
   children,
 }: MobilePageWrapperProps) {
-  const { currentPage, setCurrentPage } = usePageContext();
+  const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
   const mainRef = useRef<HTMLElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
@@ -98,6 +98,18 @@ export default function MobilePageWrapper({
 
     resetPullState();
   }, [pullDistance, refreshing, resetPullState]);
+
+  const handleTabChange = useCallback(
+    (_: React.SyntheticEvent, newValue: NavPage) => {
+      if (newValue === currentPage) {
+        return;
+      }
+
+      setCurrentPage(newValue);
+      setSearchQuery("");
+    },
+    [currentPage, setCurrentPage, setSearchQuery],
+  );
 
   return (
     <Box
@@ -206,7 +218,9 @@ export default function MobilePageWrapper({
         <BottomNavigation
           showLabels
           value={currentPage}
-          onChange={(_, newValue) => setCurrentPage(newValue as NavPage)}
+          onChange={(event, newValue) =>
+            handleTabChange(event, newValue as NavPage)
+          }
           sx={{
             height: BOTTOM_NAV_HEIGHT,
             px: 0.5,

@@ -12,7 +12,7 @@ const tabs = [
 ];
 
 export default function Footer() {
-  const { currentPage, setCurrentPage } = usePageContext();
+  const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
 
   return (
     <nav
@@ -27,7 +27,14 @@ export default function Footer() {
         <button
           key={tab.key}
           type="button"
-          onClick={() => setCurrentPage(tab.key)}
+          onClick={() => {
+            if (tab.key === currentPage) {
+              return;
+            }
+
+            setCurrentPage(tab.key);
+            setSearchQuery("");
+          }}
           style={{
             border: "none",
             background: "transparent",
