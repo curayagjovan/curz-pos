@@ -261,33 +261,62 @@ export async function POST(request: Request) {
 
     const productById = new Map(productSnapshot.map((p) => [p.id, p]));
 
-    const orderItems = items.map((item) => {
-      const productId = item.productId as string;
-      const quantity = Number(item.quantity);
-      const current = productById.get(productId);
+    const missingProductIds: string[] = [];
+    const missingProductNames: string[] = [];
 
-      if (!current) {
-        throw new Error("Product not found during checkout");
-      }
+    const orderItems = items
+      .map((item) => {
+        const productId = item.productId as string;
+        const quantity = Number(item.quantity);
+        const current = productById.get(productId);
 
-      const unitPrice = Number(current.price);
-      const bundlePrice =
-        current.bundlePrice === null ? null : Number(current.bundlePrice);
-      const lineTotal = computeLineTotal(
-        quantity,
-        unitPrice,
-        current.bundleQty,
-        bundlePrice,
+        if (!current) {
+          missingProductIds.push(productId);
+          missingProductNames.push(item.productName ?? "Unknown product");
+          return null;
+        }
+
+        const unitPrice = Number(current.price);
+        const bundlePrice =
+          current.bundlePrice === null ? null : Number(current.bundlePrice);
+        const lineTotal = computeLineTotal(
+          quantity,
+          unitPrice,
+          current.bundleQty,
+          bundlePrice,
+        );
+
+        return {
+          productId,
+          productName: item.productName as string,
+          quantity,
+          unitPrice,
+          lineTotal,
+        };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          productId: string;
+          productName: string;
+          quantity: number;
+          unitPrice: number;
+          lineTotal: number;
+        } => item !== null,
       );
 
-      return {
-        productId,
-        productName: item.productName as string,
-        quantity,
-        unitPrice,
-        lineTotal,
-      };
-    });
+    if (missingProductIds.length > 0) {
+      return NextResponse.json(
+        {
+          message:
+            "Some cart items are no longer available. They were removed from your cart.",
+          missingProductIds,
+          missingProductNames,
+        },
+        { status: 409 },
+      );
+    }
 
     const computedTotal = Number(
       orderItems.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2),
@@ -358,10 +387,6 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error ? error.message : "Unable to create order";
     console.error("Failed to create order", error);
-
-    if (message.includes("Product not found")) {
-      return NextResponse.json({ message }, { status: 409 });
-    }
 
     return NextResponse.json(
       { message: "Unable to create order" },

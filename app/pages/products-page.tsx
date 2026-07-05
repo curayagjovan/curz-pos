@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -52,6 +53,9 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success",
+  );
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
@@ -344,6 +348,7 @@ export default function ProductsPage() {
       });
 
       setSnackbarMessage(`${product.name} added to cart`);
+      setSnackbarSeverity("success");
       setSnackbarOpen(true);
     },
     [addToCart],
@@ -368,12 +373,14 @@ export default function ProductsPage() {
   const handleCheckout = useCallback(async () => {
     if (cartItems.length === 0) {
       setSnackbarMessage("Cart is empty");
+      setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
     }
 
     if (parsedPaidAmount < cartTotal) {
       setSnackbarMessage("Insufficient payment amount");
+      setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
     }
@@ -403,6 +410,21 @@ export default function ProductsPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (
+          response.status === 409 &&
+          Array.isArray(data?.missingProductIds) &&
+          data.missingProductIds.length > 0
+        ) {
+          for (const productId of data.missingProductIds as string[]) {
+            removeFromCart(productId);
+          }
+
+          throw new Error(
+            data?.message ||
+              "Some items are no longer available and were removed from cart",
+          );
+        }
+
         throw new Error(data?.message || "Checkout failed");
       }
 
@@ -414,16 +436,18 @@ export default function ProductsPage() {
           ? `Order ${data.orderNo} completed`
           : "Checkout completed",
       );
+      setSnackbarSeverity("success");
       setSnackbarOpen(true);
     } catch (err) {
       setSnackbarMessage(
         err instanceof Error ? err.message : "Unable to complete checkout",
       );
+      setSnackbarSeverity("error");
       setSnackbarOpen(true);
     } finally {
       setCheckoutLoading(false);
     }
-  }, [cartItems, parsedPaidAmount, cartTotal, clearCart]);
+  }, [cartItems, parsedPaidAmount, cartTotal, clearCart, removeFromCart]);
 
   const handleCloseCart = useCallback(() => {
     setCartOpen(false);
@@ -516,10 +540,23 @@ export default function ProductsPage() {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={1400}
+        autoHideDuration={2800}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2,
+          top: "calc(env(safe-area-inset-top) + 8px)",
+        }}
         onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
-      />
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
 
       {!cartOpen ? (
         <Fab

@@ -23,6 +23,7 @@ type NavPage = "products" | "transactions" | "inventory" | "settings";
 
 const APP_BAR_HEIGHT = 56;
 const BOTTOM_NAV_HEIGHT = 68;
+const PULL_INDICATOR_OFFSET = 112;
 
 export default function MobilePageWrapper({
   title,
@@ -153,21 +154,28 @@ export default function MobilePageWrapper({
           pt: `calc(env(safe-area-inset-top) + ${APP_BAR_HEIGHT}px)`,
           pb: `calc(env(safe-area-inset-bottom) + ${BOTTOM_NAV_HEIGHT + 12}px)`,
           px: 0,
+          position: "relative",
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
         }}
       >
         <Box
           sx={{
-            height: pullDistance,
-            minHeight: refreshing ? 36 : 0,
-            transition: "height 150ms ease",
+            position: "absolute",
+            top: PULL_INDICATOR_OFFSET,
+            left: 0,
+            right: 0,
+            height: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "text.secondary",
             typography: "caption",
             pointerEvents: "none",
+            zIndex: 2,
+            opacity: refreshing || pullDistance > 12 ? 1 : 0,
+            transform: `translateY(${Math.max(0, pullDistance - 36)}px)`,
+            transition: "opacity 120ms ease, transform 150ms ease",
           }}
         >
           {refreshing
