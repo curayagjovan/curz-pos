@@ -22,6 +22,10 @@ type TransactionsContextType = {
   error: string | null;
   refreshTransactions: (force?: boolean) => Promise<void>;
   addTransaction: (transaction: Transaction) => void;
+  updateTransactionStatus: (
+    id: string,
+    status: Transaction["status"],
+  ) => Promise<void>;
 };
 
 const TransactionsContext = createContext<TransactionsContextType | undefined>(
@@ -146,6 +150,38 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateTransactionStatus = useCallback(
+    async (id: string, status: Transaction["status"]) => {
+      const response = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, status }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to update sale status");
+      }
+
+      const nextTransaction = normalizeTransaction(data as Transaction);
+
+      setTransactions((current) => {
+        const nextTransactions = sortTransactions(
+          current.map((item) =>
+            item.id === nextTransaction.id ? nextTransaction : item,
+          ),
+        );
+
+        void saveCachedTransactions(nextTransactions);
+        return nextTransactions;
+      });
+    },
+    [],
+  );
+
   const value = useMemo(
     () => ({
       transactions,
@@ -153,8 +189,16 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
       error,
       refreshTransactions,
       addTransaction,
+      updateTransactionStatus,
     }),
-    [transactions, loading, error, refreshTransactions, addTransaction],
+    [
+      transactions,
+      loading,
+      error,
+      refreshTransactions,
+      addTransaction,
+      updateTransactionStatus,
+    ],
   );
 
   return (

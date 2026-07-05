@@ -13,7 +13,8 @@ import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 export default function TransactionsPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const { transactions, loading, error } = useTransactions();
+  const { transactions, loading, error, updateTransactionStatus } =
+    useTransactions();
 
   const filteredTransactions = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -53,6 +54,7 @@ export default function TransactionsPage() {
             transactions={filteredTransactions}
             loading={loading}
             error={error}
+            onUpdateStatus={updateTransactionStatus}
           />
         </Stack>
       </Container>

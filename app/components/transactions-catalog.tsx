@@ -13,12 +13,14 @@ type TransactionsCatalogProps = {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
+  onUpdateStatus: (id: string, status: Transaction["status"]) => Promise<void>;
 };
 
 const TransactionsCatalog = memo(function TransactionsCatalog({
   transactions,
   loading,
   error,
+  onUpdateStatus,
 }: TransactionsCatalogProps) {
   if (error) {
     return <Alert severity="error">{error}</Alert>;
@@ -39,7 +41,11 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
   return (
     <List disablePadding>
       {transactions.map((transaction) => (
-        <TransactionCard key={transaction.id} transaction={transaction} />
+        <TransactionCard
+          key={transaction.id}
+          transaction={transaction}
+          onUpdateStatus={onUpdateStatus}
+        />
       ))}
     </List>
   );

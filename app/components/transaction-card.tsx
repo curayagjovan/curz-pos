@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
@@ -8,6 +9,8 @@ import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import KeyboardArrowDownRounded from "@mui/icons-material/KeyboardArrowDownRounded";
@@ -15,6 +18,7 @@ import type { Transaction } from "@/types/transaction";
 
 type TransactionCardProps = {
   transaction: Transaction;
+  onUpdateStatus: (id: string, status: Transaction["status"]) => Promise<void>;
 };
 
 function getStatusColor(status: Transaction["status"]) {
@@ -60,13 +64,27 @@ function formatCurrency(value: number | string | null | undefined) {
   return `₱${amount.toFixed(2)}`;
 }
 
+function getStatusConfirmationMessage(status: Transaction["status"]) {
+  switch (status) {
+    case "REFUNDED":
+      return "Mark this sale as REFUNDED?";
+    case "VOIDED":
+      return "Mark this sale as VOIDED?";
+    default:
+      return null;
+  }
+}
+
 const TransactionCard = memo(function TransactionCard({
   transaction,
+  onUpdateStatus,
 }: TransactionCardProps) {
   const transactionItems = Array.isArray(transaction.items)
     ? transaction.items
     : [];
   const [expanded, setExpanded] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const paidAmount = transaction.amountPaid ?? transaction.total;
   const change = Math.max(0, Number(paidAmount) - Number(transaction.total));
   const hasNote = Boolean(transaction.note?.trim());
@@ -74,6 +92,30 @@ const TransactionCard = memo(function TransactionCard({
     (sum, item) => sum + Number(item.quantity),
     0,
   );
+
+  const handleStatusChange = async (nextStatus: Transaction["status"]) => {
+    if (nextStatus === transaction.status || statusUpdating) {
+      return;
+    }
+
+    const confirmationMessage = getStatusConfirmationMessage(nextStatus);
+    if (confirmationMessage && !window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      await onUpdateStatus(transaction.id, nextStatus);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : "Unable to update sale status",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
 
   return (
     <ListItem disablePadding sx={{ mb: 1 }}>
@@ -166,6 +208,41 @@ const TransactionCard = memo(function TransactionCard({
         </Box>
 
         <Collapse in={expanded} timeout="auto" unmountOnExit>
+          <Divider />
+
+          <Box sx={{ px: 1.25, py: 1.1 }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ minWidth: 72 }}
+              >
+                Sale Status
+              </Typography>
+              <Select
+                size="small"
+                value={transaction.status}
+                disabled={statusUpdating}
+                onChange={(event) =>
+                  void handleStatusChange(
+                    event.target.value as Transaction["status"],
+                  )
+                }
+                sx={{ minWidth: 140 }}
+              >
+                <MenuItem value="PAID">PAID</MenuItem>
+                <MenuItem value="REFUNDED">REFUNDED</MenuItem>
+                <MenuItem value="VOIDED">VOIDED</MenuItem>
+              </Select>
+            </Stack>
+
+            {statusError ? (
+              <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                {statusError}
+              </Alert>
+            ) : null}
+          </Box>
+
           <Divider />
 
           <Stack

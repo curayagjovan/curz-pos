@@ -20,6 +20,11 @@ type OrderPayload = {
   items?: OrderItemInput[];
 };
 
+type OrderStatusUpdatePayload = {
+  id?: string;
+  status?: "PAID" | "REFUNDED" | "VOIDED";
+};
+
 const orderItemSelect = {
   id: true,
   productName: true,
@@ -562,6 +567,58 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { message: "Unable to create order" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = (await request.json()) as OrderStatusUpdatePayload;
+    const id = body.id?.trim();
+    const status = body.status;
+
+    if (!id || !status || !["PAID", "REFUNDED", "VOIDED"].includes(status)) {
+      return NextResponse.json(
+        { message: "Invalid status update payload" },
+        { status: 400 },
+      );
+    }
+
+    let updatedOrder: unknown;
+
+    try {
+      updatedOrder = await prisma.order.update({
+        where: { id },
+        data: { status },
+        select: orderCreateSelectWithAmountPaid,
+      });
+    } catch (error) {
+      if (isMissingAmountPaidColumnError(error)) {
+        const fallback = await prisma.order.update({
+          where: { id },
+          data: { status },
+          select: orderCreateSelectBase,
+        });
+        updatedOrder = withNullAmountPaid(fallback as Record<string, unknown>);
+      } else if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        return NextResponse.json(
+          { message: "Order not found" },
+          { status: 404 },
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    return NextResponse.json(updatedOrder, { status: 200 });
+  } catch (error) {
+    console.error("Failed to update order status", error);
+    return NextResponse.json(
+      { message: "Unable to update sale status" },
       { status: 500 },
     );
   }
