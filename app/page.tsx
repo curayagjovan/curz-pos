@@ -4,7 +4,6 @@ import { usePageContext } from "@/app/context/page-context";
 import ProductsPage from "./pages/products-page";
 import TransactionsPage from "./pages/transactions-page";
 import InventoryPage from "./pages/inventory-page";
-import SettingsPage from "./pages/settings-page";
 
 export default function Page() {
   const { currentPage } = usePageContext();
@@ -13,7 +12,6 @@ export default function Page() {
     products: <ProductsPage />,
     transactions: <TransactionsPage />,
     inventory: <InventoryPage />,
-    settings: <SettingsPage />,
   };
 
   return pageComponents[currentPage] || <ProductsPage />;

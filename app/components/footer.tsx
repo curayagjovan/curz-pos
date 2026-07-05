@@ -2,13 +2,12 @@
 
 import { usePageContext } from "@/app/context/page-context";
 
-type PageKey = "products" | "transactions" | "inventory" | "settings";
+type PageKey = "products" | "transactions" | "inventory";
 
 const tabs = [
   { key: "products" as PageKey, title: "Products" },
   { key: "transactions" as PageKey, title: "Sales" },
   { key: "inventory" as PageKey, title: "Inventory" },
-  { key: "settings" as PageKey, title: "Settings" },
 ];
 
 export default function Footer() {
@@ -18,7 +17,7 @@ export default function Footer() {
     <nav
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
         borderTop: "1px solid #e5e7eb",
         background: "#ffffff",
       }}

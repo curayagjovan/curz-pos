@@ -33,16 +33,6 @@ model Product {
   @@index([isActive, name, id])
 }
 
-model AppSetting {
-  id                      Int      @id @default(1)
-  themeMode               String   @default("light")
-  globalMarkupPercent     Decimal  @default(0) @db.Decimal(5, 2)
-  globalMarkupFilterType  String   @default("all")
-  globalMarkupFilterValue String?  
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-}
-
 model Order {
   id         String      @id @default(cuid())
   orderNo    String      @unique

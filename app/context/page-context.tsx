@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type PageType = "products" | "transactions" | "inventory" | "settings";
+type PageType = "products" | "transactions" | "inventory";
 
 type PageContextType = {
   currentPage: PageType;
