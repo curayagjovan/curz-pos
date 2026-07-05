@@ -93,6 +93,19 @@ model ImportLog {
   createdAt   DateTime @default(now())
 }
 
+model PushSubscription {
+  id            String   @id @default(cuid())
+  endpoint      String   @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  failCount     Int      @default(0)
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 enum OrderStatus {
   PAID
   REFUNDED

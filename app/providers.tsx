@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
@@ -10,6 +11,14 @@ import { TransactionsProvider } from "@/app/context/transactions-context";
 import appTheme from "@/app/theme";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }, []);
+
   return (
     <AppRouterCacheProvider options={{ enableCssLayer: true }}>
       <ThemeProvider

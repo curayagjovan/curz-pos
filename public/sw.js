@@ -1,4 +1,4 @@
-const CACHE_VERSION = "shopmae-v6";
+const CACHE_VERSION = "shopmae-v7";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg"];
 
 function isStaticAsset(pathname) {
@@ -119,5 +119,53 @@ self.addEventListener("fetch", (event) => {
 
       return cached || networkFetch;
     }),
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch {
+      payload = {
+        body: event.data.text(),
+      };
+    }
+  }
+
+  const title = payload.title || "SHOPMAE";
+  const options = {
+    body: payload.body || "You have a new checkout update",
+    icon: payload.icon || "/pwa-icon.svg",
+    badge: payload.badge || "/pwa-icon.svg",
+    tag: payload.tag || "shopmae-push",
+    data: payload.data || { url: "/" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url || "/";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        for (const client of clients) {
+          if ("focus" in client) {
+            client.focus();
+            return;
+          }
+        }
+
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      }),
   );
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
 
 type OrderItemInput = {
   productId?: string;
@@ -531,11 +532,13 @@ export async function POST(request: Request) {
     };
 
     let result: unknown;
+    let createdNewOrder = false;
     let lastError: unknown = null;
 
     for (let retryAttempt = 0; retryAttempt < 3; retryAttempt += 1) {
       try {
         result = await runCreateOrder();
+        createdNewOrder = true;
         break;
       } catch (error) {
         lastError = error;
@@ -547,6 +550,7 @@ export async function POST(request: Request) {
           const existingOrder = await getExistingOrderByIdentifier();
           if (existingOrder) {
             result = existingOrder;
+            createdNewOrder = false;
             break;
           }
         }
@@ -559,6 +563,20 @@ export async function POST(request: Request) {
 
     if (result === undefined) {
       throw lastError ?? new Error("Unable to create order");
+    }
+
+    if (createdNewOrder && status === "PAID") {
+      const change = Math.max(0, (amountPaid ?? computedTotal) - computedTotal);
+
+      try {
+        await sendCheckoutSuccessPush({
+          orderNo,
+          total: computedTotal,
+          change,
+        });
+      } catch (pushError) {
+        console.error("Failed to send checkout push notification", pushError);
+      }
     }
 
     return NextResponse.json(result, { status: 201 });

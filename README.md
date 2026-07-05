@@ -32,6 +32,16 @@ npm install
    - Service role key
    - Database password
 3. Copy `.env.example` to `.env` and fill in all values.
+4. Generate VAPID keys for web push:
+
+```bash
+npm run push:vapid
+```
+
+5. Add these variables to your environment:
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+   - `VAPID_PRIVATE_KEY`
+   - `VAPID_SUBJECT` (example: `mailto:you@example.com`)
 
 ## 3. Create database tables from Prisma
 
@@ -66,6 +76,9 @@ Open http://localhost:3000.
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `DATABASE_URL`
    - `DIRECT_URL`
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+   - `VAPID_PRIVATE_KEY`
+   - `VAPID_SUBJECT`
 5. Deploy.
 
 For production, run Prisma migrations from a trusted environment (CI or local) rather than at request time.
