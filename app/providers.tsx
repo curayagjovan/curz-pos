@@ -92,21 +92,59 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       syncPushSubscription().catch(() => undefined);
 
+      const syncWhenVisible = () => {
+        if (document.visibilityState !== "visible") {
+          return;
+        }
+
+        syncPushSubscription().catch(() => undefined);
+      };
+
+      const onFocus = () => {
+        syncPushSubscription().catch(() => undefined);
+      };
+
       const onFirstInteraction = () => {
         requestAndSync().catch(() => undefined);
         window.removeEventListener("pointerdown", onFirstInteraction);
+        window.removeEventListener("touchend", onFirstInteraction);
+        window.removeEventListener("click", onFirstInteraction);
         window.removeEventListener("keydown", onFirstInteraction);
       };
 
       window.addEventListener("pointerdown", onFirstInteraction, {
         once: true,
       });
+      window.addEventListener("touchend", onFirstInteraction, {
+        once: true,
+      });
+      window.addEventListener("click", onFirstInteraction, {
+        once: true,
+      });
       window.addEventListener("keydown", onFirstInteraction, {
         once: true,
       });
+
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", syncWhenVisible);
+
+      return () => {
+        window.removeEventListener("focus", onFocus);
+        document.removeEventListener("visibilitychange", syncWhenVisible);
+      };
     };
 
-    registerAndPrime().catch(() => undefined);
+    let cleanup: (() => void) | undefined;
+
+    registerAndPrime()
+      .then((dispose) => {
+        cleanup = dispose;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cleanup?.();
+    };
   }, []);
 
   return (
