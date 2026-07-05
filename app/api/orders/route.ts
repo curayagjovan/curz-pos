@@ -2,6 +2,39 @@ import { NextResponse } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+const CHECKOUT_DEBUG_LOGS = process.env.CHECKOUT_DEBUG_LOGS === "1";
+
+function checkoutLog(event: string, payload: Record<string, unknown>) {
+  if (!CHECKOUT_DEBUG_LOGS) {
+    return;
+  }
+
+  console.info("[checkout]", JSON.stringify({ event, ...payload }));
+}
+
+function summarizeError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return {
+      kind: "PrismaClientKnownRequestError",
+      code: error.code,
+      target: error.meta?.target ?? null,
+      message: error.message,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      kind: error.name,
+      message: error.message,
+    };
+  }
+
+  return {
+    kind: "UnknownError",
+    message: String(error),
+  };
+}
+
 type OrderItemInput = {
   productId?: string;
   productName?: string;
@@ -85,6 +118,39 @@ function isConnectionClosedError(error: unknown) {
   return (
     message.includes("postgresql connection") && message.includes("closed")
   );
+}
+
+function getUniqueConstraintTarget(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return [] as string[];
+  }
+
+  if (error.code !== "P2002") {
+    return [] as string[];
+  }
+
+  const target = error.meta?.target;
+  if (Array.isArray(target)) {
+    return target.map((value) => String(value));
+  }
+
+  if (typeof target === "string") {
+    return [target];
+  }
+
+  return [] as string[];
+}
+
+function isUniqueOrderIdOrNoError(error: unknown) {
+  const target = getUniqueConstraintTarget(error);
+  return target.some(
+    (value) => value.includes("id") || value.includes("orderNo"),
+  );
+}
+
+function isUniqueOrderNoError(error: unknown) {
+  const target = getUniqueConstraintTarget(error);
+  return target.some((value) => value.includes("orderNo"));
 }
 
 function createOrderNo() {
@@ -353,12 +419,27 @@ export async function POST(request: Request) {
     }
 
     const orderId = crypto.randomUUID();
-    const orderNo = createOrderNo();
-    const createOrderOperation = (includeAmountPaid: boolean) =>
+    let orderNo = createOrderNo();
+    const checkoutAttemptId = crypto.randomUUID();
+
+    checkoutLog("order_create_started", {
+      checkoutAttemptId,
+      orderId,
+      orderNo,
+      status,
+      itemCount: orderItems.length,
+      computedTotal,
+      amountPaid,
+    });
+
+    const createOrderOperation = (
+      includeAmountPaid: boolean,
+      orderIdentifier: { id: string; orderNo: string },
+    ) =>
       prisma.order.create({
         data: {
-          id: orderId,
-          orderNo,
+          id: orderIdentifier.id,
+          orderNo: orderIdentifier.orderNo,
           status,
           total: computedTotal,
           ...(includeAmountPaid ? { amountPaid } : {}),
@@ -377,27 +458,131 @@ export async function POST(request: Request) {
     };
 
     const runCreateOrder = async () => {
-      let result: unknown;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const orderIdentifier = { id: orderId, orderNo };
+        const attemptNo = attempt + 1;
+        checkoutLog("order_create_attempt", {
+          checkoutAttemptId,
+          orderId: orderIdentifier.id,
+          orderNo: orderIdentifier.orderNo,
+          attempt: attemptNo,
+          includeAmountPaid: true,
+        });
+
+        try {
+          const operations: Prisma.PrismaPromise<unknown>[] = [
+            createOrderOperation(true, orderIdentifier),
+            ...createSideEffects(),
+          ];
+          const [result] = await prisma.$transaction(operations);
+          checkoutLog("order_create_attempt_succeeded", {
+            checkoutAttemptId,
+            orderId: orderIdentifier.id,
+            orderNo: orderIdentifier.orderNo,
+            attempt: attemptNo,
+          });
+          return result;
+        } catch (error) {
+          checkoutLog("order_create_attempt_failed", {
+            checkoutAttemptId,
+            orderId: orderIdentifier.id,
+            orderNo: orderIdentifier.orderNo,
+            attempt: attemptNo,
+            includeAmountPaid: true,
+            error: summarizeError(error),
+          });
+
+          if (isMissingAmountPaidColumnError(error)) {
+            try {
+              checkoutLog("order_create_fallback_attempt", {
+                checkoutAttemptId,
+                orderId: orderIdentifier.id,
+                orderNo: orderIdentifier.orderNo,
+                attempt: attemptNo,
+                includeAmountPaid: false,
+              });
+
+              const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
+                createOrderOperation(false, orderIdentifier),
+                ...createSideEffects(),
+              ];
+              const [fallbackResult] =
+                await prisma.$transaction(fallbackOperations);
+              checkoutLog("order_create_fallback_succeeded", {
+                checkoutAttemptId,
+                orderId: orderIdentifier.id,
+                orderNo: orderIdentifier.orderNo,
+                attempt: attemptNo,
+              });
+              return withNullAmountPaid(
+                fallbackResult as Record<string, unknown>,
+              );
+            } catch (fallbackError) {
+              checkoutLog("order_create_fallback_failed", {
+                checkoutAttemptId,
+                orderId: orderIdentifier.id,
+                orderNo: orderIdentifier.orderNo,
+                attempt: attemptNo,
+                error: summarizeError(fallbackError),
+              });
+
+              if (isUniqueOrderNoError(fallbackError) && attempt < 3) {
+                const previousOrderNo = orderNo;
+                orderNo = createOrderNo();
+                checkoutLog("order_no_regenerated", {
+                  checkoutAttemptId,
+                  orderId,
+                  previousOrderNo,
+                  nextOrderNo: orderNo,
+                  reason: "unique_conflict_fallback",
+                });
+                continue;
+              }
+              throw fallbackError;
+            }
+          }
+
+          if (isUniqueOrderNoError(error) && attempt < 3) {
+            const previousOrderNo = orderNo;
+            orderNo = createOrderNo();
+            checkoutLog("order_no_regenerated", {
+              checkoutAttemptId,
+              orderId,
+              previousOrderNo,
+              nextOrderNo: orderNo,
+              reason: "unique_conflict_primary",
+            });
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      throw new Error("Unable to allocate a unique order number");
+    };
+
+    const getExistingOrderByIdentifier = async () => {
       try {
-        const operations: Prisma.PrismaPromise<unknown>[] = [
-          createOrderOperation(true),
-          ...createSideEffects(),
-        ];
-        [result] = await prisma.$transaction(operations);
+        const existing = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: orderCreateSelectWithAmountPaid,
+        });
+        return existing;
       } catch (error) {
         if (!isMissingAmountPaidColumnError(error)) {
           throw error;
         }
 
-        const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
-          createOrderOperation(false),
-          ...createSideEffects(),
-        ];
-        const [fallbackResult] = await prisma.$transaction(fallbackOperations);
-        result = withNullAmountPaid(fallbackResult as Record<string, unknown>);
-      }
+        const existingFallback = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: orderCreateSelectBase,
+        });
 
-      return result;
+        return existingFallback
+          ? withNullAmountPaid(existingFallback as Record<string, unknown>)
+          : null;
+      }
     };
 
     let result: unknown;
@@ -405,16 +590,74 @@ export async function POST(request: Request) {
       result = await runCreateOrder();
     } catch (error) {
       if (!isConnectionClosedError(error)) {
+        checkoutLog("order_create_failed", {
+          checkoutAttemptId,
+          orderId,
+          orderNo,
+          stage: "primary",
+          error: summarizeError(error),
+        });
         throw error;
       }
 
-      result = await runCreateOrder();
+      checkoutLog("order_create_connection_retry", {
+        checkoutAttemptId,
+        orderId,
+        orderNo,
+        reason: "connection_closed",
+      });
+
+      try {
+        result = await runCreateOrder();
+        checkoutLog("order_create_connection_retry_succeeded", {
+          checkoutAttemptId,
+          orderId,
+          orderNo,
+        });
+      } catch (retryError) {
+        if (!isUniqueOrderIdOrNoError(retryError)) {
+          checkoutLog("order_create_failed", {
+            checkoutAttemptId,
+            orderId,
+            orderNo,
+            stage: "connection_retry",
+            error: summarizeError(retryError),
+          });
+          throw retryError;
+        }
+
+        const existingOrder = await getExistingOrderByIdentifier();
+        if (!existingOrder) {
+          checkoutLog("order_create_existing_lookup_miss", {
+            checkoutAttemptId,
+            orderId,
+            orderNo,
+            stage: "connection_retry",
+            error: summarizeError(retryError),
+          });
+          throw retryError;
+        }
+
+        checkoutLog("order_create_recovered_from_existing", {
+          checkoutAttemptId,
+          orderId,
+          orderNo,
+        });
+        result = existingOrder;
+      }
     }
+
+    checkoutLog("order_create_succeeded", {
+      checkoutAttemptId,
+      orderId,
+      orderNo,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to create order";
+    checkoutLog("order_create_failed_terminal", {
+      error: summarizeError(error),
+    });
     console.error("Failed to create order", error);
 
     return NextResponse.json(
