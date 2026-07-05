@@ -9,11 +9,7 @@ import {
   useState,
 } from "react";
 import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
 import Badge from "@mui/material/Badge";
@@ -289,6 +285,40 @@ export default function ProductsPage() {
     };
   }, [analysisTimeMs, transactions]);
 
+  const popularProductNameSet = useMemo(() => {
+    return new Set(
+      popularItems.items.map((item) => item.productName.trim().toLowerCase()),
+    );
+  }, [popularItems.items]);
+
+  const popularProducts = useMemo(() => {
+    if (popularProductNameSet.size === 0) {
+      return [] as Product[];
+    }
+
+    const productByName = new Map(
+      filteredProducts.map((product) => [
+        product.name.trim().toLowerCase(),
+        product,
+      ]),
+    );
+
+    return popularItems.items
+      .map((item) => productByName.get(item.productName.trim().toLowerCase()))
+      .filter((product): product is Product => Boolean(product));
+  }, [filteredProducts, popularItems.items, popularProductNameSet]);
+
+  const regularProducts = useMemo(() => {
+    if (popularProductNameSet.size === 0) {
+      return filteredProducts;
+    }
+
+    return filteredProducts.filter(
+      (product) =>
+        !popularProductNameSet.has(product.name.trim().toLowerCase()),
+    );
+  }, [filteredProducts, popularProductNameSet]);
+
   const handleAddToCart = useCallback(
     (product: Product, sourceRect?: DOMRect) => {
       addToCart({
@@ -494,70 +524,39 @@ export default function ProductsPage() {
               : `${filteredProducts.length.toLocaleString()} products`}
           </Box>
 
-          {!loading && !error && popularItems.items.length > 0 ? (
-            <Card variant="outlined">
-              <CardContent sx={{ py: 1.5 }}>
-                <Stack spacing={1}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    spacing={1}
-                  >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Popular Items
-                    </Typography>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={`Adaptive ${popularItems.selectedWindowDays}d window`}
-                    />
-                  </Stack>
-
-                  <Stack divider={<Divider flexItem />}>
-                    {popularItems.items.map((item, index) => (
-                      <Stack
-                        key={item.productName}
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{ py: 1 }}
-                        spacing={1}
-                      >
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 700 }}
-                            noWrap
-                          >
-                            {index + 1}. {item.productName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {item.orderCount} orders
-                          </Typography>
-                        </Box>
-                        <Box sx={{ textAlign: "right" }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                            {item.quantitySold} sold
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            ₱{item.revenue.toFixed(2)}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    ))}
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
+          {!loading && !error && popularProducts.length > 0 ? (
+            <Stack spacing={0.75}>
+              <Typography
+                variant="overline"
+                sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
+              >
+                Popular Items
+              </Typography>
+              <ProductsCatalog
+                products={popularProducts}
+                loading={false}
+                error={null}
+                onAddToCart={handleAddToCart}
+              />
+            </Stack>
           ) : null}
 
-          <ProductsCatalog
-            products={filteredProducts}
-            loading={loading}
-            error={error}
-            onAddToCart={handleAddToCart}
-          />
+          <Stack spacing={0.75}>
+            {!loading && !error && popularProducts.length > 0 ? (
+              <Typography
+                variant="overline"
+                sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
+              >
+                Products
+              </Typography>
+            ) : null}
+            <ProductsCatalog
+              products={regularProducts}
+              loading={loading}
+              error={error}
+              onAddToCart={handleAddToCart}
+            />
+          </Stack>
         </Stack>
       </Container>
 
