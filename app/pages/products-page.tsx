@@ -321,12 +321,23 @@ export default function ProductsPage() {
 
   const handleAddToCart = useCallback(
     (product: Product, sourceRect?: DOMRect) => {
+      const bundleQty =
+        product.bundleQty == null ? null : Number(product.bundleQty);
+      const bundlePrice =
+        product.bundlePrice == null ? null : Number(product.bundlePrice);
+
       addToCart({
         id: product.id,
         name: product.name,
         sku: product.sku,
         price: Number(product.price),
         quantity: 1,
+        bundleQty:
+          bundleQty !== null && Number.isFinite(bundleQty) ? bundleQty : null,
+        bundlePrice:
+          bundlePrice !== null && Number.isFinite(bundlePrice)
+            ? bundlePrice
+            : null,
       });
 
       const targetRect = cartFabRef.current?.getBoundingClientRect();

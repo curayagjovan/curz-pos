@@ -6,14 +6,45 @@ type UseCheckoutCalculationsParams = {
   paidAmountInput: string;
 };
 
+function computeLineTotal(item: CartItem) {
+  const bundleQty =
+    item.bundleQty == null
+      ? null
+      : Number.isFinite(item.bundleQty)
+        ? item.bundleQty
+        : null;
+  const bundlePrice =
+    item.bundlePrice == null
+      ? null
+      : Number.isFinite(item.bundlePrice)
+        ? item.bundlePrice
+        : null;
+
+  if (
+    bundleQty !== null &&
+    bundleQty >= 2 &&
+    bundlePrice !== null &&
+    bundlePrice >= 0
+  ) {
+    const bundles = Math.floor(item.quantity / bundleQty);
+    const remainder = item.quantity % bundleQty;
+    return Number((bundles * bundlePrice + remainder * item.price).toFixed(2));
+  }
+
+  return Number((item.price * item.quantity).toFixed(2));
+}
+
 export function useCheckoutCalculations({
   cartItems,
   paidAmountInput,
 }: UseCheckoutCalculationsParams) {
-  const cartTotal = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cartItems],
-  );
+  const cartTotal = useMemo(() => {
+    return Number(
+      cartItems
+        .reduce((sum, item) => sum + computeLineTotal(item), 0)
+        .toFixed(2),
+    );
+  }, [cartItems]);
 
   const suggestedAmounts = useMemo(() => {
     if (cartTotal <= 0) {

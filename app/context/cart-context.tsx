@@ -8,6 +8,8 @@ export type CartItem = {
   sku: string;
   price: number;
   quantity: number;
+  bundleQty?: number | null;
+  bundlePrice?: number | null;
 };
 
 type CartContextType = {
