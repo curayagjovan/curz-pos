@@ -120,6 +120,36 @@ function isConnectionClosedError(error: unknown) {
   );
 }
 
+function isAnyUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
+function isRetryableCreateOrderError(error: unknown) {
+  if (isConnectionClosedError(error)) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ["P1001", "P1002", "P1008", "P1017", "P2024", "P2028"].includes(
+      error.code,
+    );
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("timeout") ||
+      message.includes("timed out") ||
+      message.includes("connection")
+    );
+  }
+
+  return false;
+}
+
 function getUniqueConstraintTarget(error: unknown) {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
     return [] as string[];
@@ -586,65 +616,83 @@ export async function POST(request: Request) {
     };
 
     let result: unknown;
-    try {
-      result = await runCreateOrder();
-    } catch (error) {
-      if (!isConnectionClosedError(error)) {
-        checkoutLog("order_create_failed", {
-          checkoutAttemptId,
-          orderId,
-          orderNo,
-          stage: "primary",
-          error: summarizeError(error),
-        });
-        throw error;
-      }
+    let lastError: unknown = null;
 
-      checkoutLog("order_create_connection_retry", {
-        checkoutAttemptId,
-        orderId,
-        orderNo,
-        reason: "connection_closed",
-      });
-
+    for (let retryAttempt = 0; retryAttempt < 3; retryAttempt += 1) {
+      const retryNo = retryAttempt + 1;
       try {
-        result = await runCreateOrder();
-        checkoutLog("order_create_connection_retry_succeeded", {
-          checkoutAttemptId,
-          orderId,
-          orderNo,
-        });
-      } catch (retryError) {
-        if (!isUniqueOrderIdOrNoError(retryError)) {
-          checkoutLog("order_create_failed", {
+        if (retryAttempt > 0) {
+          checkoutLog("order_create_retry_attempt", {
             checkoutAttemptId,
             orderId,
             orderNo,
-            stage: "connection_retry",
-            error: summarizeError(retryError),
+            retryAttempt: retryNo,
           });
-          throw retryError;
         }
 
-        const existingOrder = await getExistingOrderByIdentifier();
-        if (!existingOrder) {
+        result = await runCreateOrder();
+        if (retryAttempt > 0) {
+          checkoutLog("order_create_retry_succeeded", {
+            checkoutAttemptId,
+            orderId,
+            orderNo,
+            retryAttempt: retryNo,
+          });
+        }
+        break;
+      } catch (error) {
+        lastError = error;
+
+        if (
+          isUniqueOrderIdOrNoError(error) ||
+          isAnyUniqueConstraintError(error)
+        ) {
+          const existingOrder = await getExistingOrderByIdentifier();
+          if (existingOrder) {
+            checkoutLog("order_create_recovered_from_existing", {
+              checkoutAttemptId,
+              orderId,
+              orderNo,
+              retryAttempt: retryNo,
+            });
+            result = existingOrder;
+            break;
+          }
+
           checkoutLog("order_create_existing_lookup_miss", {
             checkoutAttemptId,
             orderId,
             orderNo,
-            stage: "connection_retry",
-            error: summarizeError(retryError),
+            retryAttempt: retryNo,
+            error: summarizeError(error),
           });
-          throw retryError;
         }
 
-        checkoutLog("order_create_recovered_from_existing", {
+        if (!isRetryableCreateOrderError(error) || retryAttempt >= 2) {
+          checkoutLog("order_create_failed", {
+            checkoutAttemptId,
+            orderId,
+            orderNo,
+            stage: retryAttempt === 0 ? "primary" : "retry",
+            retryAttempt: retryNo,
+            error: summarizeError(error),
+          });
+          throw error;
+        }
+
+        checkoutLog("order_create_retry_scheduled", {
           checkoutAttemptId,
           orderId,
           orderNo,
+          retryAttempt: retryNo,
+          reason: "retryable_create_order_error",
+          error: summarizeError(error),
         });
-        result = existingOrder;
       }
+    }
+
+    if (result === undefined) {
+      throw lastError ?? new Error("Unable to create order");
     }
 
     checkoutLog("order_create_succeeded", {
