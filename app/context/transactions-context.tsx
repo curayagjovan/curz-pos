@@ -138,6 +138,39 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshTransactions]);
 
+  useEffect(() => {
+    const POLL_MS = 15000;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      void refreshTransactions(false);
+    };
+
+    const handleVisibilityChange = () => {
+      refreshIfVisible();
+    };
+
+    const handleFocus = () => {
+      refreshIfVisible();
+    };
+
+    const intervalId = window.setInterval(() => {
+      refreshIfVisible();
+    }, POLL_MS);
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshTransactions]);
+
   const addTransaction = useCallback((transaction: Transaction) => {
     setTransactions((current) => {
       const nextTransactions = sortTransactions([
