@@ -49,13 +49,16 @@ const orderCreateSelectBase = {
   orderNo: true,
   status: true,
   total: true,
+  amountPaid: true,
   note: true,
   createdAt: true,
+  items: {
+    select: orderItemSelect,
+  },
 } as const;
 
 const orderCreateSelectWithAmountPaid = {
   ...orderCreateSelectBase,
-  amountPaid: true,
 } as const;
 
 function isMissingAmountPaidColumnError(error: unknown) {
@@ -71,6 +74,17 @@ function withNullAmountPaid<T extends Record<string, unknown>>(order: T) {
     ...order,
     amountPaid: null,
   };
+}
+
+function isConnectionClosedError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("postgresql connection") && message.includes("closed")
+  );
 }
 
 function createOrderNo() {
@@ -362,24 +376,39 @@ export async function POST(request: Request) {
       return [] as Prisma.PrismaPromise<unknown>[];
     };
 
+    const runCreateOrder = async () => {
+      let result: unknown;
+      try {
+        const operations: Prisma.PrismaPromise<unknown>[] = [
+          createOrderOperation(true),
+          ...createSideEffects(),
+        ];
+        [result] = await prisma.$transaction(operations);
+      } catch (error) {
+        if (!isMissingAmountPaidColumnError(error)) {
+          throw error;
+        }
+
+        const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
+          createOrderOperation(false),
+          ...createSideEffects(),
+        ];
+        const [fallbackResult] = await prisma.$transaction(fallbackOperations);
+        result = withNullAmountPaid(fallbackResult as Record<string, unknown>);
+      }
+
+      return result;
+    };
+
     let result: unknown;
     try {
-      const operations: Prisma.PrismaPromise<unknown>[] = [
-        createOrderOperation(true),
-        ...createSideEffects(),
-      ];
-      [result] = await prisma.$transaction(operations);
+      result = await runCreateOrder();
     } catch (error) {
-      if (!isMissingAmountPaidColumnError(error)) {
+      if (!isConnectionClosedError(error)) {
         throw error;
       }
 
-      const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
-        createOrderOperation(false),
-        ...createSideEffects(),
-      ];
-      const [fallbackResult] = await prisma.$transaction(fallbackOperations);
-      result = withNullAmountPaid(fallbackResult as Record<string, unknown>);
+      result = await runCreateOrder();
     }
 
     return NextResponse.json(result, { status: 201 });

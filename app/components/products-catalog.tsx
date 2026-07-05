@@ -13,7 +13,7 @@ type ProductsCatalogProps = {
   products: Product[];
   loading: boolean;
   error: string | null;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
   onRequestDelete?: (product: Product) => void;
   deletingProductId?: string | null;
   variant?: "catalog" | "inventory";

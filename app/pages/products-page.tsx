@@ -5,6 +5,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Box from "@mui/material/Box";
@@ -22,6 +23,8 @@ import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
+import { useProducts } from "@/app/context/products-context";
+import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useCart } from "@/app/context/cart-context";
@@ -30,12 +33,17 @@ import { usePageContext } from "@/app/context/page-context";
 import type { Product } from "@/types/product";
 import type { Transaction } from "@/types/transaction";
 
-function normalizeTransaction(transaction: Transaction): Transaction {
-  return {
-    ...transaction,
-    items: Array.isArray(transaction.items) ? transaction.items : [],
-  };
-}
+type CartFlight = {
+  id: number;
+  label: string;
+  startX: number;
+  startY: number;
+  deltaX: number;
+  deltaY: number;
+  active: boolean;
+};
+
+const CART_FLIGHT_DURATION_MS = 620;
 
 export default function ProductsPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
@@ -47,10 +55,8 @@ export default function ProductsPage() {
     removeFromCart,
     clearCart,
   } = useCart();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, loading, error } = useProducts();
+  const { transactions, addTransaction } = useTransactions();
   const {
     snackbarOpen,
     snackbarMessage,
@@ -61,97 +67,41 @@ export default function ProductsPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
-  const [refreshToken, setRefreshToken] = useState(0);
   const [analysisTimeMs] = useState(() => Date.now());
+  const [isCartPulseVisible, setIsCartPulseVisible] = useState(false);
+  const [cartFlights, setCartFlights] = useState<CartFlight[]>([]);
+  const cartPulseTimeoutRef = useRef<number | null>(null);
+  const cartFabRef = useRef<HTMLButtonElement | null>(null);
+  const cartFlightIdRef = useRef(0);
+  const cartFlightFrameRef = useRef<number[]>([]);
+  const cartFlightTimeoutRef = useRef<number[]>([]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
+  const triggerCartPulse = useCallback(() => {
+    if (cartPulseTimeoutRef.current !== null) {
+      window.clearTimeout(cartPulseTimeoutRef.current);
+    }
+
+    setIsCartPulseVisible(true);
+    cartPulseTimeoutRef.current = window.setTimeout(() => {
+      setIsCartPulseVisible(false);
+      cartPulseTimeoutRef.current = null;
+    }, 650);
+  }, []);
+
   useEffect(() => {
-    let active = true;
-
-    const loadProducts = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch("/api/products?skip=0&limit=9999", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch products");
-        }
-
-        const data = await response.json();
-        const items: Product[] = Array.isArray(data)
-          ? data
-          : (data.items ?? []);
-
-        if (active) {
-          setProducts(items);
-        }
-      } catch (err) {
-        if (active) {
-          setError(
-            err instanceof Error ? err.message : "Unable to load products",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+    return () => {
+      if (cartPulseTimeoutRef.current !== null) {
+        window.clearTimeout(cartPulseTimeoutRef.current);
       }
-    };
 
-    loadProducts();
-
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadTransactions = async () => {
-      try {
-        const response = await fetch("/api/orders", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data = await response.json();
-        const items: Transaction[] = (
-          Array.isArray(data) ? data : (data.items ?? [])
-        ).map(normalizeTransaction);
-
-        if (active) {
-          setTransactions(items);
-        }
-      } catch {
-        if (active) {
-          setTransactions([]);
-        }
+      for (const frameId of cartFlightFrameRef.current) {
+        window.cancelAnimationFrame(frameId);
       }
-    };
 
-    loadTransactions();
-
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
-
-  useEffect(() => {
-    const handlePullToRefresh = () => {
-      setRefreshToken((current) => current + 1);
-    };
-
-    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
-    return () => {
-      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
+      for (const timeoutId of cartFlightTimeoutRef.current) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, []);
 
@@ -340,7 +290,7 @@ export default function ProductsPage() {
   }, [analysisTimeMs, transactions]);
 
   const handleAddToCart = useCallback(
-    (product: Product) => {
+    (product: Product, sourceRect?: DOMRect) => {
       addToCart({
         id: product.id,
         name: product.name,
@@ -349,9 +299,68 @@ export default function ProductsPage() {
         quantity: 1,
       });
 
+      const targetRect = cartFabRef.current?.getBoundingClientRect();
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (sourceRect && targetRect && !prefersReducedMotion) {
+        const id = cartFlightIdRef.current + 1;
+        const startX = sourceRect.left + sourceRect.width / 2;
+        const startY = sourceRect.top + sourceRect.height / 2;
+        const endX = targetRect.left + targetRect.width / 2;
+        const endY = targetRect.top + targetRect.height / 2;
+
+        cartFlightIdRef.current = id;
+        setCartFlights((current) => [
+          ...current,
+          {
+            id,
+            label: product.name,
+            startX,
+            startY,
+            deltaX: endX - startX,
+            deltaY: endY - startY,
+            active: false,
+          },
+        ]);
+
+        const frameId = window.requestAnimationFrame(() => {
+          setCartFlights((current) =>
+            current.map((flight) =>
+              flight.id === id ? { ...flight, active: true } : flight,
+            ),
+          );
+          cartFlightFrameRef.current = cartFlightFrameRef.current.filter(
+            (currentId) => currentId !== frameId,
+          );
+        });
+        cartFlightFrameRef.current.push(frameId);
+
+        const pulseTimeoutId = window.setTimeout(() => {
+          triggerCartPulse();
+          cartFlightTimeoutRef.current = cartFlightTimeoutRef.current.filter(
+            (currentId) => currentId !== pulseTimeoutId,
+          );
+        }, CART_FLIGHT_DURATION_MS - 120);
+        cartFlightTimeoutRef.current.push(pulseTimeoutId);
+
+        const cleanupTimeoutId = window.setTimeout(() => {
+          setCartFlights((current) =>
+            current.filter((flight) => flight.id !== id),
+          );
+          cartFlightTimeoutRef.current = cartFlightTimeoutRef.current.filter(
+            (currentId) => currentId !== cleanupTimeoutId,
+          );
+        }, CART_FLIGHT_DURATION_MS + 120);
+        cartFlightTimeoutRef.current.push(cleanupTimeoutId);
+      } else {
+        triggerCartPulse();
+      }
+
       showSnackbar({ message: `${product.name} added to cart` });
     },
-    [addToCart, showSnackbar],
+    [addToCart, showSnackbar, triggerCartPulse],
   );
 
   const handleCartFabClick = useCallback(() => {
@@ -430,6 +439,7 @@ export default function ProductsPage() {
       clearCart();
       setPaidAmountInput("0");
       setCartOpen(false);
+      addTransaction(data as Transaction);
       showSnackbar({
         message: data?.orderNo
           ? `Order ${data.orderNo} completed`
@@ -450,6 +460,7 @@ export default function ProductsPage() {
     cartTotal,
     clearCart,
     removeFromCart,
+    addTransaction,
     showSnackbar,
   ]);
 
@@ -549,8 +560,48 @@ export default function ProductsPage() {
         onClose={closeSnackbar}
       />
 
+      {cartFlights.map((flight) => (
+        <Box
+          key={flight.id}
+          sx={{
+            position: "fixed",
+            left: 0,
+            top: 0,
+            zIndex: 1202,
+            pointerEvents: "none",
+            transform: `translate(${flight.startX}px, ${flight.startY}px)`,
+          }}
+        >
+          <Box
+            sx={{
+              px: 1.2,
+              py: 0.7,
+              borderRadius: 999,
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              boxShadow: "0 12px 28px rgba(15, 23, 42, 0.28)",
+              typography: "caption",
+              fontWeight: 700,
+              maxWidth: 160,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              transform: flight.active
+                ? `translate(${flight.deltaX}px, ${flight.deltaY}px) scale(0.46)`
+                : "translate(0px, 0px) scale(1)",
+              opacity: flight.active ? 0.16 : 0.98,
+              transition: `${CART_FLIGHT_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+              transformOrigin: "center",
+            }}
+          >
+            {flight.label}
+          </Box>
+        </Box>
+      ))}
+
       {!cartOpen ? (
         <Fab
+          ref={cartFabRef}
           color="primary"
           aria-label="open cart"
           onClick={handleCartFabClick}
@@ -559,6 +610,11 @@ export default function ProductsPage() {
             right: "calc(env(safe-area-inset-right) + 16px)",
             bottom: "calc(env(safe-area-inset-bottom) + 88px)",
             zIndex: 1201,
+            transform: isCartPulseVisible ? "scale(1.08)" : "scale(1)",
+            boxShadow: isCartPulseVisible
+              ? "0 0 0 10px rgba(33, 150, 243, 0.16), 0 12px 28px rgba(33, 150, 243, 0.28)"
+              : undefined,
+            transition: "transform 180ms ease, box-shadow 240ms ease",
           }}
         >
           <Badge
@@ -566,6 +622,17 @@ export default function ProductsPage() {
             badgeContent={cartCount}
             overlap="circular"
             max={99}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            sx={{
+              "& .MuiBadge-badge": {
+                top: 0,
+                right: 0,
+                transform: isCartPulseVisible
+                  ? "translate(100%, -100%) scale(1.18)"
+                  : "translate(100%, -100%) scale(1)",
+                transition: "transform 180ms ease",
+              },
+            }}
           >
             <ShoppingCartRounded />
           </Badge>

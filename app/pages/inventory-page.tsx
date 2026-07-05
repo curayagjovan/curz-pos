@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -25,6 +19,7 @@ import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
+import { useProducts } from "@/app/context/products-context";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { usePageContext } from "@/app/context/page-context";
@@ -55,24 +50,6 @@ const EMPTY_FORM: ProductFormState = {
   bundlePrice: "",
 };
 
-function upsertProduct(products: Product[], nextProduct: Product) {
-  const existingIndex = products.findIndex(
-    (product) => product.id === nextProduct.id,
-  );
-
-  const nextProducts = [...products];
-
-  if (existingIndex === -1) {
-    nextProducts.push(nextProduct);
-  } else {
-    nextProducts[existingIndex] = nextProduct;
-  }
-
-  return nextProducts.sort((left, right) =>
-    left.name.localeCompare(right.name),
-  );
-}
-
 function matchesSearch(product: Product, query: string) {
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -89,9 +66,8 @@ function matchesSearch(product: Product, query: string) {
 export default function InventoryPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, loading, error, upsertProduct, removeProduct } =
+    useProducts();
   const {
     snackbarOpen,
     snackbarMessage,
@@ -105,64 +81,8 @@ export default function InventoryPage() {
     null,
   );
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
-
-  useEffect(() => {
-    let active = true;
-
-    const loadInitialProducts = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch("/api/products?skip=0&limit=9999", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch products");
-        }
-
-        const data = await response.json();
-        const items: Product[] = Array.isArray(data)
-          ? data
-          : (data.items ?? []);
-
-        if (active) {
-          setProducts(items);
-        }
-      } catch (err) {
-        if (active) {
-          setError(
-            err instanceof Error ? err.message : "Unable to load inventory",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadInitialProducts();
-
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
-
-  useEffect(() => {
-    const handlePullToRefresh = () => {
-      setRefreshToken((current) => current + 1);
-    };
-
-    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
-    return () => {
-      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
-    };
-  }, []);
 
   const filteredProducts = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -240,9 +160,7 @@ export default function InventoryPage() {
         throw new Error(message);
       }
 
-      setProducts((current) =>
-        current.filter((product) => product.id !== deleteCandidate.id),
-      );
+      removeProduct(deleteCandidate.id);
 
       if (form.id === deleteCandidate.id) {
         setDrawerOpen(false);
@@ -261,7 +179,7 @@ export default function InventoryPage() {
     } finally {
       setDeletingProductId(null);
     }
-  }, [deleteCandidate, form.id, showSnackbar]);
+  }, [deleteCandidate, form.id, removeProduct, showSnackbar]);
 
   const handleCloseDrawer = useCallback(() => {
     if (saving) {
@@ -353,7 +271,7 @@ export default function InventoryPage() {
         throw new Error(data?.message || "Unable to save product");
       }
 
-      setProducts((current) => upsertProduct(current, data));
+      upsertProduct(data);
 
       if (!matchesSearch(data, searchQuery)) {
         setSearchQuery("");
@@ -372,7 +290,7 @@ export default function InventoryPage() {
     } finally {
       setSaving(false);
     }
-  }, [form, searchQuery, setSearchQuery, showSnackbar]);
+  }, [form, searchQuery, setSearchQuery, showSnackbar, upsertProduct]);
 
   return (
     <MobilePageWrapper title="Inventory">

@@ -5,6 +5,8 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { PageProvider } from "@/app/context/page-context";
 import { CartProvider } from "@/app/context/cart-context";
+import { ProductsProvider } from "@/app/context/products-context";
+import { TransactionsProvider } from "@/app/context/transactions-context";
 import appTheme from "@/app/theme";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -17,7 +19,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       >
         <CssBaseline enableColorScheme />
         <PageProvider>
-          <CartProvider>{children}</CartProvider>
+          <ProductsProvider>
+            <TransactionsProvider>
+              <CartProvider>{children}</CartProvider>
+            </TransactionsProvider>
+          </ProductsProvider>
         </PageProvider>
       </ThemeProvider>
     </AppRouterCacheProvider>

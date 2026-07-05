@@ -1,17 +1,9 @@
-// IndexedDB wrapper for products caching
-import type { Product } from "@/types/product";
+import type { Transaction } from "@/types/transaction";
 
-const DB_NAME = "curz-pos";
+const DB_NAME = "curz-pos-transactions";
 const DB_VERSION = 1;
-const STORE_NAME = "products";
-const LAST_SYNC_KEY = "products_last_sync";
-
-export type ProductsCache = {
-  items: Product[];
-  hasMore: boolean;
-  totalCount: number;
-  timestamp: number;
-};
+const STORE_NAME = "transactions";
+const LAST_SYNC_KEY = "transactions_last_sync";
 
 let dbInstance: IDBDatabase | null = null;
 let dbAvailable = true;
@@ -51,36 +43,33 @@ async function getDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveProducts(products: Product[]): Promise<void> {
+export async function saveTransactions(
+  transactions: Transaction[],
+): Promise<void> {
   try {
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction([STORE_NAME], "readwrite");
       const store = tx.objectStore(STORE_NAME);
 
-      // Clear existing products
       store.clear();
-
-      // Save each product
-      products.forEach((product) => {
-        store.put(product);
+      transactions.forEach((transaction) => {
+        store.put(transaction);
       });
 
       tx.oncomplete = () => {
-        // Save last sync time to localStorage
         localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
         resolve();
       };
       tx.onerror = () => reject(tx.error);
     });
   } catch (error) {
-    // Silently fail - IndexedDB might not be available (e.g., Safari private mode)
-    console.warn("Could not save to IndexedDB:", error);
+    console.warn("Could not save transactions to IndexedDB:", error);
     return Promise.resolve();
   }
 }
 
-export async function getProducts(): Promise<Product[]> {
+export async function getTransactions(): Promise<Transaction[]> {
   try {
     const db = await getDB();
     return new Promise((resolve, reject) => {
@@ -92,44 +81,17 @@ export async function getProducts(): Promise<Product[]> {
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
-    // Return empty array if IndexedDB not available
-    console.warn("Could not read from IndexedDB:", error);
+    console.warn("Could not read transactions from IndexedDB:", error);
     return [];
   }
 }
 
-export function getLastSyncTime(): number {
+export function shouldRefreshTransactions(intervalMs: number = 3600000) {
   try {
     const timestamp = localStorage.getItem(LAST_SYNC_KEY);
-    return timestamp ? parseInt(timestamp, 10) : 0;
+    const lastSync = timestamp ? parseInt(timestamp, 10) : 0;
+    return Date.now() - lastSync > intervalMs;
   } catch {
-    return 0;
-  }
-}
-
-export function shouldRefresh(intervalMs: number = 3600000): boolean {
-  // Default: refresh if last sync was more than 1 hour ago
-  const lastSync = getLastSyncTime();
-  return Date.now() - lastSync > intervalMs;
-}
-
-export async function clearProducts(): Promise<void> {
-  try {
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_NAME], "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.clear();
-
-      request.onsuccess = () => {
-        localStorage.removeItem(LAST_SYNC_KEY);
-        resolve();
-      };
-      request.onerror = () => reject(request.error);
-    });
-  } catch (error) {
-    // Silently fail
-    console.warn("Could not clear IndexedDB:", error);
-    return Promise.resolve();
+    return true;
   }
 }

@@ -1,7 +1,15 @@
 "use client";
 
-import { memo, useRef, useState, type TouchEvent } from "react";
+import {
+  memo,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type TouchEvent,
+} from "react";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
+import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -15,7 +23,7 @@ import CardActionArea from "@mui/material/CardActionArea";
 
 type ProductCardProps = {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
   onRequestDelete?: (product: Product) => void;
   deleteDisabled?: boolean;
   variant?: "catalog" | "inventory";
@@ -70,9 +78,31 @@ const ProductCard = memo(function ProductCard({
   const { hasBundle, label: bundleLabel } = getBundleMeta(product);
   const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [isAddedFeedbackVisible, setIsAddedFeedbackVisible] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const swipingRef = useRef(false);
+  const addedFeedbackTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (addedFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(addedFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const triggerAddedFeedback = () => {
+    if (addedFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(addedFeedbackTimeoutRef.current);
+    }
+
+    setIsAddedFeedbackVisible(true);
+    addedFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setIsAddedFeedbackVisible(false);
+      addedFeedbackTimeoutRef.current = null;
+    }, 820);
+  };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (variant !== "inventory" || !onRequestDelete) {
@@ -153,6 +183,11 @@ const ProductCard = memo(function ProductCard({
     setIsDeleteRevealed(false);
     setDragOffset(0);
     onRequestDelete(product);
+  };
+
+  const handleCatalogCardTap = (event: MouseEvent<HTMLButtonElement>) => {
+    triggerAddedFeedback();
+    onAddToCart(product, event.currentTarget.getBoundingClientRect());
   };
 
   if (variant === "inventory") {
@@ -301,10 +336,46 @@ const ProductCard = memo(function ProductCard({
           width: "100%",
           borderRadius: 2,
           borderColor: "divider",
+          position: "relative",
+          overflow: "hidden",
+          transform: isAddedFeedbackVisible ? "scale(0.985)" : "scale(1)",
+          boxShadow: isAddedFeedbackVisible
+            ? "0 0 0 1px rgba(76, 175, 80, 0.45), 0 10px 22px rgba(76, 175, 80, 0.18)"
+            : undefined,
+          transition:
+            "transform 140ms ease, box-shadow 220ms ease, border-color 220ms ease",
+          ...(isAddedFeedbackVisible
+            ? {
+                borderColor: "success.main",
+              }
+            : null),
         }}
       >
+        <Box
+          sx={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            zIndex: 2,
+            opacity: isAddedFeedbackVisible ? 1 : 0,
+            transform: isAddedFeedbackVisible
+              ? "translateY(0) scale(1)"
+              : "translateY(-6px) scale(0.96)",
+            transition: "opacity 160ms ease, transform 180ms ease",
+            pointerEvents: "none",
+          }}
+        >
+          <Chip
+            icon={<CheckCircleRounded fontSize="small" />}
+            size="small"
+            color="success"
+            label="Added"
+            sx={{ fontWeight: 700 }}
+          />
+        </Box>
+
         <CardActionArea
-          onClick={() => onAddToCart(product)}
+          onClick={handleCatalogCardTap}
           sx={{
             px: 1.25,
             py: 1.1,
