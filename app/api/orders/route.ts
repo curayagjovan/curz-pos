@@ -2,39 +2,6 @@ import { NextResponse } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const CHECKOUT_DEBUG_LOGS = process.env.CHECKOUT_DEBUG_LOGS === "1";
-
-function checkoutLog(event: string, payload: Record<string, unknown>) {
-  if (!CHECKOUT_DEBUG_LOGS) {
-    return;
-  }
-
-  console.info("[checkout]", JSON.stringify({ event, ...payload }));
-}
-
-function summarizeError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    return {
-      kind: "PrismaClientKnownRequestError",
-      code: error.code,
-      target: error.meta?.target ?? null,
-      message: error.message,
-    };
-  }
-
-  if (error instanceof Error) {
-    return {
-      kind: error.name,
-      message: error.message,
-    };
-  }
-
-  return {
-    kind: "UnknownError",
-    message: String(error),
-  };
-}
-
 type OrderItemInput = {
   productId?: string;
   productName?: string;
@@ -455,8 +422,6 @@ export async function POST(request: Request) {
 
     const orderId = normalizedRequestId ?? crypto.randomUUID();
     let orderNo = createOrderNo();
-    const checkoutAttemptId = crypto.randomUUID();
-
     if (normalizedRequestId) {
       const existingByRequestId = await prisma.order.findUnique({
         where: { id: orderId },
@@ -464,27 +429,9 @@ export async function POST(request: Request) {
       });
 
       if (existingByRequestId) {
-        checkoutLog("order_create_idempotent_replay", {
-          checkoutAttemptId,
-          orderId,
-          requestId: normalizedRequestId,
-          orderNo: existingByRequestId.orderNo,
-        });
-
         return NextResponse.json(existingByRequestId, { status: 200 });
       }
     }
-
-    checkoutLog("order_create_started", {
-      checkoutAttemptId,
-      orderId,
-      requestId: normalizedRequestId,
-      orderNo,
-      status,
-      itemCount: orderItems.length,
-      computedTotal,
-      amountPaid,
-    });
 
     const createOrderOperation = (
       includeAmountPaid: boolean,
@@ -514,14 +461,6 @@ export async function POST(request: Request) {
     const runCreateOrder = async () => {
       for (let attempt = 0; attempt < 4; attempt += 1) {
         const orderIdentifier = { id: orderId, orderNo };
-        const attemptNo = attempt + 1;
-        checkoutLog("order_create_attempt", {
-          checkoutAttemptId,
-          orderId: orderIdentifier.id,
-          orderNo: orderIdentifier.orderNo,
-          attempt: attemptNo,
-          includeAmountPaid: true,
-        });
 
         try {
           const operations: Prisma.PrismaPromise<unknown>[] = [
@@ -529,67 +468,22 @@ export async function POST(request: Request) {
             ...createSideEffects(),
           ];
           const [result] = await prisma.$transaction(operations);
-          checkoutLog("order_create_attempt_succeeded", {
-            checkoutAttemptId,
-            orderId: orderIdentifier.id,
-            orderNo: orderIdentifier.orderNo,
-            attempt: attemptNo,
-          });
           return result;
         } catch (error) {
-          checkoutLog("order_create_attempt_failed", {
-            checkoutAttemptId,
-            orderId: orderIdentifier.id,
-            orderNo: orderIdentifier.orderNo,
-            attempt: attemptNo,
-            includeAmountPaid: true,
-            error: summarizeError(error),
-          });
-
           if (isMissingAmountPaidColumnError(error)) {
             try {
-              checkoutLog("order_create_fallback_attempt", {
-                checkoutAttemptId,
-                orderId: orderIdentifier.id,
-                orderNo: orderIdentifier.orderNo,
-                attempt: attemptNo,
-                includeAmountPaid: false,
-              });
-
               const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
                 createOrderOperation(false, orderIdentifier),
                 ...createSideEffects(),
               ];
               const [fallbackResult] =
                 await prisma.$transaction(fallbackOperations);
-              checkoutLog("order_create_fallback_succeeded", {
-                checkoutAttemptId,
-                orderId: orderIdentifier.id,
-                orderNo: orderIdentifier.orderNo,
-                attempt: attemptNo,
-              });
               return withNullAmountPaid(
                 fallbackResult as Record<string, unknown>,
               );
             } catch (fallbackError) {
-              checkoutLog("order_create_fallback_failed", {
-                checkoutAttemptId,
-                orderId: orderIdentifier.id,
-                orderNo: orderIdentifier.orderNo,
-                attempt: attemptNo,
-                error: summarizeError(fallbackError),
-              });
-
               if (isUniqueOrderNoError(fallbackError) && attempt < 3) {
-                const previousOrderNo = orderNo;
                 orderNo = createOrderNo();
-                checkoutLog("order_no_regenerated", {
-                  checkoutAttemptId,
-                  orderId,
-                  previousOrderNo,
-                  nextOrderNo: orderNo,
-                  reason: "unique_conflict_fallback",
-                });
                 continue;
               }
               throw fallbackError;
@@ -597,15 +491,7 @@ export async function POST(request: Request) {
           }
 
           if (isUniqueOrderNoError(error) && attempt < 3) {
-            const previousOrderNo = orderNo;
             orderNo = createOrderNo();
-            checkoutLog("order_no_regenerated", {
-              checkoutAttemptId,
-              orderId,
-              previousOrderNo,
-              nextOrderNo: orderNo,
-              reason: "unique_conflict_primary",
-            });
             continue;
           }
 
@@ -643,26 +529,8 @@ export async function POST(request: Request) {
     let lastError: unknown = null;
 
     for (let retryAttempt = 0; retryAttempt < 3; retryAttempt += 1) {
-      const retryNo = retryAttempt + 1;
       try {
-        if (retryAttempt > 0) {
-          checkoutLog("order_create_retry_attempt", {
-            checkoutAttemptId,
-            orderId,
-            orderNo,
-            retryAttempt: retryNo,
-          });
-        }
-
         result = await runCreateOrder();
-        if (retryAttempt > 0) {
-          checkoutLog("order_create_retry_succeeded", {
-            checkoutAttemptId,
-            orderId,
-            orderNo,
-            retryAttempt: retryNo,
-          });
-        }
         break;
       } catch (error) {
         lastError = error;
@@ -673,45 +541,14 @@ export async function POST(request: Request) {
         ) {
           const existingOrder = await getExistingOrderByIdentifier();
           if (existingOrder) {
-            checkoutLog("order_create_recovered_from_existing", {
-              checkoutAttemptId,
-              orderId,
-              orderNo,
-              retryAttempt: retryNo,
-            });
             result = existingOrder;
             break;
           }
-
-          checkoutLog("order_create_existing_lookup_miss", {
-            checkoutAttemptId,
-            orderId,
-            orderNo,
-            retryAttempt: retryNo,
-            error: summarizeError(error),
-          });
         }
 
         if (!isRetryableCreateOrderError(error) || retryAttempt >= 2) {
-          checkoutLog("order_create_failed", {
-            checkoutAttemptId,
-            orderId,
-            orderNo,
-            stage: retryAttempt === 0 ? "primary" : "retry",
-            retryAttempt: retryNo,
-            error: summarizeError(error),
-          });
           throw error;
         }
-
-        checkoutLog("order_create_retry_scheduled", {
-          checkoutAttemptId,
-          orderId,
-          orderNo,
-          retryAttempt: retryNo,
-          reason: "retryable_create_order_error",
-          error: summarizeError(error),
-        });
       }
     }
 
@@ -719,18 +556,8 @@ export async function POST(request: Request) {
       throw lastError ?? new Error("Unable to create order");
     }
 
-    checkoutLog("order_create_succeeded", {
-      checkoutAttemptId,
-      orderId,
-      requestId: normalizedRequestId,
-      orderNo,
-    });
-
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    checkoutLog("order_create_failed_terminal", {
-      error: summarizeError(error),
-    });
     console.error("Failed to create order", error);
 
     return NextResponse.json(
