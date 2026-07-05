@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
@@ -20,11 +19,12 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Drawer from "@mui/material/Drawer";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
-import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
+import AppSnackbar from "@/app/components/app-snackbar";
+import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { usePageContext } from "@/app/context/page-context";
@@ -45,8 +45,6 @@ type ProductFormErrors = {
   sku?: string;
   price?: string;
 };
-
-type SnackbarSeverity = "success" | "error";
 
 const EMPTY_FORM: ProductFormState = {
   id: null,
@@ -94,10 +92,13 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] =
-    useState<SnackbarSeverity>("success");
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    showSnackbar,
+    closeSnackbar,
+  } = useAppSnackbar();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(
@@ -249,20 +250,18 @@ export default function InventoryPage() {
         setFormErrors({});
       }
 
-      setSnackbarSeverity("success");
-      setSnackbarMessage("Product deleted");
-      setSnackbarOpen(true);
+      showSnackbar({ message: "Product deleted" });
       setDeleteCandidate(null);
     } catch (err) {
-      setSnackbarSeverity("error");
-      setSnackbarMessage(
-        err instanceof Error ? err.message : "Unable to delete product",
-      );
-      setSnackbarOpen(true);
+      showSnackbar({
+        message:
+          err instanceof Error ? err.message : "Unable to delete product",
+        severity: "error",
+      });
     } finally {
       setDeletingProductId(null);
     }
-  }, [deleteCandidate, form.id]);
+  }, [deleteCandidate, form.id, showSnackbar]);
 
   const handleCloseDrawer = useCallback(() => {
     if (saving) {
@@ -318,9 +317,10 @@ export default function InventoryPage() {
 
     if (Object.keys(nextErrors).length > 0) {
       setFormErrors(nextErrors);
-      setSnackbarSeverity("error");
-      setSnackbarMessage("Please fix the highlighted fields");
-      setSnackbarOpen(true);
+      showSnackbar({
+        message: "Please fix the highlighted fields",
+        severity: "error",
+      });
       return;
     }
 
@@ -359,21 +359,20 @@ export default function InventoryPage() {
         setSearchQuery("");
       }
 
-      setSnackbarSeverity("success");
-      setSnackbarMessage(form.id ? "Product updated" : "Product created");
-      setSnackbarOpen(true);
+      showSnackbar({
+        message: form.id ? "Product updated" : "Product created",
+      });
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
     } catch (err) {
-      setSnackbarSeverity("error");
-      setSnackbarMessage(
-        err instanceof Error ? err.message : "Unable to save product",
-      );
-      setSnackbarOpen(true);
+      showSnackbar({
+        message: err instanceof Error ? err.message : "Unable to save product",
+        severity: "error",
+      });
     } finally {
       setSaving(false);
     }
-  }, [form, searchQuery, setSearchQuery]);
+  }, [form, searchQuery, setSearchQuery, showSnackbar]);
 
   return (
     <MobilePageWrapper title="Inventory">
@@ -604,21 +603,12 @@ export default function InventoryPage() {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
+      <AppSnackbar
         open={snackbarOpen}
-        autoHideDuration={2800}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        onClose={() => setSnackbarOpen(false)}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+        message={snackbarMessage}
+        severity={snackbarSeverity}
+        onClose={closeSnackbar}
+      />
     </MobilePageWrapper>
   );
 }

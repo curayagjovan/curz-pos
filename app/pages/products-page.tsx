@@ -8,22 +8,22 @@ import {
   useState,
 } from "react";
 import Box from "@mui/material/Box";
-import Alert from "@mui/material/Alert";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
-import Snackbar from "@mui/material/Snackbar";
 import Stack from "@mui/material/Stack";
 import Badge from "@mui/material/Badge";
 import Typography from "@mui/material/Typography";
+import AppSnackbar from "@/app/components/app-snackbar";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
+import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useCart } from "@/app/context/cart-context";
 import { useCheckoutCalculations } from "@/app/hooks/use-checkout-calculations";
 import { usePageContext } from "@/app/context/page-context";
@@ -51,11 +51,13 @@ export default function ProductsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
-    "success",
-  );
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    showSnackbar,
+    closeSnackbar,
+  } = useAppSnackbar();
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
@@ -347,11 +349,9 @@ export default function ProductsPage() {
         quantity: 1,
       });
 
-      setSnackbarMessage(`${product.name} added to cart`);
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
+      showSnackbar({ message: `${product.name} added to cart` });
     },
-    [addToCart],
+    [addToCart, showSnackbar],
   );
 
   const handleCartFabClick = useCallback(() => {
@@ -372,16 +372,15 @@ export default function ProductsPage() {
 
   const handleCheckout = useCallback(async () => {
     if (cartItems.length === 0) {
-      setSnackbarMessage("Cart is empty");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      showSnackbar({ message: "Cart is empty", severity: "error" });
       return;
     }
 
     if (parsedPaidAmount < cartTotal) {
-      setSnackbarMessage("Insufficient payment amount");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      showSnackbar({
+        message: "Insufficient payment amount",
+        severity: "error",
+      });
       return;
     }
 
@@ -431,23 +430,28 @@ export default function ProductsPage() {
       clearCart();
       setPaidAmountInput("0");
       setCartOpen(false);
-      setSnackbarMessage(
-        data?.orderNo
+      showSnackbar({
+        message: data?.orderNo
           ? `Order ${data.orderNo} completed`
           : "Checkout completed",
-      );
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
+      });
     } catch (err) {
-      setSnackbarMessage(
-        err instanceof Error ? err.message : "Unable to complete checkout",
-      );
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
+      showSnackbar({
+        message:
+          err instanceof Error ? err.message : "Unable to complete checkout",
+        severity: "error",
+      });
     } finally {
       setCheckoutLoading(false);
     }
-  }, [cartItems, parsedPaidAmount, cartTotal, clearCart, removeFromCart]);
+  }, [
+    cartItems,
+    parsedPaidAmount,
+    cartTotal,
+    clearCart,
+    removeFromCart,
+    showSnackbar,
+  ]);
 
   const handleCloseCart = useCallback(() => {
     setCartOpen(false);
@@ -538,25 +542,12 @@ export default function ProductsPage() {
         </Stack>
       </Container>
 
-      <Snackbar
+      <AppSnackbar
         open={snackbarOpen}
-        autoHideDuration={2800}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{
-          zIndex: (theme) => theme.zIndex.modal + 2,
-          top: "calc(env(safe-area-inset-top) + 8px)",
-        }}
-        onClose={() => setSnackbarOpen(false)}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+        message={snackbarMessage}
+        severity={snackbarSeverity}
+        onClose={closeSnackbar}
+      />
 
       {!cartOpen ? (
         <Fab
