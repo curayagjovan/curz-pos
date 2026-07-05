@@ -17,6 +17,21 @@ type CheckoutPushPayload = {
   change: number;
 };
 
+type StoredPushSubscription = {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+};
+
+const prismaWithPush = prisma as typeof prisma & {
+  pushSubscription: {
+    upsert: (args: unknown) => Promise<unknown>;
+    deleteMany: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<StoredPushSubscription[]>;
+    update: (args: unknown) => Promise<unknown>;
+  };
+};
+
 let vapidConfigured = false;
 
 function formatCurrency(value: number) {
@@ -72,7 +87,7 @@ export async function upsertPushSubscription(params: {
     return null;
   }
 
-  return prisma.pushSubscription.upsert({
+  return prismaWithPush.pushSubscription.upsert({
     where: { endpoint: normalized.endpoint },
     create: {
       endpoint: normalized.endpoint,
@@ -96,7 +111,7 @@ export async function removePushSubscriptionByEndpoint(endpoint?: string) {
     return;
   }
 
-  await prisma.pushSubscription.deleteMany({
+  await prismaWithPush.pushSubscription.deleteMany({
     where: { endpoint: normalized },
   });
 }
@@ -108,7 +123,7 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
 
   configureVapidIfNeeded();
 
-  const subscriptions = await prisma.pushSubscription.findMany({
+  const subscriptions = await prismaWithPush.pushSubscription.findMany({
     select: {
       endpoint: true,
       p256dh: true,
@@ -136,7 +151,7 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
   });
 
   await Promise.all(
-    subscriptions.map(async (subscription) => {
+    subscriptions.map(async (subscription: StoredPushSubscription) => {
       try {
         await webpush.sendNotification(
           {
@@ -149,7 +164,7 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
           notificationPayload,
         );
 
-        await prisma.pushSubscription.update({
+        await prismaWithPush.pushSubscription.update({
           where: { endpoint: subscription.endpoint },
           data: {
             failCount: 0,
@@ -167,13 +182,13 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
             : 0;
 
         if (statusCode === 404 || statusCode === 410) {
-          await prisma.pushSubscription.deleteMany({
+          await prismaWithPush.pushSubscription.deleteMany({
             where: { endpoint: subscription.endpoint },
           });
           return;
         }
 
-        await prisma.pushSubscription.update({
+        await prismaWithPush.pushSubscription.update({
           where: { endpoint: subscription.endpoint },
           data: {
             failCount: { increment: 1 },
