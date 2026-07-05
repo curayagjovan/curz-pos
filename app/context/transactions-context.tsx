@@ -14,6 +14,7 @@ import {
   saveTransactions as saveCachedTransactions,
   shouldRefreshTransactions,
 } from "@/lib/transactions-db";
+import { supabase } from "@/lib/supabase/client";
 import type { Transaction } from "@/types/transaction";
 
 type TransactionsContextType = {
@@ -168,6 +169,42 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshTransactions]);
+
+  useEffect(() => {
+    let refreshTimeoutId: number | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimeoutId !== null) {
+        return;
+      }
+
+      refreshTimeoutId = window.setTimeout(() => {
+        refreshTimeoutId = null;
+        void refreshTransactions(false);
+      }, 400);
+    };
+
+    const channel = supabase
+      .channel("orders-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Order",
+        },
+        scheduleRefresh,
+      )
+      .subscribe();
+
+    return () => {
+      if (refreshTimeoutId !== null) {
+        window.clearTimeout(refreshTimeoutId);
+      }
+
+      void supabase.removeChannel(channel);
     };
   }, [refreshTransactions]);
 

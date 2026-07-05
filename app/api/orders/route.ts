@@ -568,15 +568,13 @@ export async function POST(request: Request) {
     if (createdNewOrder && status === "PAID") {
       const change = Math.max(0, (amountPaid ?? computedTotal) - computedTotal);
 
-      try {
-        await sendCheckoutSuccessPush({
-          orderNo,
-          total: computedTotal,
-          change,
-        });
-      } catch (pushError) {
+      void sendCheckoutSuccessPush({
+        orderNo,
+        total: computedTotal,
+        change,
+      }).catch((pushError) => {
         console.error("Failed to send checkout push notification", pushError);
-      }
+      });
     }
 
     return NextResponse.json(result, { status: 201 });

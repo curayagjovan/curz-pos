@@ -40,7 +40,6 @@ type CartFlight = {
 };
 
 const CART_FLIGHT_DURATION_MS = 620;
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-PH", {
@@ -48,21 +47,6 @@ function formatCurrency(value: number) {
     currency: "PHP",
     minimumFractionDigits: 2,
   }).format(value);
-}
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const normalized = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-  const rawData = window.atob(normalized);
-  const output = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; i += 1) {
-    output[i] = rawData.charCodeAt(i);
-  }
-
-  return output;
 }
 
 export default function ProductsPage() {
@@ -444,60 +428,14 @@ export default function ProductsPage() {
     paidAmountInput,
   });
 
-  const ensureRemotePushSubscription = useCallback(async () => {
-    if (
-      typeof window === "undefined" ||
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window) ||
-      !VAPID_PUBLIC_KEY
-    ) {
-      return;
-    }
-
-    const registration =
-      (await navigator.serviceWorker.getRegistration()) ||
-      (await navigator.serviceWorker.ready);
-
-    let subscription = await registration.pushManager.getSubscription();
-
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-
-    await fetch("/api/push-subscriptions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subscription: subscription.toJSON(),
-        userAgent: navigator.userAgent,
-      }),
-    });
-  }, []);
-
   const notifyCheckoutSuccess = useCallback(
     async (orderNo?: string) => {
       if (typeof window === "undefined" || !("Notification" in window)) {
         return;
       }
 
-      let permission = Notification.permission;
-      if (permission === "default") {
-        permission = await Notification.requestPermission();
-      }
-
-      if (permission !== "granted") {
+      if (Notification.permission !== "granted") {
         return;
-      }
-
-      try {
-        await ensureRemotePushSubscription();
-      } catch {
-        // Non-blocking: local success flow should continue even if subscription sync fails.
       }
 
       const change = Math.max(0, parsedPaidAmount - cartTotal);
@@ -527,7 +465,7 @@ export default function ProductsPage() {
         icon: "/pwa-icon.svg",
       });
     },
-    [parsedPaidAmount, cartTotal, ensureRemotePushSubscription],
+    [parsedPaidAmount, cartTotal],
   );
 
   const handleCheckout = useCallback(async () => {
@@ -599,12 +537,12 @@ export default function ProductsPage() {
       setPaidAmountInput("0");
       setCartOpen(false);
       addTransaction(data as Transaction);
-      await notifyCheckoutSuccess(data?.orderNo);
       showSnackbar({
         message: data?.orderNo
           ? `Order ${data.orderNo} completed`
           : "Checkout completed",
       });
+      void notifyCheckoutSuccess(data?.orderNo);
     } catch (err) {
       showSnackbar({
         message:
