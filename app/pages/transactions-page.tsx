@@ -73,7 +73,16 @@ export default function TransactionsPage() {
     }
 
     const startTime = startDateTime ? new Date(startDateTime).getTime() : null;
-    const endTime = endDateTime ? new Date(endDateTime).getTime() : null;
+    const presetUsesLiveEndTime =
+      activeFilter === "today" ||
+      activeFilter === "week" ||
+      activeFilter === "month" ||
+      activeFilter === "year";
+    const endTime = presetUsesLiveEndTime
+      ? null
+      : endDateTime
+        ? new Date(endDateTime).getTime()
+        : null;
 
     if (
       (startTime !== null && Number.isNaN(startTime)) ||
@@ -96,7 +105,7 @@ export default function TransactionsPage() {
         );
       }),
     );
-  }, [transactions, startDateTime, endDateTime]);
+  }, [transactions, startDateTime, endDateTime, activeFilter]);
 
   const hasRangeFilter = startDateTime !== "" || endDateTime !== "";
 

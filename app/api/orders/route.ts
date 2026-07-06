@@ -69,12 +69,78 @@ const orderCreateSelectWithAmountPaid = {
   ...orderCreateSelectBase,
 } as const;
 
+const duplicateGuardOrderSelectBase = {
+  id: true,
+  orderNo: true,
+  status: true,
+  total: true,
+  note: true,
+  createdAt: true,
+  items: {
+    select: {
+      productId: true,
+      quantity: true,
+      unitPrice: true,
+      lineTotal: true,
+    },
+  },
+} as const;
+
+const duplicateGuardOrderSelectWithAmountPaid = {
+  ...duplicateGuardOrderSelectBase,
+  amountPaid: true,
+} as const;
+
+const ACCIDENTAL_DUPLICATE_WINDOW_MS = 25_000;
+
 function isMissingAmountPaidColumnError(error: unknown) {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2022" &&
     String(error.meta?.column ?? "").includes("Order.amountPaid")
   );
+}
+
+function toMoneyNumber(value: unknown) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : 0;
+}
+
+function toOrderItemsSignature(
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>,
+) {
+  return items
+    .map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice.toFixed(2)),
+      lineTotal: Number(item.lineTotal.toFixed(2)),
+    }))
+    .sort((left, right) => {
+      if (left.productId !== right.productId) {
+        return left.productId.localeCompare(right.productId);
+      }
+
+      if (left.quantity !== right.quantity) {
+        return left.quantity - right.quantity;
+      }
+
+      if (left.unitPrice !== right.unitPrice) {
+        return left.unitPrice - right.unitPrice;
+      }
+
+      return left.lineTotal - right.lineTotal;
+    })
+    .map(
+      (item) =>
+        `${item.productId}:${item.quantity}:${item.unitPrice.toFixed(2)}:${item.lineTotal.toFixed(2)}`,
+    )
+    .join("|");
 }
 
 function withNullAmountPaid<T extends Record<string, unknown>>(order: T) {
@@ -430,6 +496,81 @@ export async function POST(request: Request) {
         { message: "Invalid amount paid" },
         { status: 400 },
       );
+    }
+
+    if (status === "PAID") {
+      const cutoffDate = new Date(Date.now() - ACCIDENTAL_DUPLICATE_WINDOW_MS);
+      const currentSignature = toOrderItemsSignature(orderItems);
+
+      let recentOrders: Array<Record<string, unknown>>;
+      try {
+        recentOrders = (await prisma.order.findMany({
+          where: {
+            status: "PAID",
+            createdAt: { gte: cutoffDate },
+            total: computedTotal,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+          select: duplicateGuardOrderSelectWithAmountPaid,
+        })) as Array<Record<string, unknown>>;
+      } catch (error) {
+        if (!isMissingAmountPaidColumnError(error)) {
+          throw error;
+        }
+
+        const fallbackRecentOrders = await prisma.order.findMany({
+          where: {
+            status: "PAID",
+            createdAt: { gte: cutoffDate },
+            total: computedTotal,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+          select: duplicateGuardOrderSelectBase,
+        });
+
+        recentOrders = fallbackRecentOrders.map((order) =>
+          withNullAmountPaid(order as Record<string, unknown>),
+        );
+      }
+
+      const duplicateMatch = recentOrders.find((order) => {
+        const total = toMoneyNumber(order.total);
+        const paid = toMoneyNumber(order.amountPaid);
+        const expectedPaid = toMoneyNumber(amountPaid ?? computedTotal);
+        const notesMatch = (order.note ?? null) === note;
+        const items = Array.isArray(order.items)
+          ? (order.items as Array<Record<string, unknown>>)
+          : [];
+
+        const existingSignature = toOrderItemsSignature(
+          items
+            .map((item) => ({
+              productId: String(item.productId ?? ""),
+              quantity: Number(item.quantity ?? 0),
+              unitPrice: toMoneyNumber(item.unitPrice),
+              lineTotal: toMoneyNumber(item.lineTotal),
+            }))
+            .filter(
+              (item) =>
+                item.productId !== "" &&
+                Number.isFinite(item.quantity) &&
+                item.quantity > 0,
+            ),
+        );
+
+        return (
+          total === computedTotal &&
+          paid === expectedPaid &&
+          notesMatch &&
+          existingSignature === currentSignature
+        );
+      });
+
+      if (duplicateMatch) {
+        return NextResponse.json(duplicateMatch, { status: 200 });
+      }
     }
 
     const orderId = normalizedRequestId ?? crypto.randomUUID();

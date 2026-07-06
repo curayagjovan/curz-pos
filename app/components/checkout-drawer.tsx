@@ -29,6 +29,7 @@ type CheckoutDrawerProps = {
   amountDue: number;
   changeAmount: number;
   checkoutLoading: boolean;
+  checkoutDisabled?: boolean;
   onClose: () => void;
   onPaidAmountChange: (value: string) => void;
   onRemoveFromCart: (id: string) => void;
@@ -98,6 +99,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
   amountDue,
   changeAmount,
   checkoutLoading,
+  checkoutDisabled = false,
   onClose,
   onPaidAmountChange,
   onRemoveFromCart,
@@ -231,7 +233,10 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
             fullWidth
             variant="contained"
             disabled={
-              cartItems.length === 0 || checkoutLoading || amountDue > 0
+              cartItems.length === 0 ||
+              checkoutLoading ||
+              checkoutDisabled ||
+              amountDue > 0
             }
             onClick={onCheckout}
           >

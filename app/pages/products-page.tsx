@@ -41,14 +41,6 @@ type CartFlight = {
 
 const CART_FLIGHT_DURATION_MS = 620;
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
 export default function ProductsPage() {
   const { searchQuery, setSearchQuery } = usePageContext();
   const {
@@ -60,7 +52,8 @@ export default function ProductsPage() {
     clearCart,
   } = useCart();
   const { products, loading, error } = useProducts();
-  const { transactions, addTransaction } = useTransactions();
+  const { transactions, addTransaction, refreshTransactions } =
+    useTransactions();
   const {
     snackbarOpen,
     snackbarMessage,
@@ -70,16 +63,54 @@ export default function ProductsPage() {
   } = useAppSnackbar();
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutCooldown, setCheckoutCooldown] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
   const [analysisTimeMs] = useState(() => Date.now());
   const [isCartPulseVisible, setIsCartPulseVisible] = useState(false);
   const [cartFlights, setCartFlights] = useState<CartFlight[]>([]);
   const cartPulseTimeoutRef = useRef<number | null>(null);
+  const checkoutCooldownTimeoutRef = useRef<number | null>(null);
   const cartFabRef = useRef<HTMLButtonElement | null>(null);
+  const senderPushEndpointRef = useRef<string | undefined>(undefined);
   const cartFlightIdRef = useRef(0);
   const cartFlightFrameRef = useRef<number[]>([]);
   const cartFlightTimeoutRef = useRef<number[]>([]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  useEffect(() => {
+    let active = true;
+
+    const preloadSenderEndpoint = async () => {
+      if (
+        typeof window === "undefined" ||
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window)
+      ) {
+        return;
+      }
+
+      try {
+        const registration =
+          (await navigator.serviceWorker.getRegistration()) ||
+          (await navigator.serviceWorker.ready);
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (active) {
+          senderPushEndpointRef.current = subscription?.endpoint;
+        }
+      } catch {
+        if (active) {
+          senderPushEndpointRef.current = undefined;
+        }
+      }
+    };
+
+    void preloadSenderEndpoint();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const triggerCartPulse = useCallback(() => {
     if (cartPulseTimeoutRef.current !== null) {
@@ -97,6 +128,10 @@ export default function ProductsPage() {
     return () => {
       if (cartPulseTimeoutRef.current !== null) {
         window.clearTimeout(cartPulseTimeoutRef.current);
+      }
+
+      if (checkoutCooldownTimeoutRef.current !== null) {
+        window.clearTimeout(checkoutCooldownTimeoutRef.current);
       }
 
       for (const frameId of cartFlightFrameRef.current) {
@@ -428,7 +463,27 @@ export default function ProductsPage() {
     paidAmountInput,
   });
 
+  const startCheckoutCooldown = useCallback(() => {
+    if (checkoutCooldownTimeoutRef.current !== null) {
+      window.clearTimeout(checkoutCooldownTimeoutRef.current);
+    }
+
+    setCheckoutCooldown(true);
+    checkoutCooldownTimeoutRef.current = window.setTimeout(() => {
+      setCheckoutCooldown(false);
+      checkoutCooldownTimeoutRef.current = null;
+    }, 2500);
+  }, []);
+
   const handleCheckout = useCallback(async () => {
+    if (checkoutCooldown) {
+      showSnackbar({
+        message: "Please wait a moment before checking out again",
+        severity: "info",
+      });
+      return;
+    }
+
     if (cartItems.length === 0) {
       showSnackbar({ message: "Cart is empty", severity: "error" });
       return;
@@ -443,22 +498,16 @@ export default function ProductsPage() {
     }
 
     setCheckoutLoading(true);
+    startCheckoutCooldown();
+    showSnackbar({ message: "Saving checkout...", severity: "info" });
 
     try {
       const requestId = crypto.randomUUID();
-      const registration =
-        "serviceWorker" in navigator
-          ? (await navigator.serviceWorker.getRegistration()) ||
-            (await navigator.serviceWorker.ready)
-          : null;
-      const senderSubscription = registration
-        ? await registration.pushManager.getSubscription()
-        : null;
       const payload = {
         requestId,
         status: "PAID" as const,
         amountPaid: parsedPaidAmount,
-        senderPushEndpoint: senderSubscription?.endpoint,
+        senderPushEndpoint: senderPushEndpointRef.current,
         items: cartItems.map((item) => ({
           productId: item.id,
           productName: item.name,
@@ -502,10 +551,23 @@ export default function ProductsPage() {
         throw new Error(data?.message || "Checkout failed");
       }
 
+      const savedTransaction = data as Partial<Transaction>;
+      if (
+        !savedTransaction ||
+        typeof savedTransaction.id !== "string" ||
+        typeof savedTransaction.orderNo !== "string" ||
+        typeof savedTransaction.createdAt !== "string" ||
+        !Array.isArray(savedTransaction.items)
+      ) {
+        throw new Error("Checkout not yet confirmed. Please try again.");
+      }
+
+      addTransaction(savedTransaction as Transaction);
+      void refreshTransactions(false);
+
       clearCart();
       setPaidAmountInput("0");
       setCartOpen(false);
-      addTransaction(data as Transaction);
       showSnackbar({
         message: data?.orderNo
           ? `Order ${data.orderNo} completed`
@@ -527,7 +589,10 @@ export default function ProductsPage() {
     clearCart,
     removeFromCart,
     addTransaction,
+    refreshTransactions,
     showSnackbar,
+    checkoutCooldown,
+    startCheckoutCooldown,
   ]);
 
   const handleCloseCart = useCallback(() => {
@@ -684,6 +749,7 @@ export default function ProductsPage() {
         amountDue={amountDue}
         changeAmount={changeAmount}
         checkoutLoading={checkoutLoading}
+        checkoutDisabled={checkoutCooldown}
         onClose={handleCloseCart}
         onPaidAmountChange={setPaidAmountInput}
         onRemoveFromCart={removeFromCart}

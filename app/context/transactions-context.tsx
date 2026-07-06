@@ -72,9 +72,18 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
       const items: Transaction[] = (
         Array.isArray(data) ? data : (data.items ?? [])
       ).map(normalizeTransaction);
-      const nextTransactions = sortTransactions(items);
+      let nextTransactions: Transaction[] = [];
 
-      setTransactions(nextTransactions);
+      setTransactions((current) => {
+        const fetchedIds = new Set(items.map((item) => item.id));
+        const merged = sortTransactions([
+          ...items,
+          ...current.filter((item) => !fetchedIds.has(item.id)),
+        ]);
+        nextTransactions = merged;
+        return merged;
+      });
+
       await saveCachedTransactions(nextTransactions);
     } catch (err) {
       setError(
