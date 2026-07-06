@@ -34,10 +34,26 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return false;
+    }
+
+    return Notification.permission !== "granted";
+  });
+  const [notificationBusy, setNotificationBusy] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(
+    null,
+  );
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | "unsupported"
-  >("unsupported");
+  >(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return "unsupported";
+    }
+
+    return Notification.permission;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -45,13 +61,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     }
 
     if (!("Notification" in window)) {
-      setNotificationPermission("unsupported");
-      setNotificationDialogOpen(false);
       return;
     }
-
-    setNotificationPermission(Notification.permission);
-    setNotificationDialogOpen(Notification.permission !== "granted");
 
     const syncPushSubscription = async () => {
       if (
@@ -174,6 +185,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const handleEnableNotifications = async () => {
+    setNotificationError(null);
+
     if (notificationPermission === "unsupported") {
       return;
     }
@@ -182,23 +195,70 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (Notification.permission === "default") {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setNotificationError(
+        "This browser does not fully support push notifications.",
+      );
+      setNotificationDialogOpen(true);
+      return;
+    }
 
-      if (permission !== "granted") {
+    if (!VAPID_PUBLIC_KEY) {
+      setNotificationError(
+        "Push notifications are not configured for this app yet.",
+      );
+      setNotificationDialogOpen(true);
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      setNotificationPermission("denied");
+      setNotificationError(
+        "Notifications are blocked in Chrome. Re-enable notifications for this site in Chrome settings.",
+      );
+      setNotificationDialogOpen(true);
+      return;
+    }
+
+    setNotificationBusy(true);
+
+    try {
+      if (Notification.permission === "default") {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+
+        if (permission !== "granted") {
+          if (permission === "denied") {
+            setNotificationError(
+              "Notifications are blocked in Chrome. Re-enable notifications for this site in Chrome settings.",
+            );
+          }
+
+          setNotificationDialogOpen(true);
+          return;
+        }
+      }
+
+      if (Notification.permission !== "granted") {
         setNotificationDialogOpen(true);
         return;
       }
-    }
 
-    if (Notification.permission === "granted") {
-      const registration =
-        (await navigator.serviceWorker.getRegistration()) ||
-        (await navigator.serviceWorker.ready);
+      let registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        registration = await navigator.serviceWorker.register("/sw.js");
+      }
+
+      if (!registration) {
+        registration = await navigator.serviceWorker.ready;
+      }
+
+      if (!registration) {
+        throw new Error("Service worker registration is unavailable");
+      }
 
       let subscription = await registration.pushManager.getSubscription();
-      if (!subscription && VAPID_PUBLIC_KEY) {
+      if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -206,7 +266,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }
 
       if (subscription) {
-        await fetch("/api/push-subscriptions", {
+        const response = await fetch("/api/push-subscriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -214,10 +274,22 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             userAgent: navigator.userAgent,
           }),
         });
+
+        if (!response.ok) {
+          throw new Error("Unable to save push subscription");
+        }
       }
 
       setNotificationPermission("granted");
       setNotificationDialogOpen(false);
+      setNotificationError(null);
+    } catch {
+      setNotificationError(
+        "Unable to enable notifications right now. Please try again.",
+      );
+      setNotificationDialogOpen(true);
+    } finally {
+      setNotificationBusy(false);
     }
   };
 
@@ -249,6 +321,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 ? "Notifications are currently blocked for SHOPMAE. Re-enable them in your device settings or reinstall the Home Screen app, then try again."
                 : "Turn on notifications so checkout alerts and cross-device updates reach this device."}
             </DialogContentText>
+            {notificationError ? (
+              <DialogContentText sx={{ mt: 1.25, color: "error.main" }}>
+                {notificationError}
+              </DialogContentText>
+            ) : null}
           </DialogContent>
           <DialogActions sx={{ px: 2, pb: 2 }}>
             <Button onClick={() => setNotificationDialogOpen(false)}>
@@ -256,9 +333,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             </Button>
             <Button
               variant="contained"
+              disabled={notificationBusy}
               onClick={() => void handleEnableNotifications()}
             >
-              Enable notifications
+              {notificationBusy ? "Enabling..." : "Enable notifications"}
             </Button>
           </DialogActions>
         </Dialog>
