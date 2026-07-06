@@ -167,9 +167,9 @@ export default function TransactionsPage() {
             <Paper
               variant="outlined"
               sx={{
-                p: 0.5,
+                p: 1,
                 borderColor: "divider",
-                borderRadius: 2,
+                borderRadius: 1,
                 marginTop: 1,
               }}
             >
@@ -183,6 +183,7 @@ export default function TransactionsPage() {
                   "& .MuiButton-root": {
                     minWidth: 0,
                     px: 1,
+                    marginBottom: 1,
                   },
                 }}
               >
@@ -249,6 +250,7 @@ export default function TransactionsPage() {
                 >
                   Custom
                 </Button>
+                <div style={{ flexGrow: 1 }} />
                 <IconButton
                   size="small"
                   aria-label="clear range"
