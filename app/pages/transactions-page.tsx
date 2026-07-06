@@ -183,7 +183,6 @@ export default function TransactionsPage() {
                   "& .MuiButton-root": {
                     minWidth: 0,
                     px: 1,
-                    marginBottom: 1,
                   },
                 }}
               >
@@ -270,7 +269,7 @@ export default function TransactionsPage() {
                   direction={{ xs: "column", sm: "row" }}
                   spacing={0.75}
                   alignItems="stretch"
-                  sx={{ mt: 0.5 }}
+                  sx={{ mt: 1 }}
                 >
                   <TextField
                     fullWidth
