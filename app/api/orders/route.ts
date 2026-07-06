@@ -18,6 +18,7 @@ type OrderPayload = {
   total?: number;
   amountPaid?: number;
   note?: string;
+  senderPushEndpoint?: string;
   items?: OrderItemInput[];
 };
 
@@ -297,6 +298,11 @@ export async function POST(request: Request) {
       typeof body.requestId === "string" && body.requestId.trim().length > 0
         ? body.requestId.trim().slice(0, 64)
         : null;
+    const senderPushEndpoint =
+      typeof body.senderPushEndpoint === "string" &&
+      body.senderPushEndpoint.trim().length > 0
+        ? body.senderPushEndpoint.trim()
+        : null;
     const status = body.status ?? "PAID";
     const requestedAmountPaid =
       body.amountPaid === undefined || body.amountPaid === null
@@ -572,6 +578,7 @@ export async function POST(request: Request) {
         orderNo,
         total: computedTotal,
         change,
+        excludeEndpoint: senderPushEndpoint,
       }).catch((pushError) => {
         console.error("Failed to send checkout push notification", pushError);
       });

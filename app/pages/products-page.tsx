@@ -428,46 +428,6 @@ export default function ProductsPage() {
     paidAmountInput,
   });
 
-  const notifyCheckoutSuccess = useCallback(
-    async (orderNo?: string) => {
-      if (typeof window === "undefined" || !("Notification" in window)) {
-        return;
-      }
-
-      if (Notification.permission !== "granted") {
-        return;
-      }
-
-      const change = Math.max(0, parsedPaidAmount - cartTotal);
-      const parts = [
-        orderNo ? `Order ${orderNo} completed` : "Checkout completed",
-        `Total: ${formatCurrency(cartTotal)}`,
-        change > 0 ? `Change: ${formatCurrency(change)}` : null,
-      ].filter(Boolean);
-      const body = parts.join(" • ");
-
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          await registration.showNotification("Checkout successful", {
-            body,
-            tag: "checkout-success",
-            icon: "/pwa-icon.svg",
-            badge: "/pwa-icon.svg",
-            data: { url: "/" },
-          });
-          return;
-        }
-      }
-
-      new Notification("Checkout successful", {
-        body,
-        icon: "/pwa-icon.svg",
-      });
-    },
-    [parsedPaidAmount, cartTotal],
-  );
-
   const handleCheckout = useCallback(async () => {
     if (cartItems.length === 0) {
       showSnackbar({ message: "Cart is empty", severity: "error" });
@@ -486,10 +446,19 @@ export default function ProductsPage() {
 
     try {
       const requestId = crypto.randomUUID();
+      const registration =
+        "serviceWorker" in navigator
+          ? (await navigator.serviceWorker.getRegistration()) ||
+            (await navigator.serviceWorker.ready)
+          : null;
+      const senderSubscription = registration
+        ? await registration.pushManager.getSubscription()
+        : null;
       const payload = {
         requestId,
         status: "PAID" as const,
         amountPaid: parsedPaidAmount,
+        senderPushEndpoint: senderSubscription?.endpoint,
         items: cartItems.map((item) => ({
           productId: item.id,
           productName: item.name,
@@ -542,7 +511,6 @@ export default function ProductsPage() {
           ? `Order ${data.orderNo} completed`
           : "Checkout completed",
       });
-      void notifyCheckoutSuccess(data?.orderNo);
     } catch (err) {
       showSnackbar({
         message:
@@ -559,7 +527,6 @@ export default function ProductsPage() {
     clearCart,
     removeFromCart,
     addTransaction,
-    notifyCheckoutSuccess,
     showSnackbar,
   ]);
 

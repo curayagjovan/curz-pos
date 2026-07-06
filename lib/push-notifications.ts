@@ -15,6 +15,7 @@ type CheckoutPushPayload = {
   orderNo: string;
   total: number;
   change: number;
+  excludeEndpoint?: string | null;
 };
 
 type StoredPushSubscription = {
@@ -131,7 +132,13 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
     },
   });
 
-  if (subscriptions.length === 0) {
+  const targetSubscriptions = payload.excludeEndpoint
+    ? subscriptions.filter(
+        (subscription) => subscription.endpoint !== payload.excludeEndpoint,
+      )
+    : subscriptions;
+
+  if (targetSubscriptions.length === 0) {
     return;
   }
 
@@ -151,7 +158,7 @@ export async function sendCheckoutSuccessPush(payload: CheckoutPushPayload) {
   });
 
   await Promise.all(
-    subscriptions.map(async (subscription: StoredPushSubscription) => {
+    targetSubscriptions.map(async (subscription: StoredPushSubscription) => {
       try {
         await webpush.sendNotification(
           {
