@@ -6,10 +6,12 @@ import Button from "@mui/material/Button";
 import Collapse from "@mui/material/Collapse";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
+import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import DateRangeRounded from "@mui/icons-material/DateRangeRounded";
 import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRounded from "@mui/icons-material/VisibilityRounded";
@@ -145,125 +147,163 @@ export default function TransactionsPage() {
     <MobilePageWrapper title="Sales">
       <Container maxWidth="sm" sx={{ py: 0.5, pb: showTotals ? 13 : 8 }}>
         <Stack spacing={1.5}>
-          <Paper
-            variant="outlined"
+          <Box
             sx={{
-              p: 0.75,
-              borderColor: "divider",
-              borderRadius: 2,
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+              pt: 0.25,
+              pb: 0.25,
+              bgcolor: "background.default",
             }}
           >
-            <Stack
-              direction="row"
-              spacing={0.75}
+            <Paper
+              variant="outlined"
               sx={{
-                overflowX: "auto",
-                pb: 0.25,
-                "&::-webkit-scrollbar": { display: "none" },
+                p: 0.5,
+                borderColor: "divider",
+                borderRadius: 2,
               }}
             >
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  const now = new Date();
-                  const start = new Date(now);
-                  start.setHours(0, 0, 0, 0);
-                  applyQuickRange(start, now);
+              <Stack
+                direction="row"
+                spacing={0.5}
+                useFlexGap
+                flexWrap="wrap"
+                alignItems="center"
+                sx={{
+                  "& .MuiButton-root": {
+                    minWidth: 0,
+                    px: 1,
+                  },
                 }}
               >
-                Today
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  const now = new Date();
-                  const start = new Date(now);
-                  const dayOfWeek = start.getDay();
-                  const dayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                  start.setDate(start.getDate() - dayOffset);
-                  start.setHours(0, 0, 0, 0);
-                  applyQuickRange(start, now);
-                }}
-              >
-                Week
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  const now = new Date();
-                  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-                  applyQuickRange(start, now);
-                }}
-              >
-                Month
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  const now = new Date();
-                  const start = new Date(now.getFullYear(), 0, 1);
-                  applyQuickRange(start, now);
-                }}
-              >
-                Year
-              </Button>
-              <Button
-                size="small"
-                variant={showCustomRange ? "contained" : "outlined"}
-                startIcon={<DateRangeRounded fontSize="small" />}
-                onClick={() => setShowCustomRange((current) => !current)}
-              >
-                Custom
-              </Button>
-              {hasRangeFilter ? (
                 <Button
                   size="small"
+                  variant="outlined"
                   onClick={() => {
-                    setStartDateTime("");
-                    setEndDateTime("");
+                    const now = new Date();
+                    const start = new Date(now);
+                    start.setHours(0, 0, 0, 0);
+                    applyQuickRange(start, now);
                   }}
                 >
-                  Clear
+                  Today
                 </Button>
-              ) : null}
-            </Stack>
-
-            <Collapse in={showCustomRange}>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1}
-                alignItems="stretch"
-                sx={{ mt: 0.75 }}
-              >
-                <TextField
-                  fullWidth
+                <Button
                   size="small"
-                  label="From"
-                  type="datetime-local"
-                  value={startDateTime}
-                  onChange={(event) => setStartDateTime(event.target.value)}
-                  slotProps={{
-                    inputLabel: { shrink: true },
+                  variant="outlined"
+                  onClick={() => {
+                    const now = new Date();
+                    const start = new Date(now);
+                    const dayOfWeek = start.getDay();
+                    const dayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                    start.setDate(start.getDate() - dayOffset);
+                    start.setHours(0, 0, 0, 0);
+                    applyQuickRange(start, now);
                   }}
-                />
-                <TextField
-                  fullWidth
+                >
+                  Week
+                </Button>
+                <Button
                   size="small"
-                  label="To"
-                  type="datetime-local"
-                  value={endDateTime}
-                  onChange={(event) => setEndDateTime(event.target.value)}
-                  slotProps={{
-                    inputLabel: { shrink: true },
+                  variant="outlined"
+                  onClick={() => {
+                    const now = new Date();
+                    const start = new Date(
+                      now.getFullYear(),
+                      now.getMonth(),
+                      1,
+                    );
+                    applyQuickRange(start, now);
                   }}
-                />
+                >
+                  Month
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const now = new Date();
+                    const start = new Date(now.getFullYear(), 0, 1);
+                    applyQuickRange(start, now);
+                  }}
+                >
+                  Year
+                </Button>
+                <Button
+                  size="small"
+                  variant={showCustomRange ? "contained" : "outlined"}
+                  onClick={() => setShowCustomRange((current) => !current)}
+                >
+                  <DateRangeRounded fontSize="small" />
+                  <Box
+                    component="span"
+                    sx={{ display: { xs: "none", sm: "inline" }, ml: 0.5 }}
+                  >
+                    Custom
+                  </Box>
+                </Button>
+                {hasRangeFilter ? (
+                  <>
+                    <IconButton
+                      size="small"
+                      aria-label="clear range"
+                      sx={{ display: { xs: "inline-flex", sm: "none" } }}
+                      onClick={() => {
+                        setStartDateTime("");
+                        setEndDateTime("");
+                      }}
+                    >
+                      <CloseRounded fontSize="small" />
+                    </IconButton>
+                    <Button
+                      size="small"
+                      sx={{ display: { xs: "none", sm: "inline-flex" } }}
+                      onClick={() => {
+                        setStartDateTime("");
+                        setEndDateTime("");
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </>
+                ) : null}
               </Stack>
-            </Collapse>
-          </Paper>
+
+              <Collapse in={showCustomRange}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={0.75}
+                  alignItems="stretch"
+                  sx={{ mt: 0.5 }}
+                >
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="From"
+                    type="datetime-local"
+                    value={startDateTime}
+                    onChange={(event) => setStartDateTime(event.target.value)}
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="To"
+                    type="datetime-local"
+                    value={endDateTime}
+                    onChange={(event) => setEndDateTime(event.target.value)}
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                    }}
+                  />
+                </Stack>
+              </Collapse>
+            </Paper>
+          </Box>
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
             {loading
