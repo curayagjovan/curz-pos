@@ -51,6 +51,7 @@ export function useCheckoutCalculations({
       return [];
     }
 
+    const exactTotal = Number(cartTotal.toFixed(2));
     const denominations = [20, 50, 100, 200, 500, 1000];
     while (denominations[denominations.length - 1] < cartTotal) {
       denominations.push(denominations[denominations.length - 1] * 2);
@@ -61,7 +62,11 @@ export function useCheckoutCalculations({
       denominations.findIndex((amount) => amount >= cartTotal),
     );
 
-    return denominations.slice(startIndex, startIndex + 4);
+    const fallbackAmounts = denominations
+      .slice(startIndex, startIndex + 4)
+      .filter((amount) => amount !== exactTotal);
+
+    return [exactTotal, ...fallbackAmounts].slice(0, 4);
   }, [cartTotal]);
 
   const parsedPaidAmount = useMemo(() => {

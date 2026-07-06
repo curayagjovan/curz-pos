@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import InputBase from "@mui/material/InputBase";
 import Paper from "@mui/material/Paper";
+import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 
 type ProductsSearchBarProps = {
@@ -45,6 +46,16 @@ export default function ProductsSearchBar({
           placeholder={placeholder}
           inputProps={{ "aria-label": ariaLabel }}
         />
+        {value.trim().length > 0 ? (
+          <IconButton
+            type="button"
+            sx={{ p: 1 }}
+            aria-label="clear search"
+            onClick={() => onChange("")}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        ) : null}
         <IconButton type="button" sx={{ p: 1 }} aria-label="search">
           <SearchIcon fontSize="small" />
         </IconButton>
