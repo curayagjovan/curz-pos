@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
+import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 import { ThemeProvider } from "@mui/material/styles";
 import { PageProvider } from "@/app/context/page-context";
 import { CartProvider } from "@/app/context/cart-context";
@@ -28,10 +34,24 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | "unsupported"
+  >("unsupported");
+
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
+
+    if (!("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      setNotificationDialogOpen(false);
+      return;
+    }
+
+    setNotificationPermission(Notification.permission);
+    setNotificationDialogOpen(Notification.permission !== "granted");
 
     const syncPushSubscription = async () => {
       if (
@@ -43,6 +63,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }
 
       if (Notification.permission !== "granted") {
+        setNotificationPermission(Notification.permission);
         return;
       }
 
@@ -66,6 +87,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           userAgent: navigator.userAgent,
         }),
       });
+
+      setNotificationPermission("granted");
+      setNotificationDialogOpen(false);
     };
 
     const requestAndSync = async () => {
@@ -75,7 +99,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       if (Notification.permission === "default") {
         const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
         if (permission !== "granted") {
+          setNotificationDialogOpen(true);
           return;
         }
       }
@@ -147,6 +173,54 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const handleEnableNotifications = async () => {
+    if (notificationPermission === "unsupported") {
+      return;
+    }
+
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+
+      if (permission !== "granted") {
+        setNotificationDialogOpen(true);
+        return;
+      }
+    }
+
+    if (Notification.permission === "granted") {
+      const registration =
+        (await navigator.serviceWorker.getRegistration()) ||
+        (await navigator.serviceWorker.ready);
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription && VAPID_PUBLIC_KEY) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      if (subscription) {
+        await fetch("/api/push-subscriptions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            userAgent: navigator.userAgent,
+          }),
+        });
+      }
+
+      setNotificationPermission("granted");
+      setNotificationDialogOpen(false);
+    }
+  };
+
   return (
     <AppRouterCacheProvider options={{ enableCssLayer: true }}>
       <ThemeProvider
@@ -162,6 +236,32 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             </TransactionsProvider>
           </ProductsProvider>
         </PageProvider>
+        <Dialog
+          open={notificationDialogOpen}
+          onClose={() => setNotificationDialogOpen(false)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>Enable Notifications</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {notificationPermission === "denied"
+                ? "Notifications are currently blocked for SHOPMAE. Re-enable them in your device settings or reinstall the Home Screen app, then try again."
+                : "Turn on notifications so checkout alerts and cross-device updates reach this device."}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2 }}>
+            <Button onClick={() => setNotificationDialogOpen(false)}>
+              Not now
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleEnableNotifications()}
+            >
+              Enable notifications
+            </Button>
+          </DialogActions>
+        </Dialog>
       </ThemeProvider>
     </AppRouterCacheProvider>
   );
