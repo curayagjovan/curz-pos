@@ -12,7 +12,6 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
-import DateRangeRounded from "@mui/icons-material/DateRangeRounded";
 import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRounded from "@mui/icons-material/VisibilityRounded";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
@@ -31,6 +30,8 @@ function toCurrency(value: number) {
   })}`;
 }
 
+type ActiveFilter = "today" | "week" | "month" | "year" | "custom" | null;
+
 export default function TransactionsPage() {
   const [startDateTime, setStartDateTime] = useState(() => {
     const startOfToday = new Date();
@@ -40,6 +41,7 @@ export default function TransactionsPage() {
   const [endDateTime, setEndDateTime] = useState(() =>
     toDateTimeLocalValue(new Date()),
   );
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("today");
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [showTotals, setShowTotals] = useState(true);
   const { transactions, loading, error, updateTransactionStatus } =
@@ -137,8 +139,13 @@ export default function TransactionsPage() {
 
   const filteredNetSalesTotal = filteredSalesTotal - filteredRefundedTotal;
 
-  const applyQuickRange = (start: Date, end: Date) => {
-    setShowCustomRange(false);
+  const applyQuickRange = (
+    filter: Exclude<ActiveFilter, "custom" | null>,
+    start: Date,
+    end: Date,
+  ) => {
+    setActiveFilter(filter);
+    setShowCustomRange((current) => !current);
     setStartDateTime(toDateTimeLocalValue(start));
     setEndDateTime(toDateTimeLocalValue(end));
   };
@@ -163,6 +170,7 @@ export default function TransactionsPage() {
                 p: 0.5,
                 borderColor: "divider",
                 borderRadius: 2,
+                marginTop: 1,
               }}
             >
               <Stack
@@ -180,19 +188,19 @@ export default function TransactionsPage() {
               >
                 <Button
                   size="small"
-                  variant="outlined"
+                  variant={activeFilter === "today" ? "contained" : "outlined"}
                   onClick={() => {
                     const now = new Date();
                     const start = new Date(now);
                     start.setHours(0, 0, 0, 0);
-                    applyQuickRange(start, now);
+                    applyQuickRange("today", start, now);
                   }}
                 >
                   Today
                 </Button>
                 <Button
                   size="small"
-                  variant="outlined"
+                  variant={activeFilter === "week" ? "contained" : "outlined"}
                   onClick={() => {
                     const now = new Date();
                     const start = new Date(now);
@@ -200,14 +208,14 @@ export default function TransactionsPage() {
                     const dayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                     start.setDate(start.getDate() - dayOffset);
                     start.setHours(0, 0, 0, 0);
-                    applyQuickRange(start, now);
+                    applyQuickRange("week", start, now);
                   }}
                 >
                   Week
                 </Button>
                 <Button
                   size="small"
-                  variant="outlined"
+                  variant={activeFilter === "month" ? "contained" : "outlined"}
                   onClick={() => {
                     const now = new Date();
                     const start = new Date(
@@ -215,60 +223,44 @@ export default function TransactionsPage() {
                       now.getMonth(),
                       1,
                     );
-                    applyQuickRange(start, now);
+                    applyQuickRange("month", start, now);
                   }}
                 >
                   Month
                 </Button>
                 <Button
                   size="small"
-                  variant="outlined"
+                  variant={activeFilter === "year" ? "contained" : "outlined"}
                   onClick={() => {
                     const now = new Date();
                     const start = new Date(now.getFullYear(), 0, 1);
-                    applyQuickRange(start, now);
+                    applyQuickRange("year", start, now);
                   }}
                 >
                   Year
                 </Button>
                 <Button
                   size="small"
-                  variant={showCustomRange ? "contained" : "outlined"}
-                  onClick={() => setShowCustomRange((current) => !current)}
+                  variant={activeFilter === "custom" ? "contained" : "outlined"}
+                  onClick={() => {
+                    setActiveFilter("custom");
+                    setShowCustomRange((current) => !current);
+                  }}
                 >
-                  <DateRangeRounded fontSize="small" />
-                  <Box
-                    component="span"
-                    sx={{ display: { xs: "none", sm: "inline" }, ml: 0.5 }}
-                  >
-                    Custom
-                  </Box>
+                  Custom
                 </Button>
-                {hasRangeFilter ? (
-                  <>
-                    <IconButton
-                      size="small"
-                      aria-label="clear range"
-                      sx={{ display: { xs: "inline-flex", sm: "none" } }}
-                      onClick={() => {
-                        setStartDateTime("");
-                        setEndDateTime("");
-                      }}
-                    >
-                      <CloseRounded fontSize="small" />
-                    </IconButton>
-                    <Button
-                      size="small"
-                      sx={{ display: { xs: "none", sm: "inline-flex" } }}
-                      onClick={() => {
-                        setStartDateTime("");
-                        setEndDateTime("");
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </>
-                ) : null}
+                <IconButton
+                  size="small"
+                  aria-label="clear range"
+                  disabled={!hasRangeFilter}
+                  onClick={() => {
+                    setStartDateTime("");
+                    setEndDateTime("");
+                    setActiveFilter(null);
+                  }}
+                >
+                  <CloseRounded fontSize="small" />
+                </IconButton>
               </Stack>
 
               <Collapse in={showCustomRange}>
@@ -284,7 +276,10 @@ export default function TransactionsPage() {
                     label="From"
                     type="datetime-local"
                     value={startDateTime}
-                    onChange={(event) => setStartDateTime(event.target.value)}
+                    onChange={(event) => {
+                      setActiveFilter("custom");
+                      setStartDateTime(event.target.value);
+                    }}
                     slotProps={{
                       inputLabel: { shrink: true },
                     }}
@@ -295,7 +290,10 @@ export default function TransactionsPage() {
                     label="To"
                     type="datetime-local"
                     value={endDateTime}
-                    onChange={(event) => setEndDateTime(event.target.value)}
+                    onChange={(event) => {
+                      setActiveFilter("custom");
+                      setEndDateTime(event.target.value);
+                    }}
                     slotProps={{
                       inputLabel: { shrink: true },
                     }}
