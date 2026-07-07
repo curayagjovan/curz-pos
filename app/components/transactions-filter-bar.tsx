@@ -142,7 +142,8 @@ export default function TransactionsFilterBar({
             size="small"
             aria-label="clear range"
             disabled={!hasRangeFilter}
-            onClick={onClearRange}
+            // onClick={onClearRange}
+            onClick={onCloseCustomRange}
           >
             <CloseRounded fontSize="small" />
           </IconButton>
@@ -153,7 +154,7 @@ export default function TransactionsFilterBar({
             direction={{ xs: "column", sm: "row" }}
             spacing={0.75}
             alignItems="stretch"
-            sx={{ mt: 1 }}
+            sx={{ mt: 1.5 }}
           >
             <TextField
               fullWidth
@@ -177,17 +178,6 @@ export default function TransactionsFilterBar({
                 inputLabel: { shrink: true },
               }}
             />
-          </Stack>
-
-          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 0.75 }}>
-            <Button
-              size="small"
-              color="inherit"
-              startIcon={<CloseRounded fontSize="small" />}
-              onClick={onCloseCustomRange}
-            >
-              Close
-            </Button>
           </Stack>
         </Collapse>
       </Paper>
