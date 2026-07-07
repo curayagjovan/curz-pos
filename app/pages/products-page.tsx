@@ -571,6 +571,7 @@ export default function ProductsPage() {
       clearCart();
       setPaidAmountInput("0");
       setCartOpen(false);
+      setSearchQuery("");
       showSnackbar({
         message: data?.orderNo
           ? `Order ${data.orderNo} completed`
@@ -596,6 +597,7 @@ export default function ProductsPage() {
     showSnackbar,
     checkoutCooldown,
     startCheckoutCooldown,
+    setSearchQuery,
   ]);
 
   const handleCloseCart = useCallback(() => {
