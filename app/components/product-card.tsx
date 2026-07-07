@@ -406,13 +406,15 @@ const ProductCard = memo(function ProductCard({
               >
                 {product.name}
               </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.25 }}
-              >
-                {hasDescription ? product.description : "Tap to add to cart"}
-              </Typography>
+              {hasDescription ? (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mt: 0.25 }}
+                >
+                  {product.description}
+                </Typography>
+              ) : null}
             </Box>
 
             <Stack alignItems="flex-end" spacing={0.75}>
