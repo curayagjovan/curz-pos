@@ -15,6 +15,7 @@ import CloseRounded from "@mui/icons-material/CloseRounded";
 import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRounded from "@mui/icons-material/VisibilityRounded";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
+import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 
@@ -31,6 +32,28 @@ function toCurrency(value: number) {
 }
 
 type ActiveFilter = "today" | "week" | "month" | "year" | "custom" | null;
+
+function startOfWeek(date: Date) {
+  const start = new Date(date);
+  const day = start.getDay();
+  const dayOffset = day === 0 ? 6 : day - 1;
+  start.setDate(start.getDate() - dayOffset);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function startOfNextWeek(date: Date) {
+  const start = startOfWeek(date);
+  start.setDate(start.getDate() + 7);
+  return start;
+}
+
+function formatShortDate(date: Date) {
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
 
 export default function TransactionsPage() {
   const [startDateTime, setStartDateTime] = useState(() => {
@@ -108,6 +131,86 @@ export default function TransactionsPage() {
   }, [transactions, startDateTime, endDateTime, activeFilter]);
 
   const hasRangeFilter = startDateTime !== "" || endDateTime !== "";
+
+  const groupedTransactions = useMemo<TransactionGroup[] | undefined>(() => {
+    if (
+      activeFilter === null ||
+      activeFilter === "custom" ||
+      filteredTransactions.length === 0
+    ) {
+      return undefined;
+    }
+
+    const hourFormatter = new Intl.DateTimeFormat("en-PH", {
+      hour: "numeric",
+      hour12: true,
+    });
+    const dayFormatter = new Intl.DateTimeFormat("en-PH", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+    const monthFormatter = new Intl.DateTimeFormat("en-PH", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const groupsMap = new Map<string, TransactionGroup>();
+
+    for (const transaction of filteredTransactions) {
+      const createdAt = new Date(transaction.createdAt);
+      if (Number.isNaN(createdAt.getTime())) {
+        continue;
+      }
+
+      let groupKey = "";
+      let groupLabel = "";
+
+      if (activeFilter === "today") {
+        const hourStart = new Date(createdAt);
+        hourStart.setMinutes(0, 0, 0);
+        groupKey = `hour-${hourStart.toISOString()}`;
+        groupLabel = hourFormatter.format(hourStart);
+      }
+
+      if (activeFilter === "week") {
+        const dayStart = new Date(createdAt);
+        dayStart.setHours(0, 0, 0, 0);
+        groupKey = `day-${dayStart.toISOString()}`;
+        groupLabel = dayFormatter.format(dayStart);
+      }
+
+      if (activeFilter === "month") {
+        const weekStart = startOfWeek(createdAt);
+        const nextWeekStart = startOfNextWeek(createdAt);
+        groupKey = `week-${weekStart.toISOString()}`;
+        groupLabel = `${formatShortDate(weekStart)} - ${formatShortDate(new Date(nextWeekStart.getTime() - 1))}`;
+      }
+
+      if (activeFilter === "year") {
+        const monthStart = new Date(
+          createdAt.getFullYear(),
+          createdAt.getMonth(),
+          1,
+        );
+        groupKey = `month-${monthStart.getFullYear()}-${monthStart.getMonth()}`;
+        groupLabel = monthFormatter.format(monthStart);
+      }
+
+      const existingGroup = groupsMap.get(groupKey);
+      if (existingGroup) {
+        existingGroup.transactions.push(transaction);
+      } else {
+        groupsMap.set(groupKey, {
+          key: groupKey,
+          label: groupLabel,
+          transactions: [transaction],
+        });
+      }
+    }
+
+    return Array.from(groupsMap.values());
+  }, [filteredTransactions, activeFilter]);
 
   const {
     filteredSalesTotal,
@@ -324,6 +427,7 @@ export default function TransactionsPage() {
             loading={loading}
             error={error}
             onUpdateStatus={updateTransactionStatus}
+            groups={groupedTransactions}
           />
         </Stack>
       </Container>

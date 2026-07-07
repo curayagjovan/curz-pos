@@ -198,7 +198,7 @@ const ProductCard = memo(function ProductCard({
             width: "100%",
             position: "relative",
             overflow: "hidden",
-            borderRadius: 2,
+            borderRadius: 1,
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -236,9 +236,9 @@ const ProductCard = memo(function ProductCard({
             variant="outlined"
             sx={{
               width: "100%",
-              borderRadius: 2,
-              borderTopRightRadius: swipingRef.current ? 0 : 2,
-              borderBottomRightRadius: swipingRef.current ? 0 : 2,
+              borderRadius: 1,
+              borderTopRightRadius: swipingRef.current ? 0 : 1,
+              borderBottomRightRadius: swipingRef.current ? 0 : 1,
               borderColor: "divider",
               bgcolor: "background.paper",
               transform: `translateX(${dragOffset}px)`,
@@ -334,7 +334,7 @@ const ProductCard = memo(function ProductCard({
         variant="outlined"
         sx={{
           width: "100%",
-          borderRadius: 2,
+          borderRadius: 1,
           borderColor: "divider",
           position: "relative",
           overflow: "hidden",

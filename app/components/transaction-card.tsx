@@ -123,7 +123,7 @@ const TransactionCard = memo(function TransactionCard({
         variant="outlined"
         sx={{
           width: "100%",
-          borderRadius: 2,
+          borderRadius: 1,
           borderColor: "divider",
           overflow: "hidden",
         }}
