@@ -7,7 +7,8 @@ import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import CloseRounded from "@mui/icons-material/CloseRounded";
+import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 
 export type ActiveFilter =
   | "today"
@@ -22,17 +23,15 @@ type TransactionsFilterBarProps = {
   showCustomRange: boolean;
   startDateTime: string;
   endDateTime: string;
-  hasRangeFilter: boolean;
   onApplyQuickRange: (
     filter: Exclude<ActiveFilter, "custom" | null>,
     start: Date,
     end: Date,
   ) => void;
   onSelectCustom: () => void;
-  onClearRange: () => void;
   onStartDateTimeChange: (value: string) => void;
   onEndDateTimeChange: (value: string) => void;
-  onCloseCustomRange: () => void;
+  onToggleCustomRange: () => void;
 };
 
 export default function TransactionsFilterBar({
@@ -40,13 +39,11 @@ export default function TransactionsFilterBar({
   showCustomRange,
   startDateTime,
   endDateTime,
-  hasRangeFilter,
   onApplyQuickRange,
   onSelectCustom,
-  onClearRange,
   onStartDateTimeChange,
   onEndDateTimeChange,
-  onCloseCustomRange,
+  onToggleCustomRange,
 }: TransactionsFilterBarProps) {
   return (
     <Box
@@ -140,12 +137,16 @@ export default function TransactionsFilterBar({
           <div style={{ flexGrow: 1 }} />
           <IconButton
             size="small"
-            aria-label="clear range"
-            disabled={!hasRangeFilter}
-            // onClick={onClearRange}
-            onClick={onCloseCustomRange}
+            aria-label={
+              showCustomRange ? "hide date range inputs" : "show date range inputs"
+            }
+            onClick={onToggleCustomRange}
           >
-            <CloseRounded fontSize="small" />
+            {showCustomRange ? (
+              <ExpandLessRounded fontSize="small" />
+            ) : (
+              <ExpandMoreRounded fontSize="small" />
+            )}
           </IconButton>
         </Stack>
 

@@ -117,8 +117,6 @@ export default function TransactionsPage() {
     );
   }, [transactions, startDateTime, endDateTime, activeFilter]);
 
-  const hasRangeFilter = startDateTime !== "" || endDateTime !== "";
-
   const groupedTransactions = useMemo<TransactionGroup[] | undefined>(() => {
     if (
       activeFilter === null ||
@@ -254,12 +252,6 @@ export default function TransactionsPage() {
     setShowCustomRange(true);
   };
 
-  const handleClearRange = () => {
-    setStartDateTime("");
-    setEndDateTime("");
-    setActiveFilter(null);
-  };
-
   const handleStartDateTimeChange = (value: string) => {
     setActiveFilter("custom");
     setStartDateTime(value);
@@ -279,13 +271,13 @@ export default function TransactionsPage() {
             showCustomRange={showCustomRange}
             startDateTime={startDateTime}
             endDateTime={endDateTime}
-            hasRangeFilter={hasRangeFilter}
             onApplyQuickRange={applyQuickRange}
             onSelectCustom={handleSelectCustom}
-            onClearRange={handleClearRange}
             onStartDateTimeChange={handleStartDateTimeChange}
             onEndDateTimeChange={handleEndDateTimeChange}
-            onCloseCustomRange={() => setShowCustomRange(false)}
+            onToggleCustomRange={() =>
+              setShowCustomRange((current) => !current)
+            }
           />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
