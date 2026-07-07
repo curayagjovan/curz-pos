@@ -212,6 +212,7 @@ export default function MobilePageWrapper({
           pr: "env(safe-area-inset-right)",
           borderTop: "1px solid",
           borderColor: "divider",
+          borderRadius: 0,
         }}
       >
         <BottomNavigation
