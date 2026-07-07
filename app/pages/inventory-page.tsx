@@ -30,6 +30,7 @@ type ProductFormState = {
   id: string | null;
   sku: string;
   name: string;
+  description: string;
   price: string;
   bundleQty: string;
   bundlePrice: string;
@@ -45,6 +46,7 @@ const EMPTY_FORM: ProductFormState = {
   id: null,
   sku: "",
   name: "",
+  description: "",
   price: "0",
   bundleQty: "",
   bundlePrice: "",
@@ -59,7 +61,8 @@ function matchesSearch(product: Product, query: string) {
 
   return (
     product.name.toLowerCase().includes(normalizedQuery) ||
-    product.sku.toLowerCase().includes(normalizedQuery)
+    product.sku.toLowerCase().includes(normalizedQuery) ||
+    Boolean(product.description?.toLowerCase().includes(normalizedQuery))
   );
 }
 
@@ -85,16 +88,13 @@ export default function InventoryPage() {
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
 
   const filteredProducts = useMemo(() => {
-    const query = deferredSearchQuery.trim().toLowerCase();
-    if (!query) {
+    if (!deferredSearchQuery.trim()) {
       return products;
     }
 
-    return products.filter((product) => {
-      const name = product.name.toLowerCase();
-      const sku = product.sku.toLowerCase();
-      return name.includes(query) || sku.includes(query);
-    });
+    return products.filter((product) =>
+      matchesSearch(product, deferredSearchQuery),
+    );
   }, [products, deferredSearchQuery]);
 
   const handleProductTap = useCallback((product: Product) => {
@@ -102,6 +102,7 @@ export default function InventoryPage() {
       id: product.id,
       sku: product.sku,
       name: product.name,
+      description: product.description ?? "",
       price: Number(product.price).toFixed(2),
       bundleQty:
         product.bundleQty === null || product.bundleQty === undefined
@@ -250,6 +251,7 @@ export default function InventoryPage() {
       const payload = {
         ...(form.sku.trim() ? { sku: form.sku.trim() } : {}),
         name,
+        description: form.description.trim() ? form.description.trim() : null,
         price,
         bundleQty,
         bundlePrice,
@@ -405,6 +407,18 @@ export default function InventoryPage() {
               required
               error={Boolean(formErrors.name)}
               helperText={formErrors.name}
+            />
+            <TextField
+              label="Description"
+              value={form.description}
+              onChange={(event) =>
+                handleFieldChange("description", event.target.value)
+              }
+              size="medium"
+              fullWidth
+              multiline
+              minRows={2}
+              helperText="Optional"
             />
             <TextField
               label="Price"

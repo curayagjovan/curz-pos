@@ -153,7 +153,12 @@ export default function ProductsPage() {
     return products.filter((product) => {
       const name = product.name.toLowerCase();
       const sku = product.sku.toLowerCase();
-      return name.includes(query) || sku.includes(query);
+      const description = product.description?.toLowerCase() ?? "";
+      return (
+        name.includes(query) ||
+        sku.includes(query) ||
+        description.includes(query)
+      );
     });
   }, [products, deferredSearchQuery]);
 

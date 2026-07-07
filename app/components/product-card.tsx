@@ -60,9 +60,7 @@ function getBundleMeta(product: Product) {
 
   return {
     hasBundle,
-    label: hasBundle
-      ? `Bundle ${bundleQty} for ₱${bundlePrice.toFixed(2)}`
-      : "No bundle",
+    label: hasBundle ? `Bundle ${bundleQty} for ₱${bundlePrice.toFixed(2)}` : "",
   };
 }
 
@@ -313,12 +311,14 @@ const ProductCard = memo(function ProductCard({
                       label={`Unit ${product.unit}`}
                     />
                   ) : null}
-                  <Chip
-                    size="small"
-                    color={hasBundle ? "success" : "default"}
-                    variant={hasBundle ? "filled" : "outlined"}
-                    label={bundleLabel}
-                  />
+                  {hasBundle ? (
+                    <Chip
+                      size="small"
+                      color="success"
+                      variant="filled"
+                      label={bundleLabel}
+                    />
+                  ) : null}
                 </Stack>
               </Stack>
             </CardActionArea>
@@ -423,12 +423,14 @@ const ProductCard = memo(function ProductCard({
                 label={`Unit ₱${Number(product.price).toFixed(2)}`}
                 sx={{ fontWeight: 700 }}
               />
-              <Chip
-                size="small"
-                variant="outlined"
-                color={hasBundle ? "success" : "default"}
-                label={bundleLabel}
-              />
+              {hasBundle ? (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color="success"
+                  label={bundleLabel}
+                />
+              ) : null}
             </Stack>
           </Stack>
         </CardActionArea>
