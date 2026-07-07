@@ -82,7 +82,7 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
               sx={{
                 border: "1px solid",
                 borderColor: "divider",
-                borderRadius: 1,
+                borderRadius: 2,
                 overflow: "hidden",
                 mb: 1,
               }}
@@ -118,6 +118,7 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
                 unmountOnExit
                 sx={{
                   p: 1,
+                  pb: 0.5,
                 }}
               >
                 <List disablePadding>

@@ -281,7 +281,7 @@ export default function TransactionsPage() {
               sx={{
                 p: 1,
                 borderColor: "divider",
-                borderRadius: 1,
+                borderRadius: 2,
                 marginTop: 1,
               }}
             >

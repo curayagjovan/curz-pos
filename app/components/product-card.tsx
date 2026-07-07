@@ -60,7 +60,9 @@ function getBundleMeta(product: Product) {
 
   return {
     hasBundle,
-    label: hasBundle ? `Bundle ${bundleQty} for ₱${bundlePrice.toFixed(2)}` : "",
+    label: hasBundle
+      ? `Bundle ${bundleQty} for ₱${bundlePrice.toFixed(2)}`
+      : "",
   };
 }
 
@@ -196,7 +198,7 @@ const ProductCard = memo(function ProductCard({
             width: "100%",
             position: "relative",
             overflow: "hidden",
-            borderRadius: 1,
+            borderRadius: 2,
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -234,9 +236,9 @@ const ProductCard = memo(function ProductCard({
             variant="outlined"
             sx={{
               width: "100%",
-              borderRadius: 1,
-              borderTopRightRadius: swipingRef.current ? 0 : 1,
-              borderBottomRightRadius: swipingRef.current ? 0 : 1,
+              borderRadius: 2,
+              borderTopRightRadius: swipingRef.current ? 0 : 2,
+              borderBottomRightRadius: swipingRef.current ? 0 : 2,
               borderColor: "divider",
               bgcolor: "background.paper",
               transform: `translateX(${dragOffset}px)`,
@@ -334,7 +336,7 @@ const ProductCard = memo(function ProductCard({
         variant="outlined"
         sx={{
           width: "100%",
-          borderRadius: 1,
+          borderRadius: 2,
           borderColor: "divider",
           position: "relative",
           overflow: "hidden",
