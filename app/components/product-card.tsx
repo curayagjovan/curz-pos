@@ -266,10 +266,13 @@ const ProductCard = memo(function ProductCard({
                   justifyContent="space-between"
                 >
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
+                    {/* <Typography
                       variant="caption"
                       fontSize={6}
-                    >{`SKU ${product.sku}`}</Typography>
+                    >{`SKU ${product.sku}`}</Typography> */}
+                    <Typography variant="caption" color="text.secondary">
+                      Product Name
+                    </Typography>
                     <Typography
                       variant="body1"
                       sx={{ fontWeight: 700, lineHeight: 1.25 }}
@@ -277,13 +280,23 @@ const ProductCard = memo(function ProductCard({
                       {product.name}
                     </Typography>
                   </Box>
-
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 800, whiteSpace: "nowrap", pl: 1 }}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                    }}
                   >
-                    ₱{Number(product.price).toFixed(2)}
-                  </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Product Price
+                    </Typography>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 800, whiteSpace: "nowrap", pl: 1 }}
+                    >
+                      ₱{Number(product.price).toFixed(2)}
+                    </Typography>
+                  </Box>
                 </Stack>
 
                 {hasDescription ? (
