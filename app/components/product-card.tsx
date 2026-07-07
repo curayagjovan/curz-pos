@@ -267,17 +267,14 @@ const ProductCard = memo(function ProductCard({
                 >
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography
+                      variant="caption"
+                      fontSize={6}
+                    >{`SKU ${product.sku}`}</Typography>
+                    <Typography
                       variant="body1"
                       sx={{ fontWeight: 700, lineHeight: 1.25 }}
                     >
                       {product.name}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mt: 0.3 }}
-                    >
-                      Tap to edit product details
                     </Typography>
                   </Box>
 
@@ -301,11 +298,6 @@ const ProductCard = memo(function ProductCard({
                   useFlexGap
                   flexWrap="wrap"
                 >
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label={`SKU ${product.sku}`}
-                  />
                   {hasUnit ? (
                     <Chip
                       size="small"
