@@ -441,10 +441,8 @@ export default function ProductsPage() {
       } else {
         triggerCartPulse();
       }
-
-      showSnackbar({ message: `${product.name} added to cart` });
     },
-    [addToCart, showSnackbar, triggerCartPulse],
+    [addToCart, triggerCartPulse],
   );
 
   const handleCartFabClick = useCallback(() => {
