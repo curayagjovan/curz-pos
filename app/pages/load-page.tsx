@@ -252,8 +252,6 @@ export default function LoadPage() {
             </Stack>
           </Box>
 
-          <Divider />
-
           {filteredItems.length === 0 ? (
             <ListEmptyState description="No load types match your search." />
           ) : (
