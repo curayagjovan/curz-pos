@@ -20,7 +20,11 @@ import {
   type LoadBrand,
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
-import { buildLoadMessage, buildMessengerUrl } from "@/lib/messenger";
+import {
+  LoadRequestShareCancelledError,
+  buildLoadMessage,
+  shareLoadRequest,
+} from "@/lib/load-message";
 import { detectNetworkGroup, normalizeMobileNumber } from "@/lib/ph-network";
 import type { Transaction } from "@/types/transaction";
 
@@ -130,6 +134,9 @@ export default function LoadPage() {
     setSending(true);
 
     try {
+      const message = buildLoadMessage(selectedItem, confirmNumber);
+      const shareResult = await shareLoadRequest(message);
+
       const requestId = crypto.randomUUID();
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -164,22 +171,20 @@ export default function LoadPage() {
         addTransaction(savedTransaction as Transaction);
       }
 
-      const message = buildLoadMessage(selectedItem, confirmNumber);
-      const messengerUrl = buildMessengerUrl(message);
-
-      if (messengerUrl) {
-        window.location.href = messengerUrl;
-      } else {
-        await navigator.clipboard?.writeText(message).catch(() => undefined);
+      if (shareResult === "copied") {
         showSnackbar({
           message:
-            "Messenger page not configured. Load command copied instead.",
+            "Sharing isn't supported on this device. Load command copied instead.",
           severity: "info",
         });
       }
 
       setSelectedItem(null);
     } catch (error) {
+      if (error instanceof LoadRequestShareCancelledError) {
+        return;
+      }
+
       showSnackbar({
         message: error instanceof Error ? error.message : "Unable to send load",
         severity: "error",

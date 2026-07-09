@@ -96,7 +96,7 @@ export default function LoadConfirmDrawer({
             onClick={onSend}
             disabled={sending}
           >
-            {sending ? "Sending..." : "Send via Messenger"}
+            {sending ? "Sharing..." : "Share Request"}
           </Button>
         </Stack>
       </Box>
