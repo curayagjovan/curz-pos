@@ -614,7 +614,11 @@ export default function ProductsPage() {
     <MobilePageWrapper title="Products">
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
-          <ProductsSearchBar value={searchQuery} onChange={setSearchQuery} />
+          <ProductsSearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            icon="search"
+          />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
             {loading

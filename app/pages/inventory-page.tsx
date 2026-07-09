@@ -278,6 +278,7 @@ export default function InventoryPage() {
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
           <ProductsSearchBar
+            icon="search"
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search inventory"

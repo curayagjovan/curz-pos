@@ -6,13 +6,14 @@ import InputBase from "@mui/material/InputBase";
 import Paper from "@mui/material/Paper";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
+import DialpadIcon from "@mui/icons-material/Dialpad";
 
 type ProductsSearchBarProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
-  icon?: "search" | "none";
+  icon?: "search" | "mobile" | "none";
   sticky?: boolean;
   inputMode?: "text" | "tel" | "numeric" | "search";
   autoFocus?: boolean;
@@ -23,7 +24,7 @@ export default function ProductsSearchBar({
   onChange,
   placeholder = "Search products",
   ariaLabel = "search products",
-  icon = "search",
+  icon,
   sticky = true,
   inputMode,
   autoFocus,
@@ -74,7 +75,11 @@ export default function ProductsSearchBar({
           <IconButton type="button" sx={{ p: 1 }} aria-label="search">
             <SearchIcon fontSize="small" />
           </IconButton>
-        ) : null}
+        ) : (
+          <IconButton type="button" sx={{ p: 1 }} aria-label="search">
+            <DialpadIcon fontSize="small" />
+          </IconButton>
+        )}
       </Paper>
     </Box>
   );

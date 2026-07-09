@@ -1,7 +1,6 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -9,6 +8,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import Chip from "@mui/material/Chip";
 
 export type ActiveFilter =
   | "today"
@@ -78,21 +78,20 @@ export default function TransactionsFilterBar({
             },
           }}
         >
-          <Button
-            size="small"
-            variant={activeFilter === "today" ? "contained" : "outlined"}
+          <Chip
+            label="Today"
+            color={activeFilter === "today" ? "primary" : "default"}
             onClick={() => {
               const now = new Date();
               const start = new Date(now);
               start.setHours(0, 0, 0, 0);
               onApplyQuickRange("today", start, now);
             }}
-          >
-            Today
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === "week" ? "contained" : "outlined"}
+          />
+
+          <Chip
+            label="Week"
+            color={activeFilter === "week" ? "primary" : "default"}
             onClick={() => {
               const now = new Date();
               const start = new Date(now);
@@ -102,43 +101,40 @@ export default function TransactionsFilterBar({
               start.setHours(0, 0, 0, 0);
               onApplyQuickRange("week", start, now);
             }}
-          >
-            Week
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === "month" ? "contained" : "outlined"}
+          />
+
+          <Chip
+            label="Month"
+            color={activeFilter === "month" ? "primary" : "default"}
             onClick={() => {
               const now = new Date();
               const start = new Date(now.getFullYear(), now.getMonth(), 1);
               onApplyQuickRange("month", start, now);
             }}
-          >
-            Month
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === "year" ? "contained" : "outlined"}
+          />
+
+          <Chip
+            label="Year"
+            color={activeFilter === "year" ? "primary" : "default"}
             onClick={() => {
               const now = new Date();
               const start = new Date(now.getFullYear(), 0, 1);
               onApplyQuickRange("year", start, now);
             }}
-          >
-            Year
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === "custom" ? "contained" : "outlined"}
+          />
+
+          <Chip
+            label="Custom"
+            color={activeFilter === "custom" ? "primary" : "default"}
             onClick={onSelectCustom}
-          >
-            Custom
-          </Button>
+          />
           <div style={{ flexGrow: 1 }} />
           <IconButton
             size="small"
             aria-label={
-              showCustomRange ? "hide date range inputs" : "show date range inputs"
+              showCustomRange
+                ? "hide date range inputs"
+                : "show date range inputs"
             }
             onClick={onToggleCustomRange}
           >

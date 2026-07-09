@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
@@ -187,8 +188,7 @@ export default function LoadPage() {
       setSelectedItem(null);
     } catch (error) {
       showSnackbar({
-        message:
-          error instanceof Error ? error.message : "Unable to send load",
+        message: error instanceof Error ? error.message : "Unable to send load",
         severity: "error",
       });
     } finally {
@@ -198,44 +198,59 @@ export default function LoadPage() {
 
   return (
     <MobilePageWrapper title="Load">
-      <Container maxWidth="sm" sx={{ py: 1.5 }}>
+      <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
-          <ProductsSearchBar
-            value={mobileNumber}
-            onChange={handleNumberChange}
-            placeholder="09171234567"
-            ariaLabel="mobile number"
-            icon="none"
-            sticky={false}
-            inputMode="tel"
-          />
-
-          <ProductsSearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search load type"
-            ariaLabel="search load type"
-          />
-
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ flexWrap: "wrap", rowGap: 1 }}
+          <Box
+            sx={{
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+              pt: 0.5,
+              pb: 1,
+              bgcolor: "background.default",
+            }}
           >
-            <Chip
-              label="All"
-              color={brandFilter.size === 0 ? "primary" : "default"}
-              onClick={clearBrandFilter}
-            />
-            {LOAD_BRANDS.map(({ brand, label }) => (
-              <Chip
-                key={brand}
-                label={label}
-                color={brandFilter.has(brand) ? "primary" : "default"}
-                onClick={() => toggleBrand(brand)}
+            <Stack spacing={0.5}>
+              <ProductsSearchBar
+                value={mobileNumber}
+                onChange={handleNumberChange}
+                placeholder="Mobile number"
+                ariaLabel="mobile number"
+                icon="mobile"
+                sticky={false}
+                inputMode="tel"
               />
-            ))}
-          </Stack>
+
+              <ProductsSearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search load type"
+                ariaLabel="search load type"
+                icon="search"
+                sticky={false}
+              />
+
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ flexWrap: "wrap", rowGap: 1 }}
+              >
+                <Chip
+                  label="All"
+                  color={brandFilter.size === 0 ? "primary" : "default"}
+                  onClick={clearBrandFilter}
+                />
+                {LOAD_BRANDS.map(({ brand, label }) => (
+                  <Chip
+                    key={brand}
+                    label={label}
+                    color={brandFilter.has(brand) ? "primary" : "default"}
+                    onClick={() => toggleBrand(brand)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+          </Box>
 
           <Divider />
 
