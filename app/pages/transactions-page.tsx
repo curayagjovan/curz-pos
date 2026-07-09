@@ -210,12 +210,15 @@ export default function TransactionsPage() {
           return totals;
         }
 
-        if (transaction.status === "PAID") {
+        if (transaction.status === "PAID" || transaction.status === "REFUNDED") {
           totals.filteredSalesTotal += amount;
         }
 
         if (transaction.status === "REFUNDED") {
-          totals.filteredRefundedTotal += amount;
+          const refundAmount = Number(transaction.refundAmount);
+          totals.filteredRefundedTotal += Number.isFinite(refundAmount)
+            ? refundAmount
+            : 0;
         }
 
         if (transaction.status === "VOIDED") {
