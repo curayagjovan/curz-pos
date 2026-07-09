@@ -42,6 +42,7 @@ export default function LoadConfirmDrawer({
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           pb: "env(safe-area-inset-bottom)",
+          maxHeight: "78dvh",
         },
       }}
     >
@@ -77,7 +78,6 @@ export default function LoadConfirmDrawer({
           icon="mobile"
           sticky={false}
           inputMode="tel"
-          autoFocus
         />
 
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
