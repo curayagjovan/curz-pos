@@ -11,6 +11,7 @@ import Typography from "@mui/material/Typography";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
+import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
@@ -18,7 +19,7 @@ type MobilePageWrapperProps = {
   children: React.ReactNode;
 };
 
-type NavPage = "products" | "transactions" | "inventory";
+type NavPage = "products" | "transactions" | "inventory" | "load";
 
 const APP_BAR_HEIGHT = 56;
 const BOTTOM_NAV_HEIGHT = 68;
@@ -256,6 +257,19 @@ export default function MobilePageWrapper({
             value="inventory"
             label="Inventory"
             icon={<Inventory2Rounded fontSize="small" />}
+            sx={{
+              minWidth: 0,
+              px: 0.5,
+              ".MuiBottomNavigationAction-label": {
+                fontSize: 11,
+                fontWeight: 600,
+              },
+            }}
+          />
+          <BottomNavigationAction
+            value="load"
+            label="Load"
+            icon={<SimCardRounded fontSize="small" />}
             sx={{
               minWidth: 0,
               px: 0.5,

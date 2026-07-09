@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const count = await prisma.product.count({
-      where: { isActive: true },
+      where: { isActive: true, NOT: { sku: { startsWith: "LOAD-" } } },
     });
 
     return NextResponse.json({ count });
