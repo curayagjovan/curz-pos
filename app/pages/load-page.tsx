@@ -168,7 +168,7 @@ export default function LoadPage() {
       const messengerUrl = buildMessengerUrl(message);
 
       if (messengerUrl) {
-        window.open(messengerUrl, "_blank", "noopener,noreferrer");
+        window.location.href = messengerUrl;
       } else {
         await navigator.clipboard?.writeText(message).catch(() => undefined);
         showSnackbar({
