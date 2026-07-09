@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import TextField from "@mui/material/TextField";
 
 type LoadConfirmDrawerProps = {
   open: boolean;
@@ -53,11 +54,7 @@ export default function LoadConfirmDrawer({
           justifyContent="space-between"
         >
           <Typography variant="h6">{item?.label}</Typography>
-          <IconButton
-            onClick={onClose}
-            aria-label="close"
-            disabled={sending}
-          >
+          <IconButton onClick={onClose} aria-label="close" disabled={sending}>
             <CloseRounded fontSize="small" />
           </IconButton>
         </Stack>
@@ -70,14 +67,18 @@ export default function LoadConfirmDrawer({
       <Divider />
 
       <Box sx={{ px: 2, py: 1.5 }}>
-        <ProductsSearchBar
+        <TextField
+          fullWidth
           value={confirmNumber}
-          onChange={onConfirmNumberChange}
-          placeholder="Mobile number"
-          ariaLabel="mobile number"
-          icon="mobile"
-          sticky={false}
-          inputMode="tel"
+          placeholder="Enter mobile number"
+          onChange={(event) => onConfirmNumberChange(event.target.value)}
+          slotProps={{
+            htmlInput: {
+              min: 0,
+              step: "0.01",
+              inputMode: "tel",
+            },
+          }}
         />
 
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
