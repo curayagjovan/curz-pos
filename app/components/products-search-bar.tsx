@@ -12,6 +12,10 @@ type ProductsSearchBarProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  icon?: "search" | "none";
+  sticky?: boolean;
+  inputMode?: "text" | "tel" | "numeric" | "search";
+  autoFocus?: boolean;
 };
 
 export default function ProductsSearchBar({
@@ -19,17 +23,25 @@ export default function ProductsSearchBar({
   onChange,
   placeholder = "Search products",
   ariaLabel = "search products",
+  icon = "search",
+  sticky = true,
+  inputMode,
+  autoFocus,
 }: ProductsSearchBarProps) {
   return (
     <Box
-      sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: 5,
-        pt: 1,
-        pb: 1,
-        bgcolor: "background.default",
-      }}
+      sx={
+        sticky
+          ? {
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+              pt: 1,
+              pb: 1,
+              bgcolor: "background.default",
+            }
+          : { py: 0.5 }
+      }
     >
       <Paper
         sx={{
@@ -37,6 +49,7 @@ export default function ProductsSearchBar({
           display: "flex",
           alignItems: "center",
           width: "100%",
+          minHeight: 40,
         }}
       >
         <InputBase
@@ -44,21 +57,24 @@ export default function ProductsSearchBar({
           onChange={(event) => onChange(event.target.value)}
           sx={{ ml: 1, flex: 1 }}
           placeholder={placeholder}
-          inputProps={{ "aria-label": ariaLabel }}
+          autoFocus={autoFocus}
+          inputProps={{ "aria-label": ariaLabel, inputMode }}
         />
         {value.trim().length > 0 ? (
           <IconButton
             type="button"
             sx={{ p: 1 }}
-            aria-label="clear search"
+            aria-label="clear"
             onClick={() => onChange("")}
           >
             <CloseIcon fontSize="small" />
           </IconButton>
         ) : null}
-        <IconButton type="button" sx={{ p: 1 }} aria-label="search">
-          <SearchIcon fontSize="small" />
-        </IconButton>
+        {icon === "search" ? (
+          <IconButton type="button" sx={{ p: 1 }} aria-label="search">
+            <SearchIcon fontSize="small" />
+          </IconButton>
+        ) : null}
       </Paper>
     </Box>
   );

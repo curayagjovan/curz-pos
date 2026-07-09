@@ -11,11 +11,11 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
 import ListEmptyState from "@/app/components/list-empty-state";
 import LoadItemCard from "@/app/components/load-item-card";
+import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
@@ -200,21 +200,21 @@ export default function LoadPage() {
     <MobilePageWrapper title="Load">
       <Container maxWidth="sm" sx={{ py: 1.5 }}>
         <Stack spacing={1.5}>
-          <TextField
-            label="Mobile number"
-            placeholder="09171234567"
+          <ProductsSearchBar
             value={mobileNumber}
-            onChange={(event) => handleNumberChange(event.target.value)}
-            fullWidth
-            slotProps={{ input: { inputMode: "tel" } }}
+            onChange={handleNumberChange}
+            placeholder="09171234567"
+            ariaLabel="mobile number"
+            icon="none"
+            sticky={false}
+            inputMode="tel"
           />
 
-          <TextField
-            label="Search load type"
-            placeholder="e.g. Globe 50, TNT100"
+          <ProductsSearchBar
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            fullWidth
+            onChange={setSearchQuery}
+            placeholder="Search load type"
+            ariaLabel="search load type"
           />
 
           <Stack
@@ -269,13 +269,15 @@ export default function LoadPage() {
               {selectedItem ? brandLabel(selectedItem.brand) : ""} · ₱
               {selectedItem?.amount.toFixed(2)}
             </Typography>
-            <TextField
-              label="Mobile number"
+            <ProductsSearchBar
               value={confirmNumber}
-              onChange={(event) => setConfirmNumber(event.target.value)}
-              fullWidth
+              onChange={setConfirmNumber}
+              placeholder="Mobile number"
+              ariaLabel="mobile number"
+              icon="none"
+              sticky={false}
+              inputMode="tel"
               autoFocus
-              slotProps={{ input: { inputMode: "tel" } }}
             />
           </Stack>
         </DialogContent>
