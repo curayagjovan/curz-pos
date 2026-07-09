@@ -117,7 +117,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           pb: "env(safe-area-inset-bottom)",
-          maxHeight: "78vh",
+          maxHeight: "78dvh",
         },
       }}
     >

@@ -8,6 +8,7 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f8fafc;
   color: #111111;
   color-scheme: light;
@@ -29,4 +30,5 @@ body {
 #__next,
 main {
   min-height: 100vh;
+  min-height: 100dvh;
 }
