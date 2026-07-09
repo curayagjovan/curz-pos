@@ -101,7 +101,8 @@ const TransactionCard = memo(function TransactionCard({
   const change = Math.max(0, Number(paidAmount) - Number(transaction.total));
   const hasNote = Boolean(transaction.note?.trim());
   const itemCount = transactionItems.reduce(
-    (sum, item) => sum + Number(item.quantity),
+    (sum, item) =>
+      sum + Math.max(0, Number(item.quantity) - Number(item.returnedQuantity ?? 0)),
     0,
   );
   const canReturnItems = transaction.status === "PAID";
@@ -455,7 +456,14 @@ const TransactionCard = memo(function TransactionCard({
             </Stack>
 
             <Stack spacing={0.9}>
-              {transactionItems.map((item) => (
+              {transactionItems.map((item) => {
+                const remainingQty = Math.max(
+                  0,
+                  Number(item.quantity) - Number(item.returnedQuantity ?? 0),
+                );
+                const remainingLineTotal = remainingQty * Number(item.unitPrice);
+
+                return (
                 <Stack
                   key={item.id}
                   direction="row"
@@ -478,7 +486,7 @@ const TransactionCard = memo(function TransactionCard({
                       {item.productName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Qty {item.quantity} x {formatCurrency(item.unitPrice)}
+                      Qty {remainingQty} x {formatCurrency(item.unitPrice)}
                     </Typography>
                     {item.returnedQuantity > 0 ? (
                       <Typography
@@ -542,10 +550,11 @@ const TransactionCard = memo(function TransactionCard({
                           : "none",
                     }}
                   >
-                    {formatCurrency(item.lineTotal)}
+                    {formatCurrency(remainingLineTotal)}
                   </Typography>
                 </Stack>
-              ))}
+                );
+              })}
 
               {transactionItems.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
