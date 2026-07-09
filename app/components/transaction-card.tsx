@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Chip from "@mui/material/Chip";
 import Collapse from "@mui/material/Collapse";
@@ -13,12 +14,18 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import AddRounded from "@mui/icons-material/AddRounded";
 import KeyboardArrowDownRounded from "@mui/icons-material/KeyboardArrowDownRounded";
+import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import type { Transaction } from "@/types/transaction";
 
 type TransactionCardProps = {
   transaction: Transaction;
-  onUpdateStatus: (id: string, status: Transaction["status"]) => Promise<void>;
+  onUpdateStatus: (
+    id: string,
+    status: Transaction["status"],
+    items?: Array<{ id: string; returnedQuantity: number }>,
+  ) => Promise<void>;
 };
 
 function getStatusColor(status: Transaction["status"]) {
@@ -79,12 +86,17 @@ const TransactionCard = memo(function TransactionCard({
   transaction,
   onUpdateStatus,
 }: TransactionCardProps) {
-  const transactionItems = Array.isArray(transaction.items)
-    ? transaction.items
-    : [];
+  const transactionItems = useMemo(
+    () => (Array.isArray(transaction.items) ? transaction.items : []),
+    [transaction.items],
+  );
   const [expanded, setExpanded] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [returnMode, setReturnMode] = useState(false);
+  const [returnQuantities, setReturnQuantities] = useState<
+    Record<string, number>
+  >({});
   const paidAmount = transaction.amountPaid ?? transaction.total;
   const change = Math.max(0, Number(paidAmount) - Number(transaction.total));
   const hasNote = Boolean(transaction.note?.trim());
@@ -92,6 +104,33 @@ const TransactionCard = memo(function TransactionCard({
     (sum, item) => sum + Number(item.quantity),
     0,
   );
+  const canReturnItems = transaction.status === "PAID";
+
+  const returnTotal = useMemo(
+    () =>
+      transactionItems.reduce((sum, item) => {
+        const returnQty = returnQuantities[item.id] ?? 0;
+        return sum + returnQty * Number(item.unitPrice);
+      }, 0),
+    [transactionItems, returnQuantities],
+  );
+  const returnUnitCount = useMemo(
+    () => Object.values(returnQuantities).reduce((sum, qty) => sum + qty, 0),
+    [returnQuantities],
+  );
+  const hasRefundDetails =
+    transaction.status === "REFUNDED" && transaction.refundAmount !== null;
+  const returnedUnitCount = useMemo(
+    () =>
+      transactionItems.reduce(
+        (sum, item) => sum + Number(item.returnedQuantity ?? 0),
+        0,
+      ),
+    [transactionItems],
+  );
+  const remainingAmount = hasRefundDetails
+    ? Math.max(0, Number(paidAmount) - Number(transaction.refundAmount))
+    : 0;
 
   const handleStatusChange = async (nextStatus: Transaction["status"]) => {
     if (nextStatus === transaction.status || statusUpdating) {
@@ -108,6 +147,61 @@ const TransactionCard = memo(function TransactionCard({
 
     try {
       await onUpdateStatus(transaction.id, nextStatus);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : "Unable to update sale status",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleStartReturn = () => {
+    setStatusError(null);
+    setReturnQuantities({});
+    setReturnMode(true);
+  };
+
+  const handleCancelReturn = () => {
+    setReturnMode(false);
+    setReturnQuantities({});
+  };
+
+  const handleReturnQuantityChange = (item: Transaction["items"][number], delta: number) => {
+    setReturnQuantities((current) => {
+      const nextQty = Math.min(
+        Number(item.quantity),
+        Math.max(0, (current[item.id] ?? 0) + delta),
+      );
+
+      return { ...current, [item.id]: nextQty };
+    });
+  };
+
+  const handleProcessRefund = async () => {
+    if (statusUpdating || returnUnitCount <= 0) {
+      return;
+    }
+
+    const confirmationMessage = `Refund ${formatCurrency(returnTotal)} for ${returnUnitCount} item(s)?`;
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      const returnItems = Object.entries(returnQuantities)
+        .filter(([, returnedQuantity]) => returnedQuantity > 0)
+        .map(([itemId, returnedQuantity]) => ({
+          id: itemId,
+          returnedQuantity,
+        }));
+
+      await onUpdateStatus(transaction.id, "REFUNDED", returnItems);
+      setReturnMode(false);
+      setReturnQuantities({});
     } catch (error) {
       setStatusError(
         error instanceof Error ? error.message : "Unable to update sale status",
@@ -279,16 +373,86 @@ const TransactionCard = memo(function TransactionCard({
             </Box>
           </Stack>
 
+          {hasRefundDetails ? (
+            <>
+              <Divider />
+              <Box sx={{ px: 1.25, py: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+                >
+                  Refund Details
+                </Typography>
+
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  divider={<Divider orientation="vertical" flexItem />}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Items Returned
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15 }}
+                    >
+                      {returnedUnitCount}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Refund Amount
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15, color: "warning.main" }}
+                    >
+                      {formatCurrency(transaction.refundAmount)}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Remaining Amount
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15 }}
+                    >
+                      {formatCurrency(remainingAmount)}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            </>
+          ) : null}
+
           <Divider />
 
           <Box sx={{ px: 1.25, py: 1 }}>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.75 }}
             >
-              Items Bought
-            </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ letterSpacing: 0.3 }}
+              >
+                Items Bought
+              </Typography>
+
+              {canReturnItems && !returnMode && transactionItems.length > 0 ? (
+                <Button size="small" onClick={handleStartReturn}>
+                  Return Items
+                </Button>
+              ) : null}
+            </Stack>
 
             <Stack spacing={0.9}>
               {transactionItems.map((item) => (
@@ -300,14 +464,84 @@ const TransactionCard = memo(function TransactionCard({
                   justifyContent="space-between"
                 >
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        textDecoration:
+                          item.returnedQuantity >= item.quantity &&
+                          item.returnedQuantity > 0
+                            ? "line-through"
+                            : "none",
+                      }}
+                    >
                       {item.productName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Qty {item.quantity} x {formatCurrency(item.unitPrice)}
                     </Typography>
+                    {item.returnedQuantity > 0 ? (
+                      <Typography
+                        variant="caption"
+                        color="warning.main"
+                        sx={{ display: "block" }}
+                      >
+                        Returned {item.returnedQuantity}
+                      </Typography>
+                    ) : null}
+
+                    {returnMode ? (
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="center"
+                        sx={{ mt: 0.5 }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          Return qty:
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          disabled={(returnQuantities[item.id] ?? 0) <= 0}
+                          onClick={() => handleReturnQuantityChange(item, -1)}
+                          aria-label={`decrease return quantity for ${item.productName}`}
+                        >
+                          <RemoveRounded fontSize="small" />
+                        </IconButton>
+                        <Typography
+                          variant="body2"
+                          sx={{ minWidth: 20, textAlign: "center" }}
+                        >
+                          {returnQuantities[item.id] ?? 0}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          disabled={
+                            (returnQuantities[item.id] ?? 0) >=
+                            Number(item.quantity)
+                          }
+                          onClick={() => handleReturnQuantityChange(item, 1)}
+                          aria-label={`increase return quantity for ${item.productName}`}
+                        >
+                          <AddRounded fontSize="small" />
+                        </IconButton>
+                        <Typography variant="caption" color="text.secondary">
+                          of {item.quantity}
+                        </Typography>
+                      </Stack>
+                    ) : null}
                   </Box>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      textDecoration:
+                        item.returnedQuantity >= item.quantity &&
+                        item.returnedQuantity > 0
+                          ? "line-through"
+                          : "none",
+                    }}
+                  >
                     {formatCurrency(item.lineTotal)}
                   </Typography>
                 </Stack>
@@ -319,6 +553,50 @@ const TransactionCard = memo(function TransactionCard({
                 </Typography>
               ) : null}
             </Stack>
+
+            {returnMode ? (
+              <Box sx={{ mt: 1.25 }}>
+                <Divider sx={{ mb: 1 }} />
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Refund total
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 800 }}>
+                    {formatCurrency(returnTotal)}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                  <Button
+                    size="small"
+                    disabled={statusUpdating}
+                    onClick={handleCancelReturn}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="warning"
+                    disabled={statusUpdating || returnUnitCount <= 0}
+                    onClick={handleProcessRefund}
+                  >
+                    Process Refund
+                  </Button>
+                </Stack>
+
+                {statusError ? (
+                  <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                    {statusError}
+                  </Alert>
+                ) : null}
+              </Box>
+            ) : null}
           </Box>
 
           {hasNote ? (

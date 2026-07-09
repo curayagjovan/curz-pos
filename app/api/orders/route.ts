@@ -22,9 +22,15 @@ type OrderPayload = {
   items?: OrderItemInput[];
 };
 
+type OrderItemReturnInput = {
+  id?: string;
+  returnedQuantity?: number;
+};
+
 type OrderStatusUpdatePayload = {
   id?: string;
   status?: "PAID" | "REFUNDED" | "VOIDED";
+  items?: OrderItemReturnInput[];
 };
 
 const orderItemSelect = {
@@ -33,6 +39,7 @@ const orderItemSelect = {
   quantity: true,
   unitPrice: true,
   lineTotal: true,
+  returnedQuantity: true,
 } as const;
 
 const orderListSelectBase = {
@@ -40,6 +47,8 @@ const orderListSelectBase = {
   orderNo: true,
   status: true,
   total: true,
+  refundAmount: true,
+  refundedAt: true,
   note: true,
   createdAt: true,
   items: {
@@ -58,6 +67,8 @@ const orderCreateSelectBase = {
   status: true,
   total: true,
   amountPaid: true,
+  refundAmount: true,
+  refundedAt: true,
   note: true,
   createdAt: true,
   items: {
@@ -741,12 +752,79 @@ export async function PATCH(request: Request) {
     const body = (await request.json()) as OrderStatusUpdatePayload;
     const id = body.id?.trim();
     const status = body.status;
+    const itemsInput = Array.isArray(body.items) ? body.items : [];
 
     if (!id || !status || !["PAID", "REFUNDED", "VOIDED"].includes(status)) {
       return NextResponse.json(
         { message: "Invalid status update payload" },
         { status: 400 },
       );
+    }
+
+    if (status === "REFUNDED" && itemsInput.length > 0) {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        select: {
+          items: { select: { id: true, quantity: true, unitPrice: true } },
+        },
+      });
+
+      if (!order) {
+        return NextResponse.json(
+          { message: "Order not found" },
+          { status: 404 },
+        );
+      }
+
+      const orderItemById = new Map(order.items.map((item) => [item.id, item]));
+      const returnedQuantityByItemId = new Map<string, number>();
+
+      for (const entry of itemsInput) {
+        const itemId = entry.id?.trim();
+        const returnedQuantity = Number(entry.returnedQuantity);
+        const orderItem = itemId ? orderItemById.get(itemId) : undefined;
+
+        if (
+          !orderItem ||
+          !Number.isInteger(returnedQuantity) ||
+          returnedQuantity < 0 ||
+          returnedQuantity > orderItem.quantity
+        ) {
+          return NextResponse.json(
+            { message: "Invalid return quantities" },
+            { status: 400 },
+          );
+        }
+
+        returnedQuantityByItemId.set(orderItem.id, returnedQuantity);
+      }
+
+      const refundAmount = Number(
+        order.items
+          .reduce((sum, item) => {
+            const returnedQuantity = returnedQuantityByItemId.get(item.id) ?? 0;
+            return sum + returnedQuantity * Number(item.unitPrice);
+          }, 0)
+          .toFixed(2),
+      );
+
+      const [refundedOrder] = await prisma.$transaction([
+        prisma.order.update({
+          where: { id },
+          data: { status, refundAmount, refundedAt: new Date() },
+          select: orderCreateSelectWithAmountPaid,
+        }),
+        ...Array.from(returnedQuantityByItemId.entries())
+          .filter(([, returnedQuantity]) => returnedQuantity > 0)
+          .map(([itemId, returnedQuantity]) =>
+            prisma.orderItem.update({
+              where: { id: itemId },
+              data: { returnedQuantity },
+            }),
+          ),
+      ]);
+
+      return NextResponse.json(refundedOrder, { status: 200 });
     }
 
     let updatedOrder: unknown;

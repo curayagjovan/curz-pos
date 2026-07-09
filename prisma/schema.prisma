@@ -34,14 +34,16 @@ model Product {
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  orderNo    String      @unique
-  status     OrderStatus @default(PAID)
-  total      Decimal     @db.Decimal(10, 2)
-  amountPaid Decimal?    @db.Decimal(10, 2)
-  note       String?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  orderNo      String      @unique
+  status       OrderStatus @default(PAID)
+  total        Decimal     @db.Decimal(10, 2)
+  amountPaid   Decimal?    @db.Decimal(10, 2)
+  refundAmount Decimal?    @db.Decimal(10, 2)
+  refundedAt   DateTime?
+  note         String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   items OrderItem[]
 
@@ -49,11 +51,12 @@ model Order {
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  quantity    Int
-  unitPrice   Decimal @db.Decimal(10, 2)
-  lineTotal   Decimal @db.Decimal(10, 2)
-  productName String
+  id               String  @id @default(cuid())
+  quantity         Int
+  unitPrice        Decimal @db.Decimal(10, 2)
+  lineTotal        Decimal @db.Decimal(10, 2)
+  productName      String
+  returnedQuantity Int     @default(0)
 
   orderId   String
   productId String

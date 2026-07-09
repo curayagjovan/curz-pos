@@ -26,6 +26,7 @@ type TransactionsContextType = {
   updateTransactionStatus: (
     id: string,
     status: Transaction["status"],
+    items?: Array<{ id: string; returnedQuantity: number }>,
   ) => Promise<void>;
 };
 
@@ -230,13 +231,17 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateTransactionStatus = useCallback(
-    async (id: string, status: Transaction["status"]) => {
+    async (
+      id: string,
+      status: Transaction["status"],
+      items?: Array<{ id: string; returnedQuantity: number }>,
+    ) => {
       const response = await fetch("/api/orders", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, status, items }),
       });
 
       const data = await response.json();

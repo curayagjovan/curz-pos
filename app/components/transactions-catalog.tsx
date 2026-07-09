@@ -20,7 +20,11 @@ type TransactionsCatalogProps = {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  onUpdateStatus: (id: string, status: Transaction["status"]) => Promise<void>;
+  onUpdateStatus: (
+    id: string,
+    status: Transaction["status"],
+    items?: Array<{ id: string; returnedQuantity: number }>,
+  ) => Promise<void>;
   groups?: TransactionGroup[];
 };
 

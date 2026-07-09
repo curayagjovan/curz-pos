@@ -6,6 +6,7 @@ export type TransactionItem = {
   quantity: number;
   unitPrice: number | string;
   lineTotal: number | string;
+  returnedQuantity: number;
 };
 
 export type Transaction = {
@@ -14,6 +15,8 @@ export type Transaction = {
   status: TransactionStatus;
   total: number | string;
   amountPaid: number | string | null;
+  refundAmount: number | string | null;
+  refundedAt: string | null;
   note: string | null;
   createdAt: string;
   items: TransactionItem[];
