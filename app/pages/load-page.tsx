@@ -2,19 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Divider from "@mui/material/Divider";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
 import ListEmptyState from "@/app/components/list-empty-state";
+import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
 import LoadItemCard from "@/app/components/load-item-card";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
@@ -269,44 +263,16 @@ export default function LoadPage() {
         </Stack>
       </Container>
 
-      <Dialog
+      <LoadConfirmDrawer
         open={Boolean(selectedItem)}
+        item={selectedItem}
+        brandLabel={selectedItem ? brandLabel(selectedItem.brand) : ""}
+        confirmNumber={confirmNumber}
+        sending={sending}
         onClose={handleCloseConfirm}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>{selectedItem?.label}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 0.5 }}>
-            <Typography variant="body2" color="text.secondary">
-              {selectedItem ? brandLabel(selectedItem.brand) : ""} · ₱
-              {selectedItem?.amount.toFixed(2)}
-            </Typography>
-            <ProductsSearchBar
-              value={confirmNumber}
-              onChange={setConfirmNumber}
-              placeholder="Mobile number"
-              ariaLabel="mobile number"
-              icon="none"
-              sticky={false}
-              inputMode="tel"
-              autoFocus
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseConfirm} disabled={sending}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleSend()}
-            disabled={sending}
-          >
-            {sending ? "Sending..." : "Send via Messenger"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirmNumberChange={setConfirmNumber}
+        onSend={() => void handleSend()}
+      />
 
       <AppSnackbar
         open={snackbarOpen}
