@@ -8,7 +8,6 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
-import ProductsSearchBar from "@/app/components/products-search-bar";
 import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
 import TextField from "@mui/material/TextField";
 
@@ -53,7 +52,7 @@ export default function LoadConfirmDrawer({
           alignItems="center"
           justifyContent="space-between"
         >
-          <Typography variant="h6">{item?.label}</Typography>
+          <Typography variant="h6">Request {item?.label}</Typography>
           <IconButton onClick={onClose} aria-label="close" disabled={sending}>
             <CloseRounded fontSize="small" />
           </IconButton>

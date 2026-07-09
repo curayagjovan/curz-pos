@@ -136,8 +136,7 @@ export default function LoadPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestId,
-          status: "PAID",
-          amountPaid: selectedItem.amount,
+          status: "PENDING",
           note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${selectedItem.amount} -> ${confirmNumber}`,
           items: [
             {

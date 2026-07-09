@@ -110,6 +110,7 @@ model PushSubscription {
 }
 
 enum OrderStatus {
+  PENDING
   PAID
   REFUNDED
   VOIDED
