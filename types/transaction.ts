@@ -1,4 +1,4 @@
-export type TransactionStatus = "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
+export type TransactionStatus = "PAID" | "REFUNDED" | "VOIDED";
 
 export type TransactionItem = {
   id: string;

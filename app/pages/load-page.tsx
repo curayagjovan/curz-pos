@@ -65,7 +65,8 @@ export default function LoadPage() {
     null,
   );
   const [confirmNumber, setConfirmNumber] = useState("");
-  const [sending, setSending] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const handleNumberChange = (value: string) => {
     setMobileNumber(value);
@@ -111,13 +112,13 @@ export default function LoadPage() {
   };
 
   const handleCloseConfirm = () => {
-    if (sending) {
+    if (sharing || completing) {
       return;
     }
     setSelectedItem(null);
   };
 
-  const handleSend = async () => {
+  const handleShare = async () => {
     if (!selectedItem) {
       return;
     }
@@ -131,19 +132,59 @@ export default function LoadPage() {
       return;
     }
 
-    setSending(true);
+    setSharing(true);
 
     try {
       const message = buildLoadMessage(selectedItem, confirmNumber);
       const shareResult = await shareLoadRequest(message);
 
+      if (shareResult === "copied") {
+        showSnackbar({
+          message:
+            "Sharing isn't supported on this device. Load command copied instead.",
+          severity: "info",
+        });
+      }
+    } catch (error) {
+      if (error instanceof LoadRequestShareCancelledError) {
+        return;
+      }
+
+      showSnackbar({
+        message:
+          error instanceof Error ? error.message : "Unable to share load request",
+        severity: "error",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    const digits = normalizeMobileNumber(confirmNumber);
+    if (digits.length < 10) {
+      showSnackbar({
+        message: "Enter a valid mobile number",
+        severity: "error",
+      });
+      return;
+    }
+
+    setCompleting(true);
+
+    try {
       const requestId = crypto.randomUUID();
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestId,
-          status: "PENDING",
+          status: "PAID",
+          amountPaid: selectedItem.amount,
           note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${selectedItem.amount} -> ${confirmNumber}`,
           items: [
             {
@@ -171,26 +212,15 @@ export default function LoadPage() {
         addTransaction(savedTransaction as Transaction);
       }
 
-      if (shareResult === "copied") {
-        showSnackbar({
-          message:
-            "Sharing isn't supported on this device. Load command copied instead.",
-          severity: "info",
-        });
-      }
-
       setSelectedItem(null);
     } catch (error) {
-      if (error instanceof LoadRequestShareCancelledError) {
-        return;
-      }
-
       showSnackbar({
-        message: error instanceof Error ? error.message : "Unable to send load",
+        message:
+          error instanceof Error ? error.message : "Unable to record load sale",
         severity: "error",
       });
     } finally {
-      setSending(false);
+      setCompleting(false);
     }
   };
 
@@ -272,10 +302,12 @@ export default function LoadPage() {
         item={selectedItem}
         brandLabel={selectedItem ? brandLabel(selectedItem.brand) : ""}
         confirmNumber={confirmNumber}
-        sending={sending}
+        sharing={sharing}
+        completing={completing}
         onClose={handleCloseConfirm}
         onConfirmNumberChange={setConfirmNumber}
-        onSend={() => void handleSend()}
+        onShare={() => void handleShare()}
+        onComplete={() => void handleComplete()}
       />
 
       <AppSnackbar

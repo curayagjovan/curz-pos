@@ -30,8 +30,6 @@ type TransactionCardProps = {
 
 function getStatusColor(status: Transaction["status"]) {
   switch (status) {
-    case "PENDING":
-      return "info" as const;
     case "PAID":
       return "success" as const;
     case "REFUNDED":
@@ -327,7 +325,6 @@ const TransactionCard = memo(function TransactionCard({
                 }
                 sx={{ minWidth: 140 }}
               >
-                <MenuItem value="PENDING">PENDING</MenuItem>
                 <MenuItem value="PAID">PAID</MenuItem>
                 <MenuItem value="REFUNDED">REFUNDED</MenuItem>
                 <MenuItem value="VOIDED">VOIDED</MenuItem>

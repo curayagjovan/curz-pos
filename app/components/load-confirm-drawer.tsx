@@ -16,10 +16,12 @@ type LoadConfirmDrawerProps = {
   item: LoadCatalogItem | null;
   brandLabel: string;
   confirmNumber: string;
-  sending: boolean;
+  sharing: boolean;
+  completing: boolean;
   onClose: () => void;
   onConfirmNumberChange: (value: string) => void;
-  onSend: () => void;
+  onShare: () => void;
+  onComplete: () => void;
 };
 
 export default function LoadConfirmDrawer({
@@ -27,11 +29,14 @@ export default function LoadConfirmDrawer({
   item,
   brandLabel,
   confirmNumber,
-  sending,
+  sharing,
+  completing,
   onClose,
   onConfirmNumberChange,
-  onSend,
+  onShare,
+  onComplete,
 }: LoadConfirmDrawerProps) {
+  const busy = sharing || completing;
   return (
     <Drawer
       anchor="bottom"
@@ -53,7 +58,7 @@ export default function LoadConfirmDrawer({
           justifyContent="space-between"
         >
           <Typography variant="h6">Request {item?.label}</Typography>
-          <IconButton onClick={onClose} aria-label="close" disabled={sending}>
+          <IconButton onClick={onClose} aria-label="close" disabled={busy}>
             <CloseRounded fontSize="small" />
           </IconButton>
         </Stack>
@@ -86,19 +91,29 @@ export default function LoadConfirmDrawer({
             variant="outlined"
             color="inherit"
             onClick={onClose}
-            disabled={sending}
+            disabled={busy}
           >
             Cancel
           </Button>
           <Button
             fullWidth
-            variant="contained"
-            onClick={onSend}
-            disabled={sending}
+            variant="outlined"
+            onClick={onShare}
+            disabled={busy}
           >
-            {sending ? "Sharing..." : "Share Request"}
+            {sharing ? "Sharing..." : "Share Request"}
           </Button>
         </Stack>
+
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={onComplete}
+          disabled={busy}
+          sx={{ mt: 1 }}
+        >
+          {completing ? "Saving..." : "Completed"}
+        </Button>
       </Box>
     </Drawer>
   );

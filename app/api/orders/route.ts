@@ -14,7 +14,7 @@ type OrderItemInput = {
 
 type OrderPayload = {
   requestId?: string;
-  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
+  status?: "PAID" | "REFUNDED" | "VOIDED";
   total?: number;
   amountPaid?: number;
   note?: string;
@@ -29,7 +29,7 @@ type OrderItemReturnInput = {
 
 type OrderStatusUpdatePayload = {
   id?: string;
-  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
+  status?: "PAID" | "REFUNDED" | "VOIDED";
   items?: OrderItemReturnInput[];
 };
 
@@ -283,7 +283,6 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const status: OrderStatus | null =
-      statusParam === "PENDING" ||
       statusParam === "PAID" ||
       statusParam === "REFUNDED" ||
       statusParam === "VOIDED"
@@ -390,7 +389,7 @@ export async function POST(request: Request) {
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (
-      !["PENDING", "PAID", "REFUNDED", "VOIDED"].includes(status) ||
+      !["PAID", "REFUNDED", "VOIDED"].includes(status) ||
       items.length === 0
     ) {
       return NextResponse.json(
@@ -755,11 +754,7 @@ export async function PATCH(request: Request) {
     const status = body.status;
     const itemsInput = Array.isArray(body.items) ? body.items : [];
 
-    if (
-      !id ||
-      !status ||
-      !["PENDING", "PAID", "REFUNDED", "VOIDED"].includes(status)
-    ) {
+    if (!id || !status || !["PAID", "REFUNDED", "VOIDED"].includes(status)) {
       return NextResponse.json(
         { message: "Invalid status update payload" },
         { status: 400 },
