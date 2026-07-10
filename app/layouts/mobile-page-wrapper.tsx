@@ -16,6 +16,7 @@ import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
   title: string;
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -27,6 +28,7 @@ const PULL_INDICATOR_OFFSET = 112;
 
 export default function MobilePageWrapper({
   title,
+  headerActions,
   children,
 }: MobilePageWrapperProps) {
   const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
@@ -137,6 +139,8 @@ export default function MobilePageWrapper({
           sx={{
             minHeight: APP_BAR_HEIGHT,
             px: 2,
+            display: "flex",
+            justifyContent: "space-between",
           }}
         >
           <Typography
@@ -150,6 +154,7 @@ export default function MobilePageWrapper({
           >
             {title}
           </Typography>
+          {headerActions}
         </Toolbar>
       </AppBar>
 

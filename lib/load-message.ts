@@ -1,7 +1,7 @@
 import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
 
 export function buildLoadMessage(item: LoadCatalogItem, mobileNumber: string) {
-  return `LOAD ${item.code} ${mobileNumber}`;
+  return `${item.code} ${mobileNumber}`;
 }
 
 export class LoadRequestShareCancelledError extends Error {

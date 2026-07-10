@@ -4,14 +4,18 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
+import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import ListEmptyState from "@/app/components/list-empty-state";
 import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
 import LoadItemCard from "@/app/components/load-item-card";
+import LoadMarkupDialog from "@/app/components/load-markup-dialog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
+import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import {
@@ -20,6 +24,7 @@ import {
   type LoadBrand,
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
+import { getSellPrice } from "@/lib/load-markup";
 import {
   LoadRequestShareCancelledError,
   buildLoadMessage,
@@ -67,6 +72,9 @@ export default function LoadPage() {
   const [confirmNumber, setConfirmNumber] = useState("");
   const [sharing, setSharing] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
+  const { settings: markupSettings, updateSettings: updateMarkupSettings } =
+    useLoadMarkupSettings();
 
   const handleNumberChange = (value: string) => {
     setMobileNumber(value);
@@ -177,6 +185,7 @@ export default function LoadPage() {
     setCompleting(true);
 
     try {
+      const sellPrice = getSellPrice(selectedItem.amount, markupSettings);
       const requestId = crypto.randomUUID();
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -184,14 +193,14 @@ export default function LoadPage() {
         body: JSON.stringify({
           requestId,
           status: "PAID",
-          amountPaid: selectedItem.amount,
-          note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${selectedItem.amount} -> ${confirmNumber}`,
+          amountPaid: sellPrice,
+          note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
           items: [
             {
               productId: selectedItem.id,
               productName: selectedItem.label,
               quantity: 1,
-              unitPrice: selectedItem.amount,
+              unitPrice: sellPrice,
             },
           ],
         }),
@@ -225,7 +234,17 @@ export default function LoadPage() {
   };
 
   return (
-    <MobilePageWrapper title="Load">
+    <MobilePageWrapper
+      title="Load"
+      headerActions={
+        <IconButton
+          onClick={() => setMarkupDialogOpen(true)}
+          aria-label="load markup settings"
+        >
+          <SettingsRounded fontSize="small" />
+        </IconButton>
+      }
+    >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
           <Box
@@ -289,6 +308,7 @@ export default function LoadPage() {
                   key={item.id}
                   item={item}
                   brandLabel={brandLabel(item.brand)}
+                  price={getSellPrice(item.amount, markupSettings)}
                   onSelect={handleSelectItem}
                 />
               ))}
@@ -301,6 +321,9 @@ export default function LoadPage() {
         open={Boolean(selectedItem)}
         item={selectedItem}
         brandLabel={selectedItem ? brandLabel(selectedItem.brand) : ""}
+        price={
+          selectedItem ? getSellPrice(selectedItem.amount, markupSettings) : 0
+        }
         confirmNumber={confirmNumber}
         sharing={sharing}
         completing={completing}
@@ -308,6 +331,13 @@ export default function LoadPage() {
         onConfirmNumberChange={setConfirmNumber}
         onShare={() => void handleShare()}
         onComplete={() => void handleComplete()}
+      />
+
+      <LoadMarkupDialog
+        open={markupDialogOpen}
+        settings={markupSettings}
+        onClose={() => setMarkupDialogOpen(false)}
+        onSave={updateMarkupSettings}
       />
 
       <AppSnackbar

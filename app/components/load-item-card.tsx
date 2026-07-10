@@ -14,12 +14,14 @@ import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
 type LoadItemCardProps = {
   item: LoadCatalogItem;
   brandLabel: string;
+  price: number;
   onSelect: (item: LoadCatalogItem) => void;
 };
 
 const LoadItemCard = memo(function LoadItemCard({
   item,
   brandLabel,
+  price,
   onSelect,
 }: LoadItemCardProps) {
   return (
@@ -63,20 +65,22 @@ const LoadItemCard = memo(function LoadItemCard({
                 variant="body1"
                 sx={{ fontWeight: 700, lineHeight: 1.25 }}
               >
-                Regular Load
+                {item.category === "Data Promo" ? item.label : "Regular Load"}
               </Typography>
               <Typography
                 variant="caption"
                 color="text.secondary"
                 sx={{ display: "block", mt: 0.25 }}
               >
-                {brandLabel}
+                {item.description
+                  ? `${brandLabel} · ${item.description}`
+                  : brandLabel}
               </Typography>
             </Box>
 
             <Chip
               size="small"
-              label={`₱${item.amount.toFixed(2)}`}
+              label={`₱${price.toFixed(2)}`}
               sx={{ fontWeight: 700 }}
             />
           </Stack>

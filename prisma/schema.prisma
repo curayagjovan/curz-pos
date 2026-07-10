@@ -109,6 +109,16 @@ model PushSubscription {
   updatedAt     DateTime @updatedAt
 }
 
+model LoadMarkupSetting {
+  id          String   @id
+  tier1Max    Float
+  tier1Markup Float
+  tier2Max    Float
+  tier2Markup Float
+  tier3Markup Float
+  updatedAt   DateTime @updatedAt
+}
+
 enum OrderStatus {
   PENDING
   PAID
