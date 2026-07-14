@@ -6,17 +6,21 @@ import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
+import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
-import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
   title: string;
   headerActions?: React.ReactNode;
+  onBack?: () => void;
+  hideBottomNav?: boolean;
   children: React.ReactNode;
 };
 
@@ -29,6 +33,8 @@ const PULL_INDICATOR_OFFSET = 112;
 export default function MobilePageWrapper({
   title,
   headerActions,
+  onBack,
+  hideBottomNav = false,
   children,
 }: MobilePageWrapperProps) {
   const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
@@ -143,17 +149,29 @@ export default function MobilePageWrapper({
             justifyContent: "space-between",
           }}
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontSize: 19,
-              fontWeight: 700,
-              letterSpacing: 0.1,
-              lineHeight: 1.2,
-            }}
-          >
-            {title}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {onBack ? (
+              <IconButton
+                onClick={onBack}
+                aria-label="go back"
+                edge="start"
+                sx={{ ml: -1 }}
+              >
+                <ArrowBackRounded fontSize="small" />
+              </IconButton>
+            ) : null}
+            <Typography
+              variant="h6"
+              sx={{
+                fontSize: 19,
+                fontWeight: 700,
+                letterSpacing: 0.1,
+                lineHeight: 1.2,
+              }}
+            >
+              {title}
+            </Typography>
+          </Stack>
           {headerActions}
         </Toolbar>
       </AppBar>
@@ -169,7 +187,9 @@ export default function MobilePageWrapper({
           height: "100vh",
           boxSizing: "border-box",
           pt: `calc(env(safe-area-inset-top) + ${APP_BAR_HEIGHT}px)`,
-          pb: `calc(env(safe-area-inset-bottom) + ${BOTTOM_NAV_HEIGHT + 12}px)`,
+          pb: hideBottomNav
+            ? "calc(env(safe-area-inset-bottom) + 16px)"
+            : `calc(env(safe-area-inset-bottom) + ${BOTTOM_NAV_HEIGHT + 12}px)`,
           px: 0,
           position: "relative",
           overflowY: "auto",
@@ -206,6 +226,7 @@ export default function MobilePageWrapper({
         {children}
       </Box>
 
+      {hideBottomNav ? null : (
       <Paper
         elevation={8}
         sx={{
@@ -259,19 +280,6 @@ export default function MobilePageWrapper({
             }}
           />
           <BottomNavigationAction
-            value="inventory"
-            label="Inventory"
-            icon={<Inventory2Rounded fontSize="small" />}
-            sx={{
-              minWidth: 0,
-              px: 0.5,
-              ".MuiBottomNavigationAction-label": {
-                fontSize: 11,
-                fontWeight: 600,
-              },
-            }}
-          />
-          <BottomNavigationAction
             value="load"
             label="Load"
             icon={<SimCardRounded fontSize="small" />}
@@ -286,6 +294,7 @@ export default function MobilePageWrapper({
           />
         </BottomNavigation>
       </Paper>
+      )}
     </Box>
   );
 }

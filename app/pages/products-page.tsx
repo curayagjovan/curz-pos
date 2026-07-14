@@ -11,10 +11,12 @@ import {
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
+import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Badge from "@mui/material/Badge";
 import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
+import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
@@ -42,7 +44,7 @@ type CartFlight = {
 const CART_FLIGHT_DURATION_MS = 620;
 
 export default function ProductsPage() {
-  const { searchQuery, setSearchQuery } = usePageContext();
+  const { searchQuery, setSearchQuery, setCurrentPage } = usePageContext();
   const {
     addToCart,
     cartItems,
@@ -611,7 +613,17 @@ export default function ProductsPage() {
   }, [clearCart]);
 
   return (
-    <MobilePageWrapper title="Products">
+    <MobilePageWrapper
+      title="Products"
+      headerActions={
+        <IconButton
+          onClick={() => setCurrentPage("inventory")}
+          aria-label="open inventory"
+        >
+          <Inventory2Rounded fontSize="small" />
+        </IconButton>
+      }
+    >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
           <ProductsSearchBar

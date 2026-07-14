@@ -46,7 +46,7 @@ function matchesSearch(product: Product, query: string) {
 }
 
 export default function InventoryPage() {
-  const { searchQuery, setSearchQuery } = usePageContext();
+  const { searchQuery, setSearchQuery, setCurrentPage } = usePageContext();
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const { products, loading, error, upsertProduct, removeProduct } =
     useProducts();
@@ -274,7 +274,11 @@ export default function InventoryPage() {
   }, [form, searchQuery, setSearchQuery, showSnackbar, upsertProduct]);
 
   return (
-    <MobilePageWrapper title="Inventory">
+    <MobilePageWrapper
+      title="Inventory"
+      onBack={() => setCurrentPage("products")}
+      hideBottomNav
+    >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
           <ProductsSearchBar
