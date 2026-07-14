@@ -1,11 +1,14 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Collapse from "@mui/material/Collapse";
-import Container from "@mui/material/Container";
-import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import Fab from "@mui/material/Fab";
+import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import CloseRounded from "@mui/icons-material/CloseRounded";
+import ReceiptLongRounded from "@mui/icons-material/ReceiptLongRounded";
 
 function toCurrency(value: number) {
   return `₱${value.toLocaleString("en-PH", {
@@ -36,150 +39,113 @@ export default function TransactionsTotalsBar({
   voidedCount,
 }: TransactionsTotalsBarProps) {
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: "calc(env(safe-area-inset-bottom) + 72px)",
-        px: 1.5,
-        pointerEvents: "none",
-        zIndex: 9,
-        display: "flex",
-        justifyContent: expanded ? "stretch" : "flex-end",
-      }}
-    >
-      <Container
-        maxWidth="sm"
+    <>
+      <Fab
+        size="small"
+        color="primary"
+        aria-haspopup="dialog"
+        aria-expanded={expanded}
+        aria-label="show sales totals"
+        onClick={onToggle}
         sx={{
-          px: "0 !important",
-          display: "flex",
-          justifyContent: expanded ? "stretch" : "flex-end",
+          position: "fixed",
+          right: "calc(env(safe-area-inset-right) + 16px)",
+          bottom: "calc(env(safe-area-inset-bottom) + 72px)",
+          zIndex: 9,
         }}
       >
-        <Paper
-          elevation={4}
-          role="button"
-          tabIndex={0}
-          aria-expanded={expanded}
-          aria-label={expanded ? "hide sales totals" : "show sales totals"}
-          onClick={onToggle}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onToggle();
-            }
-          }}
-          sx={{
-            pointerEvents: "auto",
-            cursor: "pointer",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: expanded ? 2 : 999,
-            width: expanded ? "100%" : "auto",
-            overflow: "hidden",
-            transition: "border-radius 200ms ease",
-            outline: "none",
-            "&:focus-visible": {
-              outline: "2px solid",
-              outlineColor: "primary.main",
-              outlineOffset: 2,
-            },
-          }}
-        >
-          {expanded ? null : (
-            <Box
-              sx={{
-                px: 1.5,
-                py: 0.85,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <Box sx={{ minWidth: 0, textAlign: "right" }}>
-                <Typography variant="caption" color="text.secondary">
-                  Net Sales · {periodLabel}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
-                >
-                  {toCurrency(netSalesTotal)}
-                </Typography>
-              </Box>
-            </Box>
-          )}
+        <ReceiptLongRounded fontSize="small" />
+      </Fab>
 
-          <Collapse in={expanded} timeout={220} unmountOnExit>
-            <Box sx={{ p: 1.25 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mb: 0.75, fontWeight: 700 }}
-              >
-                {periodLabel}
+      <Drawer
+        anchor="bottom"
+        open={expanded}
+        onClose={onToggle}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            pb: "env(safe-area-inset-bottom)",
+          },
+        }}
+      >
+        <Box sx={{ px: 2, pt: 1.5, pb: 1.25 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography variant="h6">Sales Totals</Typography>
+            <IconButton onClick={onToggle} aria-label="close sales totals">
+              <CloseRounded fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          <Typography variant="caption" color="text.secondary">
+            {periodLabel}
+          </Typography>
+        </Box>
+
+        <Divider />
+
+        <Box sx={{ px: 2, py: 2 }}>
+          <Stack direction="row" justifyContent="space-between" spacing={1.25}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total Sales
               </Typography>
-
-              <Stack direction="row" justifyContent="space-between" spacing={1.25}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Total Sales
-                  </Typography>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    {toCurrency(salesTotal)}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ flex: 1, minWidth: 0, textAlign: "center" }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Net Sales
-                  </Typography>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    {toCurrency(netSalesTotal)}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ flex: 1, minWidth: 0, textAlign: "right" }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Refunded Sales
-                  </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 800 }}
-                    color="warning.main"
-                  >
-                    {toCurrency(refundedTotal)}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Box
-                sx={{
-                  mt: 0.75,
-                  pt: 0.75,
-                  borderTop: "1px dashed",
-                  borderColor: "divider",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  Voided Orders ({voidedCount})
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 700 }}
-                  color="text.secondary"
-                >
-                  {toCurrency(voidedTotal)}
-                </Typography>
-              </Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                {toCurrency(salesTotal)}
+              </Typography>
             </Box>
-          </Collapse>
-        </Paper>
-      </Container>
-    </Box>
+
+            <Box sx={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+              <Typography variant="caption" color="text.secondary">
+                Net Sales
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                {toCurrency(netSalesTotal)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+              <Typography variant="caption" color="text.secondary">
+                Refunded Sales
+              </Typography>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 800 }}
+                color="warning.main"
+              >
+                {toCurrency(refundedTotal)}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Box
+            sx={{
+              mt: 1.25,
+              pt: 1.25,
+              borderTop: "1px dashed",
+              borderColor: "divider",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              Voided Orders ({voidedCount})
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700 }}
+              color="text.secondary"
+            >
+              {toCurrency(voidedTotal)}
+            </Typography>
+          </Box>
+        </Box>
+      </Drawer>
+    </>
   );
 }

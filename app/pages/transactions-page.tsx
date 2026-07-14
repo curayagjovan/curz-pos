@@ -282,7 +282,7 @@ export default function TransactionsPage() {
 
   return (
     <MobilePageWrapper title="Sales">
-      <Container maxWidth="sm" sx={{ py: 0.5, pb: showTotals ? 13 : 8 }}>
+      <Container maxWidth="sm" sx={{ py: 0.5, pb: 8 }}>
         <Stack spacing={1.5}>
           <TransactionsFilterBar
             activeFilter={activeFilter}
