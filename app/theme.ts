@@ -67,10 +67,7 @@ const appTheme = createTheme({
       },
       styleOverrides: {
         root: {
-          backdropFilter: "saturate(160%) blur(10px)",
-          WebkitBackdropFilter: "saturate(160%) blur(10px)",
-          backgroundColor:
-            "rgba(var(--mui-palette-background-paperChannel) / 0.88)",
+          backgroundColor: "rgba(var(--mui-palette-background-paperChannel) / 1)",
         },
       },
     },
@@ -84,8 +81,7 @@ const appTheme = createTheme({
     MuiBottomNavigation: {
       styleOverrides: {
         root: {
-          backgroundColor:
-            "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
+          backgroundColor: "rgba(var(--mui-palette-background-paperChannel) / 1)",
         },
       },
     },
