@@ -274,18 +274,19 @@ const TransactionCard = memo(function TransactionCard({
                     {transaction.orderNo}
                   </Typography>
                 </Box>
+              </Stack>
 
+              <Stack alignItems="flex-end" spacing={0}>
                 <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
                   {itemCount} {itemCount === 1 ? "item" : "items"}
                 </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
+                >
+                  {formatCurrency(transaction.total)}
+                </Typography>
               </Stack>
-
-              <Typography
-                variant="body1"
-                sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
-              >
-                {formatCurrency(transaction.total)}
-              </Typography>
 
               <IconButton
                 size="small"
