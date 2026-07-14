@@ -64,10 +64,16 @@ export default function LoadConfirmDrawer({
             <CloseRounded fontSize="small" />
           </IconButton>
         </Stack>
-
-        <Typography variant="caption" color="text.secondary">
-          {brandLabel} · ₱{price.toFixed(2)}
-        </Typography>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Typography color="text.secondary">Network: {brandLabel}</Typography>
+          <Typography color="text.secondary">
+            Price: ₱{price.toFixed(2)}
+          </Typography>
+        </Stack>
       </Box>
 
       <Divider />
@@ -86,8 +92,23 @@ export default function LoadConfirmDrawer({
             },
           }}
         />
-
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+        <Stack spacing={1} sx={{ mt: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={onShare}
+            disabled={busy}
+          >
+            {sharing ? "Sharing..." : "Share Request"}
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={onComplete}
+            disabled={busy}
+          >
+            {completing ? "Saving..." : "Completed"}
+          </Button>
           <Button
             fullWidth
             variant="outlined"
@@ -97,25 +118,7 @@ export default function LoadConfirmDrawer({
           >
             Cancel
           </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={onShare}
-            disabled={busy}
-          >
-            {sharing ? "Sharing..." : "Share Request"}
-          </Button>
         </Stack>
-
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={onComplete}
-          disabled={busy}
-          sx={{ mt: 1 }}
-        >
-          {completing ? "Saving..." : "Completed"}
-        </Button>
       </Box>
     </Drawer>
   );
