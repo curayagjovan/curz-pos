@@ -101,7 +101,8 @@ const TransactionCard = memo(function TransactionCard({
   const hasNote = Boolean(transaction.note?.trim());
   const itemCount = transactionItems.reduce(
     (sum, item) =>
-      sum + Math.max(0, Number(item.quantity) - Number(item.returnedQuantity ?? 0)),
+      sum +
+      Math.max(0, Number(item.quantity) - Number(item.returnedQuantity ?? 0)),
     0,
   );
   const canReturnItems = transaction.status === "PAID";
@@ -182,7 +183,10 @@ const TransactionCard = memo(function TransactionCard({
     setReturnQuantities({});
   };
 
-  const handleReturnQuantityChange = (item: Transaction["items"][number], delta: number) => {
+  const handleReturnQuantityChange = (
+    item: Transaction["items"][number],
+    delta: number,
+  ) => {
     setReturnQuantities((current) => {
       const nextQty = Math.min(
         Number(item.quantity),
@@ -242,7 +246,9 @@ const TransactionCard = memo(function TransactionCard({
           tabIndex={0}
           aria-expanded={expanded}
           aria-label={
-            expanded ? "collapse transaction details" : "expand transaction details"
+            expanded
+              ? "collapse transaction details"
+              : "expand transaction details"
           }
           onClick={() => setExpanded((current) => !current)}
           onKeyDown={(event) => {
@@ -255,8 +261,6 @@ const TransactionCard = memo(function TransactionCard({
             px: 1.25,
             py: 1.1,
             cursor: "pointer",
-            background:
-              "linear-gradient(180deg, rgba(25,118,210,0.06) 0%, rgba(25,118,210,0) 100%)",
           }}
         >
           <Stack spacing={1}>
@@ -290,7 +294,11 @@ const TransactionCard = memo(function TransactionCard({
               </Stack>
 
               <Stack alignItems="flex-end" spacing={0}>
-                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ whiteSpace: "nowrap" }}
+                >
                   {itemCount} {itemCount === 1 ? "item" : "items"}
                 </Typography>
                 <Typography
@@ -302,16 +310,17 @@ const TransactionCard = memo(function TransactionCard({
               </Stack>
             </Stack>
 
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-            >
+            <Stack direction="row" spacing={1} alignItems="center">
               <Typography
                 variant="caption"
                 color="text.secondary"
                 noWrap
-                sx={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
                 title={itemPreview}
               >
                 {itemPreview}
@@ -494,18 +503,85 @@ const TransactionCard = memo(function TransactionCard({
                     : 0;
 
                 return (
-                <Stack
-                  key={item.id}
-                  direction="row"
-                  spacing={1}
-                  alignItems="flex-start"
-                  justifyContent="space-between"
-                >
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Stack
+                    key={item.id}
+                    direction="row"
+                    spacing={1}
+                    alignItems="flex-start"
+                    justifyContent="space-between"
+                  >
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          textDecoration:
+                            item.returnedQuantity >= item.quantity &&
+                            item.returnedQuantity > 0
+                              ? "line-through"
+                              : "none",
+                        }}
+                      >
+                        {item.productName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Qty {remainingQty} x {formatCurrency(item.unitPrice)}
+                      </Typography>
+                      {item.returnedQuantity > 0 ? (
+                        <Typography
+                          variant="caption"
+                          color="warning.main"
+                          sx={{ display: "block" }}
+                        >
+                          Returned {item.returnedQuantity}
+                        </Typography>
+                      ) : null}
+
+                      {returnMode ? (
+                        <Stack
+                          direction="row"
+                          spacing={0.5}
+                          alignItems="center"
+                          sx={{ mt: 0.5 }}
+                        >
+                          <Typography variant="caption" color="text.secondary">
+                            Return qty:
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            disabled={(returnQuantities[item.id] ?? 0) <= 0}
+                            onClick={() => handleReturnQuantityChange(item, -1)}
+                            aria-label={`decrease return quantity for ${item.productName}`}
+                          >
+                            <RemoveRounded fontSize="small" />
+                          </IconButton>
+                          <Typography
+                            variant="body2"
+                            sx={{ minWidth: 20, textAlign: "center" }}
+                          >
+                            {returnQuantities[item.id] ?? 0}
+                          </Typography>
+                          <IconButton
+                            size="small"
+                            disabled={
+                              (returnQuantities[item.id] ?? 0) >=
+                              Number(item.quantity)
+                            }
+                            onClick={() => handleReturnQuantityChange(item, 1)}
+                            aria-label={`increase return quantity for ${item.productName}`}
+                          >
+                            <AddRounded fontSize="small" />
+                          </IconButton>
+                          <Typography variant="caption" color="text.secondary">
+                            of {item.quantity}
+                          </Typography>
+                        </Stack>
+                      ) : null}
+                    </Box>
                     <Typography
                       variant="body2"
                       sx={{
-                        fontWeight: 600,
+                        fontWeight: 700,
                         textDecoration:
                           item.returnedQuantity >= item.quantity &&
                           item.returnedQuantity > 0
@@ -513,76 +589,9 @@ const TransactionCard = memo(function TransactionCard({
                             : "none",
                       }}
                     >
-                      {item.productName}
+                      {formatCurrency(remainingLineTotal)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Qty {remainingQty} x {formatCurrency(item.unitPrice)}
-                    </Typography>
-                    {item.returnedQuantity > 0 ? (
-                      <Typography
-                        variant="caption"
-                        color="warning.main"
-                        sx={{ display: "block" }}
-                      >
-                        Returned {item.returnedQuantity}
-                      </Typography>
-                    ) : null}
-
-                    {returnMode ? (
-                      <Stack
-                        direction="row"
-                        spacing={0.5}
-                        alignItems="center"
-                        sx={{ mt: 0.5 }}
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          Return qty:
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          disabled={(returnQuantities[item.id] ?? 0) <= 0}
-                          onClick={() => handleReturnQuantityChange(item, -1)}
-                          aria-label={`decrease return quantity for ${item.productName}`}
-                        >
-                          <RemoveRounded fontSize="small" />
-                        </IconButton>
-                        <Typography
-                          variant="body2"
-                          sx={{ minWidth: 20, textAlign: "center" }}
-                        >
-                          {returnQuantities[item.id] ?? 0}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          disabled={
-                            (returnQuantities[item.id] ?? 0) >=
-                            Number(item.quantity)
-                          }
-                          onClick={() => handleReturnQuantityChange(item, 1)}
-                          aria-label={`increase return quantity for ${item.productName}`}
-                        >
-                          <AddRounded fontSize="small" />
-                        </IconButton>
-                        <Typography variant="caption" color="text.secondary">
-                          of {item.quantity}
-                        </Typography>
-                      </Stack>
-                    ) : null}
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 700,
-                      textDecoration:
-                        item.returnedQuantity >= item.quantity &&
-                        item.returnedQuantity > 0
-                          ? "line-through"
-                          : "none",
-                    }}
-                  >
-                    {formatCurrency(remainingLineTotal)}
-                  </Typography>
-                </Stack>
+                  </Stack>
                 );
               })}
 

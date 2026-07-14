@@ -52,6 +52,8 @@ export default function ProductsSearchBar({
           width: "100%",
           minHeight: 40,
         }}
+        elevation={0}
+        variant="outlined"
       >
         <InputBase
           value={value}
