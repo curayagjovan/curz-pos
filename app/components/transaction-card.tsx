@@ -107,6 +107,21 @@ const TransactionCard = memo(function TransactionCard({
   );
   const canReturnItems = transaction.status === "PAID";
 
+  const itemPreview = useMemo(() => {
+    const visibleItems = transactionItems.filter(
+      (item) => Number(item.quantity) - Number(item.returnedQuantity ?? 0) > 0,
+    );
+    const previewItems = visibleItems.slice(0, 2).map((item) => {
+      const qty = Number(item.quantity) - Number(item.returnedQuantity ?? 0);
+      return qty > 1 ? `${item.productName} ×${qty}` : item.productName;
+    });
+    const remaining = visibleItems.length - previewItems.length;
+
+    return remaining > 0
+      ? `${previewItems.join(", ")} +${remaining} more`
+      : previewItems.join(", ");
+  }, [transactionItems]);
+
   const returnTotal = useMemo(
     () =>
       transactionItems.reduce((sum, item) => {
@@ -250,7 +265,7 @@ const TransactionCard = memo(function TransactionCard({
                     color="text.secondary"
                     sx={{ display: "block", letterSpacing: 0.4 }}
                   >
-                    Transaction
+                    {formatTransactionDate(transaction.createdAt)}
                   </Typography>
                   <Typography
                     variant="body1"
@@ -260,14 +275,17 @@ const TransactionCard = memo(function TransactionCard({
                   </Typography>
                 </Box>
 
-                <Chip
-                  size="small"
-                  variant="filled"
-                  color={getStatusColor(transaction.status)}
-                  label={transaction.status}
-                  sx={{ fontWeight: 700 }}
-                />
+                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </Typography>
               </Stack>
+
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
+              >
+                {formatCurrency(transaction.total)}
+              </Typography>
 
               <IconButton
                 size="small"
@@ -292,12 +310,22 @@ const TransactionCard = memo(function TransactionCard({
               alignItems="center"
               justifyContent="space-between"
             >
-              <Typography variant="caption" color="text.secondary">
-                {formatTransactionDate(transaction.createdAt)}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                sx={{ maxWidth: "65%", overflow: "hidden", textOverflow: "ellipsis" }}
+                title={itemPreview}
+              >
+                {itemPreview}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {itemCount} {itemCount === 1 ? "item" : "items"}
-              </Typography>
+              <Chip
+                size="small"
+                variant="filled"
+                color={getStatusColor(transaction.status)}
+                label={transaction.status}
+                sx={{ fontWeight: 700 }}
+              />
             </Stack>
           </Stack>
         </Box>
@@ -457,11 +485,15 @@ const TransactionCard = memo(function TransactionCard({
 
             <Stack spacing={0.9}>
               {transactionItems.map((item) => {
+                const originalQty = Number(item.quantity);
                 const remainingQty = Math.max(
                   0,
-                  Number(item.quantity) - Number(item.returnedQuantity ?? 0),
+                  originalQty - Number(item.returnedQuantity ?? 0),
                 );
-                const remainingLineTotal = remainingQty * Number(item.unitPrice);
+                const remainingLineTotal =
+                  originalQty > 0
+                    ? (Number(item.lineTotal) / originalQty) * remainingQty
+                    : 0;
 
                 return (
                 <Stack
