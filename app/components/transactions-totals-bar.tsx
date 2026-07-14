@@ -41,7 +41,6 @@ export default function TransactionsTotalsBar({
   return (
     <>
       <Fab
-        size="small"
         color="primary"
         aria-haspopup="dialog"
         aria-expanded={expanded}
@@ -50,8 +49,8 @@ export default function TransactionsTotalsBar({
         sx={{
           position: "fixed",
           right: "calc(env(safe-area-inset-right) + 16px)",
-          bottom: "calc(env(safe-area-inset-bottom) + 72px)",
-          zIndex: 9,
+          bottom: "calc(env(safe-area-inset-bottom) + 88px)",
+          zIndex: 1201,
         }}
       >
         <ReceiptLongRounded fontSize="small" />
