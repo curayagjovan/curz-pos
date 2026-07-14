@@ -219,6 +219,10 @@ export default function MobilePageWrapper({
           borderTop: "1px solid",
           borderColor: "divider",
           borderRadius: 0,
+          backdropFilter: "saturate(160%) blur(10px)",
+          WebkitBackdropFilter: "saturate(160%) blur(10px)",
+          backgroundColor:
+            "rgba(var(--mui-palette-background-paperChannel) / 0.88)",
         }}
       >
         <BottomNavigation
