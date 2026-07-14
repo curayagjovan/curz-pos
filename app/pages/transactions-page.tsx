@@ -3,10 +3,7 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
-import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
-import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
-import VisibilityRounded from "@mui/icons-material/VisibilityRounded";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
 import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import TransactionsFilterBar from "@/app/components/transactions-filter-bar";
@@ -18,6 +15,23 @@ import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 function toDateTimeLocalValue(date: Date) {
   const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+function getPeriodLabel(filter: ActiveFilter) {
+  switch (filter) {
+    case "today":
+      return "Today";
+    case "week":
+      return "This Week";
+    case "month":
+      return "This Month";
+    case "year":
+      return "This Year";
+    case "custom":
+      return "Custom Range";
+    default:
+      return "All Time";
+  }
 }
 
 function startOfWeek(date: Date) {
@@ -53,7 +67,7 @@ export default function TransactionsPage() {
   );
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("today");
   const [showCustomRange, setShowCustomRange] = useState(false);
-  const [showTotals, setShowTotals] = useState(true);
+  const [showTotals, setShowTotals] = useState(false);
   const { transactions, loading, error, updateTransactionStatus } =
     useTransactions();
 
@@ -238,6 +252,7 @@ export default function TransactionsPage() {
   }, [filteredTransactions]);
 
   const filteredNetSalesTotal = filteredSalesTotal - filteredRefundedTotal;
+  const periodLabel = getPeriodLabel(activeFilter);
 
   const applyQuickRange = (
     filter: Exclude<ActiveFilter, "custom" | null>,
@@ -299,36 +314,16 @@ export default function TransactionsPage() {
         </Stack>
       </Container>
 
-      {showTotals ? (
-        <TransactionsTotalsBar
-          salesTotal={filteredSalesTotal}
-          netSalesTotal={filteredNetSalesTotal}
-          refundedTotal={filteredRefundedTotal}
-          voidedTotal={filteredVoidedTotal}
-          voidedCount={filteredVoidedCount}
-        />
-      ) : null}
-
-      <Fab
-        size="small"
-        color={showTotals ? "primary" : "default"}
-        onClick={() => setShowTotals((current) => !current)}
-        sx={{
-          position: "fixed",
-          right: 16,
-          bottom: showTotals
-            ? "calc(env(safe-area-inset-bottom) + 196px)"
-            : "calc(env(safe-area-inset-bottom) + 82px)",
-          zIndex: 9,
-        }}
-        aria-label={showTotals ? "hide totals" : "show totals"}
-      >
-        {showTotals ? (
-          <VisibilityOffRounded fontSize="small" />
-        ) : (
-          <VisibilityRounded fontSize="small" />
-        )}
-      </Fab>
+      <TransactionsTotalsBar
+        expanded={showTotals}
+        onToggle={() => setShowTotals((current) => !current)}
+        periodLabel={periodLabel}
+        salesTotal={filteredSalesTotal}
+        netSalesTotal={filteredNetSalesTotal}
+        refundedTotal={filteredRefundedTotal}
+        voidedTotal={filteredVoidedTotal}
+        voidedCount={filteredVoidedCount}
+      />
     </MobilePageWrapper>
   );
 }
