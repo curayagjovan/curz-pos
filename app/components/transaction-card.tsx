@@ -15,7 +15,6 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
-import KeyboardArrowDownRounded from "@mui/icons-material/KeyboardArrowDownRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import type { Transaction } from "@/types/transaction";
 
@@ -239,9 +238,23 @@ const TransactionCard = memo(function TransactionCard({
         }}
       >
         <Box
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={
+            expanded ? "collapse transaction details" : "expand transaction details"
+          }
+          onClick={() => setExpanded((current) => !current)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setExpanded((current) => !current);
+            }
+          }}
           sx={{
             px: 1.25,
             py: 1.1,
+            cursor: "pointer",
             background:
               "linear-gradient(180deg, rgba(25,118,210,0.06) 0%, rgba(25,118,210,0) 100%)",
           }}
@@ -287,39 +300,23 @@ const TransactionCard = memo(function TransactionCard({
                   {formatCurrency(transaction.total)}
                 </Typography>
               </Stack>
-
-              <IconButton
-                size="small"
-                aria-label={
-                  expanded
-                    ? "collapse transaction details"
-                    : "expand transaction details"
-                }
-                onClick={() => setExpanded((current) => !current)}
-                sx={{
-                  transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 180ms ease",
-                }}
-              >
-                <KeyboardArrowDownRounded fontSize="small" />
-              </IconButton>
             </Stack>
 
             <Stack
               direction="row"
               spacing={1}
               alignItems="center"
-              justifyContent="space-between"
             >
               <Typography
                 variant="caption"
                 color="text.secondary"
                 noWrap
-                sx={{ maxWidth: "65%", overflow: "hidden", textOverflow: "ellipsis" }}
+                sx={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
                 title={itemPreview}
               >
                 {itemPreview}
               </Typography>
+
               <Chip
                 size="small"
                 variant="filled"
