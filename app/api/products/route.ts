@@ -80,15 +80,19 @@ export async function GET(request: Request) {
           : Math.min(limitParam, 60);
     const baseWhere: Prisma.ProductWhereInput = {
       isActive: true,
-      NOT: { unit: "load" },
-      ...(query
-        ? {
-            OR: [
-              { name: { contains: query, mode: "insensitive" as const } },
-              { sku: { contains: query, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
+      AND: [
+        { OR: [{ unit: null }, { unit: { not: "load" } }] },
+        ...(query
+          ? [
+              {
+                OR: [
+                  { name: { contains: query, mode: "insensitive" as const } },
+                  { sku: { contains: query, mode: "insensitive" as const } },
+                ],
+              },
+            ]
+          : []),
+      ],
     };
 
     if (!hasPaginationParams) {
