@@ -15,6 +15,7 @@ import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
 type ManageLoadItemCardProps = {
   item: LoadCatalogItem;
   brandLabel: string;
+  onEdit: (item: LoadCatalogItem) => void;
   onRequestDelete: (item: LoadCatalogItem) => void;
   deleteDisabled?: boolean;
 };
@@ -24,6 +25,7 @@ const SWIPE_ACTION_WIDTH = 92;
 const ManageLoadItemCard = memo(function ManageLoadItemCard({
   item,
   brandLabel,
+  onEdit,
   onRequestDelete,
   deleteDisabled = false,
 }: ManageLoadItemCardProps) {
@@ -85,7 +87,10 @@ const ManageLoadItemCard = memo(function ManageLoadItemCard({
     if (isDeleteRevealed) {
       setIsDeleteRevealed(false);
       setDragOffset(0);
+      return;
     }
+
+    onEdit(item);
   };
 
   const handleDeleteTap = () => {

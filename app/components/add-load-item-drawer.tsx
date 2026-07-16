@@ -29,6 +29,7 @@ export type AddLoadItemFormErrors = {
 
 type AddLoadItemDrawerProps = {
   open: boolean;
+  isEditing?: boolean;
   form: AddLoadItemFormState;
   formErrors: AddLoadItemFormErrors;
   saving: boolean;
@@ -42,6 +43,7 @@ type AddLoadItemDrawerProps = {
 
 export default function AddLoadItemDrawer({
   open,
+  isEditing = false,
   form,
   formErrors,
   saving,
@@ -70,7 +72,7 @@ export default function AddLoadItemDrawer({
           justifyContent="space-between"
           sx={{ mb: 1.5 }}
         >
-          <Typography variant="h6">Add Load</Typography>
+          <Typography variant="h6">{isEditing ? "Edit Load" : "Add Load"}</Typography>
           <IconButton onClick={onClose} disabled={saving}>
             <CloseRounded fontSize="small" />
           </IconButton>

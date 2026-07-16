@@ -64,6 +64,7 @@ export default function ManageLoadPage() {
   } = useAppSnackbar();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<AddLoadItemFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<AddLoadItemFormErrors>({});
@@ -81,7 +82,22 @@ export default function ManageLoadPage() {
   }, [loadItems, deferredSearchQuery]);
 
   const handleAddClick = useCallback(() => {
+    setEditingId(null);
     setForm(EMPTY_FORM);
+    setFormErrors({});
+    setDrawerOpen(true);
+  }, []);
+
+  const handleEditClick = useCallback((item: LoadCatalogItem) => {
+    setEditingId(item.id);
+    setForm({
+      brand: item.brand,
+      category: item.category,
+      code: item.code,
+      amount: String(item.amount),
+      label: item.label,
+      description: item.description ?? "",
+    });
     setFormErrors({});
     setDrawerOpen(true);
   }, []);
@@ -92,6 +108,7 @@ export default function ManageLoadPage() {
     }
 
     setDrawerOpen(false);
+    setEditingId(null);
     setForm(EMPTY_FORM);
     setFormErrors({});
   }, [saving]);
@@ -144,22 +161,28 @@ export default function ManageLoadPage() {
     setSaving(true);
 
     try {
-      const response = await fetch("/api/load-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          brand: form.brand,
-          category: form.category,
-          code,
-          amount,
-          label,
-          description: form.description.trim() || null,
-        }),
-      });
+      const response = await fetch(
+        editingId ? `/api/load-items/${editingId}` : "/api/load-items",
+        {
+          method: editingId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brand: form.brand,
+            category: form.category,
+            code,
+            amount,
+            label,
+            description: form.description.trim() || null,
+          }),
+        },
+      );
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.message || "Unable to create load item");
+        throw new Error(
+          data?.message ||
+            (editingId ? "Unable to update load item" : "Unable to create load item"),
+        );
       }
 
       upsertLoadItem({
@@ -174,18 +197,24 @@ export default function ManageLoadPage() {
         description: data.description ?? undefined,
       });
 
-      showSnackbar({ message: "Load item created" });
+      showSnackbar({ message: editingId ? "Load item updated" : "Load item created" });
       setDrawerOpen(false);
+      setEditingId(null);
       setForm(EMPTY_FORM);
     } catch (err) {
       showSnackbar({
-        message: err instanceof Error ? err.message : "Unable to create load item",
+        message:
+          err instanceof Error
+            ? err.message
+            : editingId
+              ? "Unable to update load item"
+              : "Unable to create load item",
         severity: "error",
       });
     } finally {
       setSaving(false);
     }
-  }, [form, showSnackbar, upsertLoadItem]);
+  }, [editingId, form, showSnackbar, upsertLoadItem]);
 
   const handleRequestDelete = useCallback((item: LoadCatalogItem) => {
     setDeleteCandidate(item);
@@ -270,6 +299,7 @@ export default function ManageLoadPage() {
                   key={item.id}
                   item={item}
                   brandLabel={brandLabel(item.brand)}
+                  onEdit={handleEditClick}
                   onRequestDelete={handleRequestDelete}
                   deleteDisabled={deletingItemId === item.id}
                 />
@@ -295,6 +325,7 @@ export default function ManageLoadPage() {
 
       <AddLoadItemDrawer
         open={drawerOpen}
+        isEditing={Boolean(editingId)}
         form={form}
         formErrors={formErrors}
         saving={saving}
