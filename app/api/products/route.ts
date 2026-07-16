@@ -80,7 +80,7 @@ export async function GET(request: Request) {
           : Math.min(limitParam, 60);
     const baseWhere: Prisma.ProductWhereInput = {
       isActive: true,
-      NOT: { sku: { startsWith: "LOAD-" } },
+      NOT: { unit: "load" },
       ...(query
         ? {
             OR: [

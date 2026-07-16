@@ -12,6 +12,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { ThemeProvider } from "@mui/material/styles";
 import { PageProvider } from "@/app/context/page-context";
 import { CartProvider } from "@/app/context/cart-context";
+import { LoadItemsProvider } from "@/app/context/load-items-context";
 import { ProductsProvider } from "@/app/context/products-context";
 import { TransactionsProvider } from "@/app/context/transactions-context";
 import appTheme from "@/app/theme";
@@ -304,7 +305,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <PageProvider>
           <ProductsProvider>
             <TransactionsProvider>
-              <CartProvider>{children}</CartProvider>
+              <LoadItemsProvider>
+                <CartProvider>{children}</CartProvider>
+              </LoadItemsProvider>
             </TransactionsProvider>
           </ProductsProvider>
         </PageProvider>

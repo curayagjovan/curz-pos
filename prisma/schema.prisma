@@ -119,6 +119,23 @@ model LoadMarkupSetting {
   updatedAt   DateTime @updatedAt
 }
 
+model LoadItem {
+  id          String           @id @default(cuid())
+  sku         String           @unique
+  brand       LoadBrand
+  group       LoadNetworkGroup
+  category    LoadCategory
+  code        String
+  amount      Decimal          @db.Decimal(10, 2)
+  label       String
+  description String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([isActive, brand])
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -131,4 +148,23 @@ enum MovementType {
   RESTOCK
   ADJUSTMENT
   BULK_IMPORT
+}
+
+enum LoadBrand {
+  GLOBE
+  TM
+  SMART
+  TNT
+  DITO
+}
+
+enum LoadNetworkGroup {
+  GLOBE_TM
+  SMART_TNT
+  DITO
+}
+
+enum LoadCategory {
+  REGULAR_LOAD
+  DATA_PROMO
 }

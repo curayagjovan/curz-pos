@@ -14,6 +14,7 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:seed-loads": "tsx prisma/seed-mobile-loads.ts",
+    "db:seed-load-items": "tsx prisma/seed-load-items.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

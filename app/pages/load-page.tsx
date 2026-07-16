@@ -6,8 +6,14 @@ import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
+import PercentRounded from "@mui/icons-material/PercentRounded";
+import ListAltRounded from "@mui/icons-material/ListAltRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import ListEmptyState from "@/app/components/list-empty-state";
 import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
@@ -16,11 +22,12 @@ import LoadMarkupDialog from "@/app/components/load-markup-dialog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
+import { useLoadItems } from "@/app/context/load-items-context";
+import { usePageContext } from "@/app/context/page-context";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import {
   LOAD_BRANDS,
-  LOAD_CATALOG,
   type LoadBrand,
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
@@ -53,7 +60,9 @@ function matchesLoadSearch(item: LoadCatalogItem, query: string) {
 }
 
 export default function LoadPage() {
+  const { setCurrentPage } = usePageContext();
   const { addTransaction } = useTransactions();
+  const { loadItems, loading: loadItemsLoading } = useLoadItems();
   const {
     snackbarOpen,
     snackbarMessage,
@@ -73,6 +82,8 @@ export default function LoadPage() {
   const [sharing, setSharing] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
+  const [settingsMenuAnchor, setSettingsMenuAnchor] =
+    useState<HTMLElement | null>(null);
   const { settings: markupSettings, updateSettings: updateMarkupSettings } =
     useLoadMarkupSettings();
 
@@ -106,12 +117,12 @@ export default function LoadPage() {
 
   const filteredItems = useMemo(
     () =>
-      LOAD_CATALOG.filter(
-        (item) =>
+      loadItems.filter(
+        (item: LoadCatalogItem) =>
           (brandFilter.size === 0 || brandFilter.has(item.brand)) &&
           matchesLoadSearch(item, searchQuery),
       ),
-    [brandFilter, searchQuery],
+    [loadItems, brandFilter, searchQuery],
   );
 
   const handleSelectItem = (item: LoadCatalogItem) => {
@@ -237,12 +248,44 @@ export default function LoadPage() {
     <MobilePageWrapper
       title="Load"
       headerActions={
-        <IconButton
-          onClick={() => setMarkupDialogOpen(true)}
-          aria-label="load markup settings"
-        >
-          <SettingsRounded fontSize="small" />
-        </IconButton>
+        <>
+          <IconButton
+            onClick={(event) => setSettingsMenuAnchor(event.currentTarget)}
+            aria-label="load settings"
+            aria-haspopup="menu"
+            aria-expanded={Boolean(settingsMenuAnchor)}
+          >
+            <SettingsRounded fontSize="small" />
+          </IconButton>
+          <Menu
+            anchorEl={settingsMenuAnchor}
+            open={Boolean(settingsMenuAnchor)}
+            onClose={() => setSettingsMenuAnchor(null)}
+          >
+            <MenuItem
+              onClick={() => {
+                setSettingsMenuAnchor(null);
+                setMarkupDialogOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <PercentRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Markup Settings</ListItemText>
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setSettingsMenuAnchor(null);
+                setCurrentPage("manageLoad");
+              }}
+            >
+              <ListItemIcon>
+                <ListAltRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Manage Load Items</ListItemText>
+            </MenuItem>
+          </Menu>
+        </>
       }
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
@@ -299,7 +342,9 @@ export default function LoadPage() {
             </Stack>
           </Box>
 
-          {filteredItems.length === 0 ? (
+          {loadItemsLoading ? (
+            <ListEmptyState description="Loading loads..." />
+          ) : filteredItems.length === 0 ? (
             <ListEmptyState description="No load types match your search." />
           ) : (
             <List disablePadding>
