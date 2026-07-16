@@ -416,19 +416,56 @@ export async function POST(request: Request) {
       }
     }
 
+    const orderId = normalizedRequestId ?? crypto.randomUUID();
+    let orderNo = createOrderNo();
+
+    const getExistingOrderByIdentifier = async () => {
+      try {
+        const existing = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: orderCreateSelectWithAmountPaid,
+        });
+        return existing;
+      } catch (error) {
+        if (!isMissingAmountPaidColumnError(error)) {
+          throw error;
+        }
+
+        const existingFallback = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: orderCreateSelectBase,
+        });
+
+        return existingFallback
+          ? withNullAmountPaid(existingFallback as Record<string, unknown>)
+          : null;
+      }
+    };
+
     const productIds = Array.from(
       new Set(items.map((item) => item.productId as string)),
     );
-    const productSnapshot = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        bundleQty: true,
-        bundlePrice: true,
-      },
-    });
+
+    // Run the idempotency lookup concurrently with the product snapshot
+    // fetch instead of after it — they don't depend on each other, and each
+    // round trip to the database costs real latency.
+    const [productSnapshot, existingByRequestId] = await Promise.all([
+      prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          bundleQty: true,
+          bundlePrice: true,
+        },
+      }),
+      normalizedRequestId ? getExistingOrderByIdentifier() : Promise.resolve(null),
+    ]);
+
+    if (existingByRequestId) {
+      return NextResponse.json(existingByRequestId, { status: 200 });
+    }
 
     const productById = new Map(productSnapshot.map((p) => [p.id, p]));
 
@@ -584,19 +621,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const orderId = normalizedRequestId ?? crypto.randomUUID();
-    let orderNo = createOrderNo();
-    if (normalizedRequestId) {
-      const existingByRequestId = await prisma.order.findUnique({
-        where: { id: orderId },
-        select: orderCreateSelectWithAmountPaid,
-      });
-
-      if (existingByRequestId) {
-        return NextResponse.json(existingByRequestId, { status: 200 });
-      }
-    }
-
     const createOrderOperation = (
       includeAmountPaid: boolean,
       orderIdentifier: { id: string; orderNo: string },
@@ -664,29 +688,6 @@ export async function POST(request: Request) {
       }
 
       throw new Error("Unable to allocate a unique order number");
-    };
-
-    const getExistingOrderByIdentifier = async () => {
-      try {
-        const existing = await prisma.order.findUnique({
-          where: { id: orderId },
-          select: orderCreateSelectWithAmountPaid,
-        });
-        return existing;
-      } catch (error) {
-        if (!isMissingAmountPaidColumnError(error)) {
-          throw error;
-        }
-
-        const existingFallback = await prisma.order.findUnique({
-          where: { id: orderId },
-          select: orderCreateSelectBase,
-        });
-
-        return existingFallback
-          ? withNullAmountPaid(existingFallback as Record<string, unknown>)
-          : null;
-      }
     };
 
     let result: unknown;
