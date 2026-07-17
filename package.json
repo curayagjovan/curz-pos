@@ -15,6 +15,7 @@
     "db:seed": "prisma db seed",
     "db:seed-loads": "tsx prisma/seed-mobile-loads.ts",
     "db:seed-load-items": "tsx prisma/seed-load-items.ts",
+    "db:seed-ewallet-items": "tsx prisma/seed-ewallet-items.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

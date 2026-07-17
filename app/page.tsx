@@ -7,6 +7,7 @@ import TransactionsPage from "./pages/transactions-page";
 import InventoryPage from "./pages/inventory-page";
 import LoadPage from "./pages/load-page";
 import ManageLoadPage from "./pages/manage-load-page";
+import EWalletPage from "./pages/ewallet-page";
 
 export default function Page() {
   const { currentPage } = usePageContext();
@@ -17,6 +18,7 @@ export default function Page() {
     inventory: <InventoryPage />,
     load: <LoadPage />,
     manageLoad: <ManageLoadPage />,
+    ewallet: <EWalletPage />,
   };
 
   return (

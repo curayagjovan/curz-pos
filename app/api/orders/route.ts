@@ -458,6 +458,7 @@ export async function POST(request: Request) {
           price: true,
           bundleQty: true,
           bundlePrice: true,
+          allowCustomPrice: true,
         },
       }),
       normalizedRequestId ? getExistingOrderByIdentifier() : Promise.resolve(null),
@@ -484,7 +485,9 @@ export async function POST(request: Request) {
           return null;
         }
 
-        const unitPrice = Number(current.price);
+        const unitPrice = current.allowCustomPrice
+          ? Number(item.unitPrice)
+          : Number(current.price);
         const bundlePrice =
           current.bundlePrice === null ? null : Number(current.bundlePrice);
         const lineTotal = computeLineTotal(

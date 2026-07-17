@@ -24,6 +24,7 @@ model Product {
   isActive    Boolean  @default(true)
   usesGlobalMarkup Boolean @default(true)
   isPinned    Boolean  @default(false)
+  allowCustomPrice Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -117,6 +118,16 @@ model LoadMarkupSetting {
   tier2Markup Float
   tier3Markup Float
   updatedAt   DateTime @updatedAt
+}
+
+model EWalletFeeSetting {
+  id        String   @id
+  tier1Max  Float
+  tier1Fee  Float
+  tier2Max  Float
+  tier2Fee  Float
+  tier3Fee  Float
+  updatedAt DateTime @updatedAt
 }
 
 model LoadItem {

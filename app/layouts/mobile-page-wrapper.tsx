@@ -15,6 +15,7 @@ import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
+import AccountBalanceWalletRounded from "@mui/icons-material/AccountBalanceWalletRounded";
 import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
@@ -25,7 +26,7 @@ type MobilePageWrapperProps = {
   children: React.ReactNode;
 };
 
-type NavPage = "products" | "transactions" | "inventory" | "load";
+type NavPage = "products" | "transactions" | "inventory" | "load" | "ewallet";
 
 const APP_BAR_HEIGHT = 56;
 const BOTTOM_NAV_HEIGHT = 68;
@@ -301,6 +302,12 @@ export default function MobilePageWrapper({
               value="load"
               label="Load"
               icon={<SimCardRounded fontSize="small" />}
+              sx={{ px: 0.5 }}
+            />
+            <BottomNavigationAction
+              value="ewallet"
+              label="E-Wallet"
+              icon={<AccountBalanceWalletRounded fontSize="small" />}
               sx={{ px: 0.5 }}
             />
           </BottomNavigation>

@@ -7,7 +7,8 @@ type PageType =
   | "transactions"
   | "inventory"
   | "load"
-  | "manageLoad";
+  | "manageLoad"
+  | "ewallet";
 
 type PageContextType = {
   currentPage: PageType;
