@@ -121,11 +121,17 @@ export default function LoadPage() {
 
   const filteredItems = useMemo(
     () =>
-      loadItems.filter(
-        (item: LoadCatalogItem) =>
-          (brandFilter.size === 0 || brandFilter.has(item.brand)) &&
-          matchesLoadSearch(item, searchQuery),
-      ),
+      loadItems
+        .filter(
+          (item: LoadCatalogItem) =>
+            (brandFilter.size === 0 || brandFilter.has(item.brand)) &&
+            matchesLoadSearch(item, searchQuery),
+        )
+        .sort((left, right) =>
+          left.label.localeCompare(right.label, undefined, {
+            numeric: true,
+          }),
+        ),
     [loadItems, brandFilter, searchQuery],
   );
 
