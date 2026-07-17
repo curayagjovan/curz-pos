@@ -60,11 +60,11 @@ export default function TransactionsTotalsBar({
         anchor="bottom"
         open={expanded}
         onClose={onToggle}
-        PaperProps={{
-          sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            pb: "env(safe-area-inset-bottom)",
+        slotProps={{
+          paper: {
+            sx: {
+              pb: "env(safe-area-inset-bottom)",
+            },
           },
         }}
       >

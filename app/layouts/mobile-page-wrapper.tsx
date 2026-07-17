@@ -5,12 +5,13 @@ import AppBar from "@mui/material/AppBar";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import Box from "@mui/material/Box";
+import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import ArrowBackRounded from "@mui/icons-material/ArrowBackRounded";
+import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
@@ -29,6 +30,9 @@ type NavPage = "products" | "transactions" | "inventory" | "load";
 const APP_BAR_HEIGHT = 56;
 const BOTTOM_NAV_HEIGHT = 68;
 const PULL_INDICATOR_OFFSET = 112;
+const TITLE_COLLAPSE_THRESHOLD = 36;
+
+const easeIOS = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 export default function MobilePageWrapper({
   title,
@@ -42,6 +46,12 @@ export default function MobilePageWrapper({
   const touchStartYRef = useRef<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    const scrollTop = mainRef.current?.scrollTop ?? 0;
+    setScrolled(scrollTop > TITLE_COLLAPSE_THRESHOLD);
+  }, []);
 
   const resetPullState = useCallback(() => {
     touchStartYRef.current = null;
@@ -134,7 +144,8 @@ export default function MobilePageWrapper({
         elevation={0}
         sx={{
           borderBottom: "1px solid",
-          borderColor: "divider",
+          borderColor: scrolled ? "divider" : "transparent",
+          transition: `border-color 220ms ${easeIOS}`,
           pt: "env(safe-area-inset-top)",
           px: "env(safe-area-inset-left)",
           pr: "env(safe-area-inset-right)",
@@ -147,6 +158,7 @@ export default function MobilePageWrapper({
             px: 2,
             display: "flex",
             justifyContent: "space-between",
+            position: "relative",
           }}
         >
           <Stack direction="row" alignItems="center" spacing={0.5}>
@@ -155,23 +167,33 @@ export default function MobilePageWrapper({
                 onClick={onBack}
                 aria-label="go back"
                 edge="start"
-                sx={{ ml: -1 }}
+                sx={{ ml: -1, color: "primary.main" }}
               >
-                <ArrowBackRounded fontSize="small" />
+                <ArrowBackIosNewRounded fontSize="small" />
               </IconButton>
             ) : null}
-            <Typography
-              variant="h6"
-              sx={{
-                fontSize: 19,
-                fontWeight: 700,
-                letterSpacing: 0.1,
-                lineHeight: 1.2,
-              }}
-            >
-              {title}
-            </Typography>
           </Stack>
+
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              position: "absolute",
+              left: 56,
+              right: 56,
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              pointerEvents: "none",
+              opacity: scrolled ? 1 : 0,
+              transform: scrolled ? "translateY(0)" : "translateY(6px)",
+              transition: `opacity 220ms ${easeIOS}, transform 220ms ${easeIOS}`,
+            }}
+          >
+            {title}
+          </Typography>
+
           {headerActions}
         </Toolbar>
       </AppBar>
@@ -179,6 +201,7 @@ export default function MobilePageWrapper({
       <Box
         component="main"
         ref={mainRef}
+        onScroll={handleScroll}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -223,12 +246,19 @@ export default function MobilePageWrapper({
                 ? "Pull down to refresh"
                 : ""}
         </Box>
+
+        <Container maxWidth="sm" sx={{ pt: 1, pb: 0 }}>
+          <Typography variant="h4" component="h1">
+            {title}
+          </Typography>
+        </Container>
+
         {children}
       </Box>
 
       {hideBottomNav ? null : (
       <Paper
-        elevation={8}
+        elevation={0}
         sx={{
           position: "fixed",
           left: 0,
@@ -240,6 +270,9 @@ export default function MobilePageWrapper({
           borderTop: "1px solid",
           borderColor: "divider",
           borderRadius: 0,
+          bgcolor: "rgba(var(--mui-palette-background-defaultChannel) / 0.82)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)",
         }}
       >
         <BottomNavigation
@@ -257,40 +290,19 @@ export default function MobilePageWrapper({
             value="products"
             label="Products"
             icon={<StorefrontRounded fontSize="small" />}
-            sx={{
-              minWidth: 0,
-              px: 0.5,
-              ".MuiBottomNavigationAction-label": {
-                fontSize: 11,
-                fontWeight: 600,
-              },
-            }}
+            sx={{ px: 0.5 }}
           />
           <BottomNavigationAction
             value="transactions"
             label="Sales"
             icon={<PointOfSaleRounded fontSize="small" />}
-            sx={{
-              minWidth: 0,
-              px: 0.5,
-              ".MuiBottomNavigationAction-label": {
-                fontSize: 11,
-                fontWeight: 600,
-              },
-            }}
+            sx={{ px: 0.5 }}
           />
           <BottomNavigationAction
             value="load"
             label="Load"
             icon={<SimCardRounded fontSize="small" />}
-            sx={{
-              minWidth: 0,
-              px: 0.5,
-              ".MuiBottomNavigationAction-label": {
-                fontSize: 11,
-                fontWeight: 600,
-              },
-            }}
+            sx={{ px: 0.5 }}
           />
         </BottomNavigation>
       </Paper>

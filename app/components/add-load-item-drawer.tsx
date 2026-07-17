@@ -56,12 +56,12 @@ export default function AddLoadItemDrawer({
       anchor="bottom"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          pb: "env(safe-area-inset-bottom)",
-          maxHeight: "88dvh",
+      slotProps={{
+        paper: {
+          sx: {
+            pb: "env(safe-area-inset-bottom)",
+            maxHeight: "88dvh",
+          },
         },
       }}
     >

@@ -3,10 +3,9 @@
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import InputBase from "@mui/material/InputBase";
-import Paper from "@mui/material/Paper";
-import CloseIcon from "@mui/icons-material/Close";
-import SearchIcon from "@mui/icons-material/Search";
-import DialpadIcon from "@mui/icons-material/Dialpad";
+import CancelRounded from "@mui/icons-material/CancelRounded";
+import SearchRounded from "@mui/icons-material/SearchRounded";
+import DialpadRounded from "@mui/icons-material/DialpadRounded";
 
 type ProductsSearchBarProps = {
   value: string;
@@ -24,7 +23,7 @@ export default function ProductsSearchBar({
   onChange,
   placeholder = "Search products",
   ariaLabel = "search products",
-  icon,
+  icon = "search",
   sticky = true,
   inputMode,
   autoFocus,
@@ -44,21 +43,31 @@ export default function ProductsSearchBar({
           : { py: 0.5 }
       }
     >
-      <Paper
+      <Box
+        role="search"
         sx={{
-          p: "2px 6px",
           display: "flex",
           alignItems: "center",
-          width: "100%",
-          minHeight: 40,
+          gap: 1,
+          px: 1.25,
+          minHeight: 38,
+          borderRadius: "10px",
+          bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
+          transition: "background-color 200ms cubic-bezier(0.32, 0.72, 0, 1)",
+          "&:focus-within": {
+            bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.09)",
+          },
         }}
-        elevation={0}
-        variant="outlined"
       >
+        {icon === "mobile" ? (
+          <DialpadRounded fontSize="small" sx={{ color: "text.secondary" }} />
+        ) : icon === "search" ? (
+          <SearchRounded fontSize="small" sx={{ color: "text.secondary" }} />
+        ) : null}
         <InputBase
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          sx={{ ml: 1, flex: 1 }}
+          sx={{ flex: 1 }}
           placeholder={placeholder}
           autoFocus={autoFocus}
           inputProps={{ "aria-label": ariaLabel, inputMode }}
@@ -66,23 +75,15 @@ export default function ProductsSearchBar({
         {value.trim().length > 0 ? (
           <IconButton
             type="button"
-            sx={{ p: 1 }}
+            size="small"
+            sx={{ p: 0.25, mr: -0.5, color: "text.secondary" }}
             aria-label="clear"
             onClick={() => onChange("")}
           >
-            <CloseIcon fontSize="small" />
+            <CancelRounded sx={{ fontSize: 18 }} />
           </IconButton>
         ) : null}
-        {icon === "search" ? (
-          <IconButton type="button" sx={{ p: 1 }} aria-label="search">
-            <SearchIcon fontSize="small" />
-          </IconButton>
-        ) : (
-          <IconButton type="button" sx={{ p: 1 }} aria-label="search">
-            <DialpadIcon fontSize="small" />
-          </IconButton>
-        )}
-      </Paper>
+      </Box>
     </Box>
   );
 }

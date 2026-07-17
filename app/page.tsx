@@ -1,5 +1,6 @@
 "use client";
 
+import Box from "@mui/material/Box";
 import { usePageContext } from "@/app/context/page-context";
 import ProductsPage from "./pages/products-page";
 import TransactionsPage from "./pages/transactions-page";
@@ -18,5 +19,12 @@ export default function Page() {
     manageLoad: <ManageLoadPage />,
   };
 
-  return pageComponents[currentPage] || <ProductsPage />;
+  return (
+    <Box
+      key={currentPage}
+      sx={{ animation: "page-enter 240ms cubic-bezier(0.32, 0.72, 0, 1)" }}
+    >
+      {pageComponents[currentPage] || <ProductsPage />}
+    </Box>
+  );
 }

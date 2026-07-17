@@ -49,11 +49,11 @@ export default function ProductFormDrawer({
       anchor="bottom"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          pb: "env(safe-area-inset-bottom)",
+      slotProps={{
+        paper: {
+          sx: {
+            pb: "env(safe-area-inset-bottom)",
+          },
         },
       }}
     >
