@@ -143,8 +143,6 @@ export default function MobilePageWrapper({
         color="inherit"
         elevation={0}
         sx={{
-          borderBottom: "1px solid",
-          borderColor: scrolled ? "divider" : "transparent",
           transition: `border-color 220ms ${easeIOS}`,
           pt: "env(safe-area-inset-top)",
           px: "env(safe-area-inset-left)",
@@ -257,55 +255,56 @@ export default function MobilePageWrapper({
       </Box>
 
       {hideBottomNav ? null : (
-      <Paper
-        elevation={0}
-        sx={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pb: "env(safe-area-inset-bottom)",
-          px: "env(safe-area-inset-left)",
-          pr: "env(safe-area-inset-right)",
-          borderTop: "1px solid",
-          borderColor: "divider",
-          borderRadius: 0,
-          bgcolor: "rgba(var(--mui-palette-background-defaultChannel) / 0.82)",
-          backdropFilter: "saturate(180%) blur(20px)",
-          WebkitBackdropFilter: "saturate(180%) blur(20px)",
-        }}
-      >
-        <BottomNavigation
-          showLabels
-          value={currentPage}
-          onChange={(event, newValue) =>
-            handleTabChange(event, newValue as NavPage)
-          }
+        <Paper
+          elevation={0}
           sx={{
-            height: BOTTOM_NAV_HEIGHT,
-            px: 0.5,
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pb: "env(safe-area-inset-bottom)",
+            px: "env(safe-area-inset-left)",
+            pr: "env(safe-area-inset-right)",
+            borderTop: "1px solid",
+            borderColor: "divider",
+            borderRadius: 0,
+            bgcolor:
+              "rgba(var(--mui-palette-background-defaultChannel) / 0.82)",
+            backdropFilter: "saturate(180%) blur(20px)",
+            WebkitBackdropFilter: "saturate(180%) blur(20px)",
           }}
         >
-          <BottomNavigationAction
-            value="products"
-            label="Products"
-            icon={<StorefrontRounded fontSize="small" />}
-            sx={{ px: 0.5 }}
-          />
-          <BottomNavigationAction
-            value="transactions"
-            label="Sales"
-            icon={<PointOfSaleRounded fontSize="small" />}
-            sx={{ px: 0.5 }}
-          />
-          <BottomNavigationAction
-            value="load"
-            label="Load"
-            icon={<SimCardRounded fontSize="small" />}
-            sx={{ px: 0.5 }}
-          />
-        </BottomNavigation>
-      </Paper>
+          <BottomNavigation
+            showLabels
+            value={currentPage}
+            onChange={(event, newValue) =>
+              handleTabChange(event, newValue as NavPage)
+            }
+            sx={{
+              height: BOTTOM_NAV_HEIGHT,
+              px: 0.5,
+            }}
+          >
+            <BottomNavigationAction
+              value="products"
+              label="Products"
+              icon={<StorefrontRounded fontSize="small" />}
+              sx={{ px: 0.5 }}
+            />
+            <BottomNavigationAction
+              value="transactions"
+              label="Sales"
+              icon={<PointOfSaleRounded fontSize="small" />}
+              sx={{ px: 0.5 }}
+            />
+            <BottomNavigationAction
+              value="load"
+              label="Load"
+              icon={<SimCardRounded fontSize="small" />}
+              sx={{ px: 0.5 }}
+            />
+          </BottomNavigation>
+        </Paper>
       )}
     </Box>
   );
