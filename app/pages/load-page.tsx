@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
@@ -20,6 +19,8 @@ import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
 import LoadItemCard from "@/app/components/load-item-card";
 import LoadMarkupDialog from "@/app/components/load-markup-dialog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
+import SegmentedControl from "@/app/components/segmented-control";
+import type { SegmentOption } from "@/app/components/segmented-control";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
 import { useLoadItems } from "@/app/context/load-items-context";
@@ -43,6 +44,11 @@ import type { Transaction } from "@/types/transaction";
 function brandLabel(brand: LoadBrand) {
   return LOAD_BRANDS.find((entry) => entry.brand === brand)?.label ?? brand;
 }
+
+const BRAND_SEGMENTS: SegmentOption[] = [
+  { key: "all", label: "All" },
+  ...LOAD_BRANDS.map(({ brand, label }) => ({ key: brand, label })),
+];
 
 function matchesLoadSearch(item: LoadCatalogItem, query: string) {
   const normalized = query.trim().toLowerCase();
@@ -103,11 +109,9 @@ export default function LoadPage() {
     }
   };
 
-  const toggleBrand = (brand: LoadBrand) => {
+  const selectBrand = (brand: LoadBrand) => {
     setAutoDetected(false);
-    setBrandFilter((current) =>
-      current.size === 1 && current.has(brand) ? new Set() : new Set([brand]),
-    );
+    setBrandFilter(new Set([brand]));
   };
 
   const clearBrandFilter = () => {
@@ -320,25 +324,18 @@ export default function LoadPage() {
                 sticky={false}
               />
 
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ flexWrap: "wrap", rowGap: 1 }}
-              >
-                <Chip
-                  label="All"
-                  color={brandFilter.size === 0 ? "primary" : "default"}
-                  onClick={clearBrandFilter}
-                />
-                {LOAD_BRANDS.map(({ brand, label }) => (
-                  <Chip
-                    key={brand}
-                    label={label}
-                    color={brandFilter.has(brand) ? "primary" : "default"}
-                    onClick={() => toggleBrand(brand)}
-                  />
-                ))}
-              </Stack>
+              <SegmentedControl
+                ariaLabel="load brand"
+                segments={BRAND_SEGMENTS}
+                selectedKeys={
+                  brandFilter.size === 0 ? ["all"] : Array.from(brandFilter)
+                }
+                onSelect={(key) =>
+                  key === "all"
+                    ? clearBrandFilter()
+                    : selectBrand(key as LoadBrand)
+                }
+              />
             </Stack>
           </Box>
 

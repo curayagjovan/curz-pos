@@ -66,7 +66,6 @@ export default function TransactionsPage() {
     toDateTimeLocalValue(new Date()),
   );
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("today");
-  const [showCustomRange, setShowCustomRange] = useState(false);
   const [showTotals, setShowTotals] = useState(false);
   const { transactions, loading, error, updateTransactionStatus } =
     useTransactions();
@@ -260,14 +259,12 @@ export default function TransactionsPage() {
     end: Date,
   ) => {
     setActiveFilter(filter);
-    setShowCustomRange(true);
     setStartDateTime(toDateTimeLocalValue(start));
     setEndDateTime(toDateTimeLocalValue(end));
   };
 
   const handleSelectCustom = () => {
     setActiveFilter("custom");
-    setShowCustomRange(true);
   };
 
   const handleStartDateTimeChange = (value: string) => {
@@ -286,16 +283,12 @@ export default function TransactionsPage() {
         <Stack spacing={1.5}>
           <TransactionsFilterBar
             activeFilter={activeFilter}
-            showCustomRange={showCustomRange}
             startDateTime={startDateTime}
             endDateTime={endDateTime}
             onApplyQuickRange={applyQuickRange}
             onSelectCustom={handleSelectCustom}
             onStartDateTimeChange={handleStartDateTimeChange}
             onEndDateTimeChange={handleEndDateTimeChange}
-            onToggleCustomRange={() =>
-              setShowCustomRange((current) => !current)
-            }
           />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>

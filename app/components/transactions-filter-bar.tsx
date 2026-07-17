@@ -2,13 +2,12 @@
 
 import Box from "@mui/material/Box";
 import Collapse from "@mui/material/Collapse";
-import IconButton from "@mui/material/IconButton";
-import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
+import InputBase from "@mui/material/InputBase";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
-import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
+import SegmentedControl from "@/app/components/segmented-control";
+import type { SegmentOption } from "@/app/components/segmented-control";
 
 export type ActiveFilter =
   | "today"
@@ -18,166 +17,146 @@ export type ActiveFilter =
   | "custom"
   | null;
 
+type QuickFilter = Exclude<ActiveFilter, "custom" | null>;
+
 type TransactionsFilterBarProps = {
   activeFilter: ActiveFilter;
-  showCustomRange: boolean;
   startDateTime: string;
   endDateTime: string;
-  onApplyQuickRange: (
-    filter: Exclude<ActiveFilter, "custom" | null>,
-    start: Date,
-    end: Date,
-  ) => void;
+  onApplyQuickRange: (filter: QuickFilter, start: Date, end: Date) => void;
   onSelectCustom: () => void;
   onStartDateTimeChange: (value: string) => void;
   onEndDateTimeChange: (value: string) => void;
-  onToggleCustomRange: () => void;
 };
+
+const SEGMENTS: SegmentOption[] = [
+  { key: "today", label: "Today" },
+  { key: "week", label: "Week" },
+  { key: "month", label: "Month" },
+  { key: "year", label: "Year" },
+  { key: "custom", label: "Custom" },
+];
+
+function getQuickRange(filter: QuickFilter) {
+  const now = new Date();
+  const start = new Date(now);
+
+  switch (filter) {
+    case "today":
+      start.setHours(0, 0, 0, 0);
+      break;
+    case "week": {
+      const dayOfWeek = start.getDay();
+      const dayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      start.setDate(start.getDate() - dayOffset);
+      start.setHours(0, 0, 0, 0);
+      break;
+    }
+    case "month":
+      return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: now };
+    case "year":
+      return { start: new Date(now.getFullYear(), 0, 1), end: now };
+  }
+
+  return { start, end: now };
+}
+
+type DateRowProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+function DateRow({ label, value, onChange }: DateRowProps) {
+  return (
+    <Stack
+      direction="row"
+      alignItems="center"
+      justifyContent="space-between"
+      spacing={1}
+      sx={{ px: 2, py: 1.1 }}
+    >
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {label}
+      </Typography>
+      <InputBase
+        type="datetime-local"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        inputProps={{ "aria-label": `${label} date and time` }}
+        sx={{
+          borderRadius: "8px",
+          bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.07)",
+          px: 1,
+          py: 0.4,
+          fontSize: 15,
+          "& input": { p: 0 },
+        }}
+      />
+    </Stack>
+  );
+}
 
 export default function TransactionsFilterBar({
   activeFilter,
-  showCustomRange,
   startDateTime,
   endDateTime,
   onApplyQuickRange,
   onSelectCustom,
   onStartDateTimeChange,
   onEndDateTimeChange,
-  onToggleCustomRange,
 }: TransactionsFilterBarProps) {
+  const handleSelect = (key: string) => {
+    if (key === "custom") {
+      onSelectCustom();
+      return;
+    }
+
+    const quickFilter = key as QuickFilter;
+    const { start, end } = getQuickRange(quickFilter);
+    onApplyQuickRange(quickFilter, start, end);
+  };
+
   return (
     <Box
       sx={{
         position: "sticky",
         top: 0,
         zIndex: 5,
-        pt: 0.25,
-        pb: 0.25,
+        pt: 0.5,
+        pb: 0.5,
         bgcolor: "background.default",
       }}
     >
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 1,
-          borderColor: "divider",
-          borderRadius: 2,
-          marginTop: 1,
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={0.5}
-          useFlexGap
-          flexWrap="wrap"
-          alignItems="center"
+      <SegmentedControl
+        ariaLabel="sales period"
+        segments={SEGMENTS}
+        selectedKeys={activeFilter ? [activeFilter] : []}
+        onSelect={handleSelect}
+      />
+
+      <Collapse in={activeFilter === "custom"} timeout={260}>
+        <Box
           sx={{
-            "& .MuiButton-root": {
-              minWidth: 0,
-              px: 1,
-            },
+            mt: 1,
+            borderRadius: "12px",
+            bgcolor: "background.paper",
+            overflow: "hidden",
           }}
         >
-          <Chip
-            label="Today"
-            color={activeFilter === "today" ? "primary" : "default"}
-            onClick={() => {
-              const now = new Date();
-              const start = new Date(now);
-              start.setHours(0, 0, 0, 0);
-              onApplyQuickRange("today", start, now);
-            }}
+          <DateRow
+            label="From"
+            value={startDateTime}
+            onChange={onStartDateTimeChange}
           />
-
-          <Chip
-            label="Week"
-            color={activeFilter === "week" ? "primary" : "default"}
-            onClick={() => {
-              const now = new Date();
-              const start = new Date(now);
-              const dayOfWeek = start.getDay();
-              const dayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-              start.setDate(start.getDate() - dayOffset);
-              start.setHours(0, 0, 0, 0);
-              onApplyQuickRange("week", start, now);
-            }}
+          <Divider sx={{ ml: 2 }} />
+          <DateRow
+            label="To"
+            value={endDateTime}
+            onChange={onEndDateTimeChange}
           />
-
-          <Chip
-            label="Month"
-            color={activeFilter === "month" ? "primary" : "default"}
-            onClick={() => {
-              const now = new Date();
-              const start = new Date(now.getFullYear(), now.getMonth(), 1);
-              onApplyQuickRange("month", start, now);
-            }}
-          />
-
-          <Chip
-            label="Year"
-            color={activeFilter === "year" ? "primary" : "default"}
-            onClick={() => {
-              const now = new Date();
-              const start = new Date(now.getFullYear(), 0, 1);
-              onApplyQuickRange("year", start, now);
-            }}
-          />
-
-          <Chip
-            label="Custom"
-            color={activeFilter === "custom" ? "primary" : "default"}
-            onClick={onSelectCustom}
-          />
-          <div style={{ flexGrow: 1 }} />
-          <IconButton
-            size="small"
-            aria-label={
-              showCustomRange
-                ? "hide date range inputs"
-                : "show date range inputs"
-            }
-            onClick={onToggleCustomRange}
-          >
-            {showCustomRange ? (
-              <ExpandLessRounded fontSize="small" />
-            ) : (
-              <ExpandMoreRounded fontSize="small" />
-            )}
-          </IconButton>
-        </Stack>
-
-        <Collapse in={showCustomRange}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={0.75}
-            alignItems="stretch"
-            sx={{ mt: 1.5 }}
-          >
-            <TextField
-              fullWidth
-              size="small"
-              label="From"
-              type="datetime-local"
-              value={startDateTime}
-              onChange={(event) => onStartDateTimeChange(event.target.value)}
-              slotProps={{
-                inputLabel: { shrink: true },
-              }}
-            />
-            <TextField
-              fullWidth
-              size="small"
-              label="To"
-              type="datetime-local"
-              value={endDateTime}
-              onChange={(event) => onEndDateTimeChange(event.target.value)}
-              slotProps={{
-                inputLabel: { shrink: true },
-              }}
-            />
-          </Stack>
-        </Collapse>
-      </Paper>
+        </Box>
+      </Collapse>
     </Box>
   );
 }
