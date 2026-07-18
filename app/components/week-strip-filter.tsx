@@ -187,7 +187,6 @@ export default function WeekStripFilter({
           gridTemplateColumns: "repeat(7, 1fr)",
           bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
           borderRadius: "10px",
-          boxShadow: 1,
         }}
       >
         {weekDays.map((day, index) => {
