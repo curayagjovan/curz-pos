@@ -20,11 +20,10 @@ type EWalletConfirmDrawerProps = {
   amount: number;
   fee: number;
   accountNumber: string;
-  sharing: boolean;
   completing: boolean;
   onClose: () => void;
   onAccountNumberChange: (value: string) => void;
-  onShare: () => void;
+  onSendSms: () => void;
   onComplete: () => void;
 };
 
@@ -36,16 +35,15 @@ export default function EWalletConfirmDrawer({
   amount,
   fee,
   accountNumber,
-  sharing,
   completing,
   onClose,
   onAccountNumberChange,
-  onShare,
+  onSendSms,
   onComplete,
 }: EWalletConfirmDrawerProps) {
   const isCashIn = direction === "CASH_IN";
   const total = amount + fee;
-  const busy = sharing || completing;
+  const busy = completing;
 
   return (
     <Drawer
@@ -120,10 +118,10 @@ export default function EWalletConfirmDrawer({
           <Button
             fullWidth
             variant="outlined"
-            onClick={onShare}
+            onClick={onSendSms}
             disabled={busy}
           >
-            {sharing ? "Sharing..." : "Share Request"}
+            Send Request
           </Button>
           <Button
             fullWidth

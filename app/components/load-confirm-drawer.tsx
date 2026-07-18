@@ -17,11 +17,10 @@ type LoadConfirmDrawerProps = {
   brandLabel: string;
   price: number;
   confirmNumber: string;
-  sharing: boolean;
   completing: boolean;
   onClose: () => void;
   onConfirmNumberChange: (value: string) => void;
-  onShare: () => void;
+  onSendSms: () => void;
   onComplete: () => void;
 };
 
@@ -31,14 +30,13 @@ export default function LoadConfirmDrawer({
   brandLabel,
   price,
   confirmNumber,
-  sharing,
   completing,
   onClose,
   onConfirmNumberChange,
-  onShare,
+  onSendSms,
   onComplete,
 }: LoadConfirmDrawerProps) {
-  const busy = sharing || completing;
+  const busy = completing;
   return (
     <Drawer
       anchor="bottom"
@@ -96,10 +94,10 @@ export default function LoadConfirmDrawer({
           <Button
             fullWidth
             variant="outlined"
-            onClick={onShare}
+            onClick={onSendSms}
             disabled={busy}
           >
-            {sharing ? "Sharing..." : "Share Request"}
+            Send Request
           </Button>
           <Button
             fullWidth

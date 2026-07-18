@@ -9,24 +9,24 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  sku         String   @unique
-  name        String
-  unit        String?
-  description String?
-  cost        Decimal  @default(0) @db.Decimal(10, 2)
-  markupPct   Decimal  @default(0) @db.Decimal(5, 2)
-  bundleQty   Int?
+  id                String   @id @default(cuid())
+  sku               String   @unique
+  name              String
+  unit              String?
+  description       String?
+  cost              Decimal  @default(0) @db.Decimal(10, 2)
+  markupPct         Decimal  @default(0) @db.Decimal(5, 2)
+  bundleQty         Int?
   bundleMarkdownPct Decimal? @db.Decimal(5, 2)
-  bundlePrice Decimal? @db.Decimal(10, 2)
-  price       Decimal  @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  isActive    Boolean  @default(true)
-  usesGlobalMarkup Boolean @default(true)
-  isPinned    Boolean  @default(false)
-  allowCustomPrice Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  bundlePrice       Decimal? @db.Decimal(10, 2)
+  price             Decimal  @db.Decimal(10, 2)
+  stock             Int      @default(0)
+  isActive          Boolean  @default(true)
+  usesGlobalMarkup  Boolean  @default(true)
+  isPinned          Boolean  @default(false)
+  allowCustomPrice  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
@@ -88,26 +88,26 @@ model InventoryMovement {
 }
 
 model ImportLog {
-  id          String   @id @default(cuid())
-  fileHash    String   @unique
-  rowCount    Int
+  id           String   @id @default(cuid())
+  fileHash     String   @unique
+  rowCount     Int
   productCount Int
   successCount Int
   failureCount Int
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 }
 
 model PushSubscription {
-  id            String   @id @default(cuid())
-  endpoint      String   @unique
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
   p256dh        String
   auth          String
   userAgent     String?
-  failCount     Int      @default(0)
+  failCount     Int       @default(0)
   lastSuccessAt DateTime?
   lastFailureAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model LoadMarkupSetting {
@@ -122,11 +122,11 @@ model LoadMarkupSetting {
 
 model EWalletFeeSetting {
   id        String   @id
-  tier1Max  Float
-  tier1Fee  Float
-  tier2Max  Float
-  tier2Fee  Float
-  tier3Fee  Float
+  tier1Fee  Float    @default(5)
+  tier2Fee  Float    @default(10)
+  tier3Fee  Float    @default(15)
+  tier4Fee  Float    @default(20)
+  stepFee   Float    @default(10)
   updatedAt DateTime @updatedAt
 }
 
@@ -178,4 +178,10 @@ enum LoadNetworkGroup {
 enum LoadCategory {
   REGULAR_LOAD
   DATA_PROMO
+}
+
+model SmsRecipientSetting {
+  id        String   @id
+  number    String
+  updatedAt DateTime @updatedAt
 }

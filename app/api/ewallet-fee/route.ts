@@ -5,18 +5,18 @@ import { DEFAULT_EWALLET_FEE_SETTINGS } from "@/lib/ewallet-fee";
 const SETTINGS_ID = "ewallet-fee";
 
 function serialize(record: {
-  tier1Max: number;
   tier1Fee: number;
-  tier2Max: number;
   tier2Fee: number;
   tier3Fee: number;
+  tier4Fee: number;
+  stepFee: number;
 }) {
   return {
-    tier1Max: record.tier1Max,
     tier1Fee: record.tier1Fee,
-    tier2Max: record.tier2Max,
     tier2Fee: record.tier2Fee,
     tier3Fee: record.tier3Fee,
+    tier4Fee: record.tier4Fee,
+    stepFee: record.stepFee,
   };
 }
 
@@ -35,21 +35,14 @@ export async function GET() {
 export async function PUT(request: Request) {
   const body = await request.json();
 
-  const tier1Max = Number(body.tier1Max);
   const tier1Fee = Number(body.tier1Fee);
-  const tier2Max = Number(body.tier2Max);
   const tier2Fee = Number(body.tier2Fee);
   const tier3Fee = Number(body.tier3Fee);
+  const tier4Fee = Number(body.tier4Fee);
+  const stepFee = Number(body.stepFee);
 
-  const isValid =
-    [tier1Max, tier1Fee, tier2Max, tier2Fee, tier3Fee].every(
-      Number.isFinite,
-    ) &&
-    tier1Max > 0 &&
-    tier2Max > tier1Max &&
-    tier1Fee >= 0 &&
-    tier2Fee >= 0 &&
-    tier3Fee >= 0;
+  const fees = [tier1Fee, tier2Fee, tier3Fee, tier4Fee, stepFee];
+  const isValid = fees.every((fee) => Number.isFinite(fee) && fee >= 0);
 
   if (!isValid) {
     return NextResponse.json(
@@ -60,14 +53,14 @@ export async function PUT(request: Request) {
 
   const record = await prisma.eWalletFeeSetting.upsert({
     where: { id: SETTINGS_ID },
-    update: { tier1Max, tier1Fee, tier2Max, tier2Fee, tier3Fee },
+    update: { tier1Fee, tier2Fee, tier3Fee, tier4Fee, stepFee },
     create: {
       id: SETTINGS_ID,
-      tier1Max,
       tier1Fee,
-      tier2Max,
       tier2Fee,
       tier3Fee,
+      tier4Fee,
+      stepFee,
     },
   });
 

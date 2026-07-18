@@ -15,13 +15,16 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
+import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import EWalletConfirmDrawer from "@/app/components/ewallet-confirm-drawer";
 import EWalletFeeDialog from "@/app/components/ewallet-fee-dialog";
 import SegmentedControl from "@/app/components/segmented-control";
 import type { SegmentOption } from "@/app/components/segmented-control";
+import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useEwalletFeeSettings } from "@/app/hooks/use-ewallet-fee-settings";
+import { useSmsRecipient } from "@/app/hooks/use-sms-recipient";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import {
@@ -33,12 +36,11 @@ import {
 } from "@/lib/ewallet-catalog";
 import { getFeeForAmount } from "@/lib/ewallet-fee";
 import { buildEwalletMessage } from "@/lib/ewallet-message";
-import {
-  LoadRequestShareCancelledError,
-  shareLoadRequest,
-} from "@/lib/load-message";
+import { buildSmsHref } from "@/lib/sms-link";
 import { normalizeMobileNumber } from "@/lib/ph-network";
 import type { Transaction } from "@/types/transaction";
+import InputAdornment from "@mui/material/InputAdornment";
+import DialpadRounded from "@mui/icons-material/DialpadRounded";
 
 const PROVIDER_SEGMENTS: SegmentOption[] = EWALLET_PROVIDERS.map(
   ({ provider, label }) => ({ key: provider, label }),
@@ -57,8 +59,8 @@ function providerLabel(provider: EWalletProvider) {
 
 function directionLabel(direction: EWalletDirection) {
   return (
-    EWALLET_DIRECTIONS.find((entry) => entry.direction === direction)
-      ?.label ?? direction
+    EWALLET_DIRECTIONS.find((entry) => entry.direction === direction)?.label ??
+    direction
   );
 }
 
@@ -78,13 +80,15 @@ export default function EWalletPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
+  const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     useState<HTMLElement | null>(null);
   const { settings: feeSettings, updateSettings: updateFeeSettings } =
     useEwalletFeeSettings();
+  const { number: smsRecipient, updateNumber: updateSmsRecipient } =
+    useSmsRecipient();
 
   const amount = Number(amountInput) || 0;
   const fee = useMemo(
@@ -103,13 +107,13 @@ export default function EWalletPage() {
   };
 
   const handleCloseConfirm = () => {
-    if (sharing || completing) {
+    if (completing) {
       return;
     }
     setConfirmOpen(false);
   };
 
-  const handleShare = async () => {
+  const handleSendSms = () => {
     if (isCashIn) {
       const digits = normalizeMobileNumber(confirmAccountNumber);
       if (digits.length < 10) {
@@ -121,37 +125,22 @@ export default function EWalletPage() {
       }
     }
 
-    setSharing(true);
-
-    try {
-      const message = buildEwalletMessage(
-        providerLabel(provider),
-        direction,
-        amount,
-        isCashIn ? confirmAccountNumber : undefined,
-      );
-      const shareResult = await shareLoadRequest(message);
-
-      if (shareResult === "copied") {
-        showSnackbar({
-          message:
-            "Sharing isn't supported on this device. Request copied instead.",
-          severity: "info",
-        });
-      }
-    } catch (error) {
-      if (error instanceof LoadRequestShareCancelledError) {
-        return;
-      }
-
+    if (!smsRecipient) {
+      setRecipientDialogOpen(true);
       showSnackbar({
-        message:
-          error instanceof Error ? error.message : "Unable to share request",
-        severity: "error",
+        message: "Set the request recipient number first",
+        severity: "info",
       });
-    } finally {
-      setSharing(false);
+      return;
     }
+
+    const message = buildEwalletMessage(
+      providerLabel(provider),
+      direction,
+      amount,
+      isCashIn ? confirmAccountNumber : undefined,
+    );
+    window.location.href = buildSmsHref(smsRecipient, message);
   };
 
   const handleComplete = async () => {
@@ -206,7 +195,9 @@ export default function EWalletPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Unable to record e-wallet transaction");
+        throw new Error(
+          data?.message || "Unable to record e-wallet transaction",
+        );
       }
 
       const savedTransaction = data as Partial<Transaction>;
@@ -263,31 +254,23 @@ export default function EWalletPage() {
               </ListItemIcon>
               <ListItemText>Fee Settings</ListItemText>
             </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setSettingsMenuAnchor(null);
+                setRecipientDialogOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <SendToMobileRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Request Recipient</ListItemText>
+            </MenuItem>
           </Menu>
         </>
       }
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={2}>
-          {isCashIn ? (
-            <Stack spacing={1}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Recipient mobile number
-              </Typography>
-              <TextField
-                fullWidth
-                value={accountNumber}
-                placeholder="09XXXXXXXXX"
-                onChange={(event) => setAccountNumber(event.target.value)}
-                slotProps={{
-                  htmlInput: {
-                    inputMode: "tel",
-                  },
-                }}
-              />
-            </Stack>
-          ) : null}
-
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Provider
@@ -313,6 +296,34 @@ export default function EWalletPage() {
           </Stack>
 
           <Stack spacing={1}>
+            {isCashIn ? (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Recipient mobile number
+                </Typography>
+                <TextField
+                  fullWidth
+                  value={accountNumber}
+                  placeholder="Mobile number"
+                  onChange={(event) => setAccountNumber(event.target.value)}
+                  slotProps={{
+                    htmlInput: {
+                      inputMode: "tel",
+                    },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <DialpadRounded
+                            fontSize="small"
+                            sx={{ color: "text.secondary" }}
+                          />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Stack>
+            ) : null}
             <Typography variant="subtitle2" color="text.secondary">
               Amount
             </Typography>
@@ -385,11 +396,10 @@ export default function EWalletPage() {
         amount={amount}
         fee={fee}
         accountNumber={confirmAccountNumber}
-        sharing={sharing}
         completing={completing}
         onClose={handleCloseConfirm}
         onAccountNumberChange={setConfirmAccountNumber}
-        onShare={() => void handleShare()}
+        onSendSms={handleSendSms}
         onComplete={() => void handleComplete()}
       />
 
@@ -398,6 +408,13 @@ export default function EWalletPage() {
         settings={feeSettings}
         onClose={() => setFeeDialogOpen(false)}
         onSave={updateFeeSettings}
+      />
+
+      <SmsRecipientDialog
+        open={recipientDialogOpen}
+        number={smsRecipient}
+        onClose={() => setRecipientDialogOpen(false)}
+        onSave={updateSmsRecipient}
       />
 
       <AppSnackbar

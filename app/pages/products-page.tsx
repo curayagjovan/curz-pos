@@ -452,8 +452,12 @@ export default function ProductsPage() {
     [addToCart, triggerCartPulse],
   );
 
+  const [paidAmountTouched, setPaidAmountTouched] = useState(false);
+  const [autoPaidTotal, setAutoPaidTotal] = useState<number | null>(null);
+
   const handleCartFabClick = useCallback(() => {
-    setPaidAmountInput("0");
+    setPaidAmountTouched(false);
+    setAutoPaidTotal(null);
     setCartOpen(true);
   }, []);
 
@@ -467,6 +471,19 @@ export default function ProductsPage() {
     cartItems,
     paidAmountInput,
   });
+
+  // Prefill the paid amount with the cart total (exact payment is the common
+  // case) and keep it following the total while quantities change in the
+  // drawer, until the cashier types or taps an amount themselves.
+  if (cartOpen && !paidAmountTouched && autoPaidTotal !== cartTotal) {
+    setAutoPaidTotal(cartTotal);
+    setPaidAmountInput(cartTotal > 0 ? cartTotal.toFixed(2) : "0");
+  }
+
+  const handlePaidAmountChange = useCallback((value: string) => {
+    setPaidAmountTouched(true);
+    setPaidAmountInput(value);
+  }, []);
 
   const startCheckoutCooldown = useCallback(() => {
     if (checkoutCooldownTimeoutRef.current !== null) {
@@ -772,7 +789,7 @@ export default function ProductsPage() {
         checkoutLoading={checkoutLoading}
         checkoutDisabled={checkoutCooldown}
         onClose={handleCloseCart}
-        onPaidAmountChange={setPaidAmountInput}
+        onPaidAmountChange={handlePaidAmountChange}
         onRemoveFromCart={removeFromCart}
         onUpdateQuantity={updateQuantity}
         onClearCart={handleClearCart}

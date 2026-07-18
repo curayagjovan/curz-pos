@@ -13,6 +13,7 @@ import Stack from "@mui/material/Stack";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import ListAltRounded from "@mui/icons-material/ListAltRounded";
+import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import ListEmptyState from "@/app/components/list-empty-state";
 import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
@@ -20,9 +21,11 @@ import LoadItemCard from "@/app/components/load-item-card";
 import LoadMarkupDialog from "@/app/components/load-markup-dialog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import SegmentedControl from "@/app/components/segmented-control";
+import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
 import type { SegmentOption } from "@/app/components/segmented-control";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
+import { useSmsRecipient } from "@/app/hooks/use-sms-recipient";
 import { useLoadItems } from "@/app/context/load-items-context";
 import { usePageContext } from "@/app/context/page-context";
 import { useTransactions } from "@/app/context/transactions-context";
@@ -33,11 +36,8 @@ import {
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
 import { getSellPrice } from "@/lib/load-markup";
-import {
-  LoadRequestShareCancelledError,
-  buildLoadMessage,
-  shareLoadRequest,
-} from "@/lib/load-message";
+import { buildLoadMessage } from "@/lib/load-message";
+import { buildSmsHref } from "@/lib/sms-link";
 import { detectNetworkGroup, normalizeMobileNumber } from "@/lib/ph-network";
 import type { Transaction } from "@/types/transaction";
 
@@ -85,13 +85,15 @@ export default function LoadPage() {
     null,
   );
   const [confirmNumber, setConfirmNumber] = useState("");
-  const [sharing, setSharing] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
+  const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     useState<HTMLElement | null>(null);
   const { settings: markupSettings, updateSettings: updateMarkupSettings } =
     useLoadMarkupSettings();
+  const { number: smsRecipient, updateNumber: updateSmsRecipient } =
+    useSmsRecipient();
 
   const handleNumberChange = (value: string) => {
     setMobileNumber(value);
@@ -141,13 +143,13 @@ export default function LoadPage() {
   };
 
   const handleCloseConfirm = () => {
-    if (sharing || completing) {
+    if (completing) {
       return;
     }
     setSelectedItem(null);
   };
 
-  const handleShare = async () => {
+  const handleSendSms = () => {
     if (!selectedItem) {
       return;
     }
@@ -161,32 +163,17 @@ export default function LoadPage() {
       return;
     }
 
-    setSharing(true);
-
-    try {
-      const message = buildLoadMessage(selectedItem, confirmNumber);
-      const shareResult = await shareLoadRequest(message);
-
-      if (shareResult === "copied") {
-        showSnackbar({
-          message:
-            "Sharing isn't supported on this device. Load command copied instead.",
-          severity: "info",
-        });
-      }
-    } catch (error) {
-      if (error instanceof LoadRequestShareCancelledError) {
-        return;
-      }
-
+    if (!smsRecipient) {
+      setRecipientDialogOpen(true);
       showSnackbar({
-        message:
-          error instanceof Error ? error.message : "Unable to share load request",
-        severity: "error",
+        message: "Set the request recipient number first",
+        severity: "info",
       });
-    } finally {
-      setSharing(false);
+      return;
     }
+
+    const message = buildLoadMessage(selectedItem, confirmNumber);
+    window.location.href = buildSmsHref(smsRecipient, message);
   };
 
   const handleComplete = async () => {
@@ -294,6 +281,17 @@ export default function LoadPage() {
               </ListItemIcon>
               <ListItemText>Manage Load Items</ListItemText>
             </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setSettingsMenuAnchor(null);
+                setRecipientDialogOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <SendToMobileRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Request Recipient</ListItemText>
+            </MenuItem>
           </Menu>
         </>
       }
@@ -373,11 +371,10 @@ export default function LoadPage() {
           selectedItem ? getSellPrice(selectedItem.amount, markupSettings) : 0
         }
         confirmNumber={confirmNumber}
-        sharing={sharing}
         completing={completing}
         onClose={handleCloseConfirm}
         onConfirmNumberChange={setConfirmNumber}
-        onShare={() => void handleShare()}
+        onSendSms={handleSendSms}
         onComplete={() => void handleComplete()}
       />
 
@@ -386,6 +383,13 @@ export default function LoadPage() {
         settings={markupSettings}
         onClose={() => setMarkupDialogOpen(false)}
         onSave={updateMarkupSettings}
+      />
+
+      <SmsRecipientDialog
+        open={recipientDialogOpen}
+        number={smsRecipient}
+        onClose={() => setRecipientDialogOpen(false)}
+        onSave={updateSmsRecipient}
       />
 
       <AppSnackbar

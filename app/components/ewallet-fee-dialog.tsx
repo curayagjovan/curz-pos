@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -11,6 +11,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import type { EWalletFeeSettings } from "@/lib/ewallet-fee";
+import { getFeeForAmount } from "@/lib/ewallet-fee";
 
 type EWalletFeeDialogProps = {
   open: boolean;
@@ -18,6 +19,16 @@ type EWalletFeeDialogProps = {
   onClose: () => void;
   onSave: (settings: EWalletFeeSettings) => Promise<void>;
 };
+
+const BRACKET_FIELDS: Array<{
+  field: keyof EWalletFeeSettings;
+  label: string;
+}> = [
+  { field: "tier1Fee", label: "₱1 – ₱100" },
+  { field: "tier2Fee", label: "₱101 – ₱500" },
+  { field: "tier3Fee", label: "₱501 – ₱1,000" },
+  { field: "tier4Fee", label: "₱1,001 – ₱1,500" },
+];
 
 export default function EWalletFeeDialog({
   open,
@@ -28,13 +39,15 @@ export default function EWalletFeeDialog({
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [prev, setPrev] = useState({ open, settings });
 
-  useEffect(() => {
+  if (open !== prev.open || settings !== prev.settings) {
+    setPrev({ open, settings });
     if (open) {
       setForm(settings);
       setSaveError(null);
     }
-  }, [open, settings]);
+  }
 
   const handleChange =
     (field: keyof EWalletFeeSettings) =>
@@ -45,17 +58,9 @@ export default function EWalletFeeDialog({
       }));
     };
 
-  const isValid =
-    Number.isFinite(form.tier1Max) &&
-    Number.isFinite(form.tier2Max) &&
-    Number.isFinite(form.tier1Fee) &&
-    Number.isFinite(form.tier2Fee) &&
-    Number.isFinite(form.tier3Fee) &&
-    form.tier1Max > 0 &&
-    form.tier2Max > form.tier1Max &&
-    form.tier1Fee >= 0 &&
-    form.tier2Fee >= 0 &&
-    form.tier3Fee >= 0;
+  const isValid = (
+    ["tier1Fee", "tier2Fee", "tier3Fee", "tier4Fee", "stepFee"] as const
+  ).every((field) => Number.isFinite(form[field]) && form[field] >= 0);
 
   const handleSave = async () => {
     if (!isValid) {
@@ -83,66 +88,56 @@ export default function EWalletFeeDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           <Stack spacing={1}>
-            <Typography variant="subtitle2">Tier 1</Typography>
-            <Stack direction="row" spacing={1}>
-              <TextField
-                label="Up to ₱"
-                type="number"
-                value={form.tier1Max}
-                onChange={handleChange("tier1Max")}
-                fullWidth
-              />
-              <TextField
-                label="Fee ₱"
-                type="number"
-                value={form.tier1Fee}
-                onChange={handleChange("tier1Fee")}
-                fullWidth
-              />
-            </Stack>
+            {BRACKET_FIELDS.map(({ field, label }) => (
+              <Stack
+                key={field}
+                direction="row"
+                spacing={1}
+                alignItems="center"
+              >
+                <Typography variant="body2" sx={{ flex: 1 }}>
+                  {label}
+                </Typography>
+                <TextField
+                  label="Fee ₱"
+                  type="number"
+                  size="small"
+                  value={form[field]}
+                  onChange={handleChange(field)}
+                  sx={{ width: 110 }}
+                />
+              </Stack>
+            ))}
           </Stack>
 
           <Divider />
 
           <Stack spacing={1}>
-            <Typography variant="subtitle2">Tier 2</Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="body2" sx={{ flex: 1 }}>
+                Every ₱500 above ₱1,500
+              </Typography>
               <TextField
-                label="Up to ₱"
+                label="Adds ₱"
                 type="number"
-                value={form.tier2Max}
-                onChange={handleChange("tier2Max")}
-                fullWidth
-              />
-              <TextField
-                label="Fee ₱"
-                type="number"
-                value={form.tier2Fee}
-                onChange={handleChange("tier2Fee")}
-                fullWidth
+                size="small"
+                value={form.stepFee}
+                onChange={handleChange("stepFee")}
+                sx={{ width: 110 }}
               />
             </Stack>
-          </Stack>
-
-          <Divider />
-
-          <Stack spacing={1}>
-            <Typography variant="subtitle2">
-              Tier 3 (above ₱{Number.isFinite(form.tier2Max) ? form.tier2Max : 0})
-            </Typography>
-            <TextField
-              label="Fee ₱"
-              type="number"
-              value={form.tier3Fee}
-              onChange={handleChange("tier3Fee")}
-              fullWidth
-            />
+            {isValid ? (
+              <Typography variant="caption" color="text.secondary">
+                e.g. ₱1,501–2,000 → ₱{getFeeForAmount(2000, form)} · ₱2,001–2,500
+                → ₱{getFeeForAmount(2500, form)} · ₱9,501–10,000 → ₱
+                {getFeeForAmount(10000, form)}
+              </Typography>
+            ) : null}
           </Stack>
 
           {!isValid ? (
             <Typography variant="caption" color="error">
-              Enter valid numbers — Tier 2 &ldquo;up to&rdquo; amount must be
-              greater than Tier 1, and fees can&apos;t be negative.
+              Enter valid numbers — fees can&apos;t be negative.
             </Typography>
           ) : null}
 
