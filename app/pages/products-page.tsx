@@ -170,179 +170,157 @@ export default function ProductsPage() {
     );
     const DAY_MS = 24 * 60 * 60 * 1000;
 
-    const countInWindow = (days: number) =>
-      paidTransactions.filter((transaction) => {
+    const computeWindow = (selectedWindowDays: number) => {
+      const selectedTransactions = paidTransactions.filter((transaction) => {
         const createdAtMs = new Date(transaction.createdAt).getTime();
         return (
           Number.isFinite(createdAtMs) &&
-          createdAtMs >= analysisTimeMs - days * DAY_MS &&
+          createdAtMs >= analysisTimeMs - selectedWindowDays * DAY_MS &&
           createdAtMs <= analysisTimeMs
         );
-      }).length;
+      });
 
-    const count14 = countInWindow(14);
-    let selectedWindowDays = 14;
-    if (count14 < 40) {
-      const count30 = countInWindow(30);
-      selectedWindowDays = 30;
-
-      if (count30 < 80) {
-        const count60 = countInWindow(60);
-        selectedWindowDays = count60 < 80 ? 90 : 60;
-      }
-    }
-
-    const selectedTransactions = paidTransactions.filter((transaction) => {
-      const createdAtMs = new Date(transaction.createdAt).getTime();
-      return (
-        Number.isFinite(createdAtMs) &&
-        createdAtMs >= analysisTimeMs - selectedWindowDays * DAY_MS &&
-        createdAtMs <= analysisTimeMs
-      );
-    });
-
-    const summaryByProduct = new Map<
-      string,
-      {
-        productName: string;
-        quantitySold: number;
-        orderCount: number;
-        revenue: number;
-        activeDays: Set<string>;
-        velocity: number;
-        penetration: number;
-        consistency: number;
-        score: number;
-      }
-    >();
-
-    for (const transaction of selectedTransactions) {
-      const countedInOrder = new Set<string>();
-      const orderDate = new Date(transaction.createdAt);
-      const orderDayToken = Number.isNaN(orderDate.getTime())
-        ? null
-        : orderDate.toISOString().slice(0, 10);
-
-      for (const item of transaction.items) {
-        const key = item.productName.trim().toLowerCase();
-        if (!key) {
-          continue;
+      const summaryByProduct = new Map<
+        string,
+        {
+          productName: string;
+          quantitySold: number;
+          orderCount: number;
+          revenue: number;
+          activeDays: Set<string>;
+          velocity: number;
+          penetration: number;
+          consistency: number;
+          score: number;
         }
+      >();
 
-        const quantity = Number(item.quantity);
-        const lineTotal = Number(item.lineTotal);
-        const current = summaryByProduct.get(key) ?? {
-          productName: item.productName,
-          quantitySold: 0,
-          orderCount: 0,
-          revenue: 0,
-          activeDays: new Set<string>(),
-          velocity: 0,
-          penetration: 0,
-          consistency: 0,
-          score: 0,
+      for (const transaction of selectedTransactions) {
+        const countedInOrder = new Set<string>();
+        const orderDate = new Date(transaction.createdAt);
+        const orderDayToken = Number.isNaN(orderDate.getTime())
+          ? null
+          : orderDate.toISOString().slice(0, 10);
+
+        for (const item of transaction.items) {
+          const key = item.productName.trim().toLowerCase();
+          if (!key) {
+            continue;
+          }
+
+          const quantity = Number(item.quantity);
+          const lineTotal = Number(item.lineTotal);
+          const current = summaryByProduct.get(key) ?? {
+            productName: item.productName,
+            quantitySold: 0,
+            orderCount: 0,
+            revenue: 0,
+            activeDays: new Set<string>(),
+            velocity: 0,
+            penetration: 0,
+            consistency: 0,
+            score: 0,
+          };
+
+          current.quantitySold += Number.isFinite(quantity) ? quantity : 0;
+          current.revenue += Number.isFinite(lineTotal) ? lineTotal : 0;
+
+          if (!countedInOrder.has(key)) {
+            current.orderCount += 1;
+            countedInOrder.add(key);
+          }
+
+          if (orderDayToken) {
+            current.activeDays.add(orderDayToken);
+          }
+
+          summaryByProduct.set(key, current);
+        }
+      }
+
+      const windowOrderCount = selectedTransactions.length;
+      const candidates = Array.from(summaryByProduct.values()).map((item) => {
+        const velocity = item.quantitySold / selectedWindowDays;
+        const penetration =
+          windowOrderCount > 0 ? item.orderCount / windowOrderCount : 0;
+        const consistency = item.activeDays.size / selectedWindowDays;
+
+        return {
+          ...item,
+          velocity,
+          penetration,
+          consistency,
         };
+      });
 
-        current.quantitySold += Number.isFinite(quantity) ? quantity : 0;
-        current.revenue += Number.isFinite(lineTotal) ? lineTotal : 0;
+      const normalize = (values: number[]) => {
+        const min = Math.min(...values);
+        const max = Math.max(...values);
 
-        if (!countedInOrder.has(key)) {
-          current.orderCount += 1;
-          countedInOrder.add(key);
+        return (value: number) => {
+          if (!Number.isFinite(value)) {
+            return 0;
+          }
+          if (max === min) {
+            return value > 0 ? 1 : 0;
+          }
+          return (value - min) / (max - min);
+        };
+      };
+
+      const normalizeVelocity = normalize(
+        candidates.map((item) => item.velocity),
+      );
+      const normalizePenetration = normalize(
+        candidates.map((item) => item.penetration),
+      );
+
+      const scoredCandidates = candidates.map((item) => {
+        const score =
+          0.6 * normalizeVelocity(item.velocity) +
+          0.25 * normalizePenetration(item.penetration) +
+          0.15 * item.consistency;
+
+        return {
+          ...item,
+          score,
+        };
+      });
+
+      const eligibleItems = scoredCandidates.filter(
+        (item) => item.quantitySold >= 3 && item.orderCount >= 2,
+      );
+
+      const rankedEligibleItems = eligibleItems.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
         }
-
-        if (orderDayToken) {
-          current.activeDays.add(orderDayToken);
+        if (b.quantitySold !== a.quantitySold) {
+          return b.quantitySold - a.quantitySold;
         }
+        return a.productName.localeCompare(b.productName);
+      });
 
-        summaryByProduct.set(key, current);
-      }
+      return {
+        selectedWindowDays,
+        totalPaidOrdersInWindow: windowOrderCount,
+        items: rankedEligibleItems,
+      };
+    };
+
+    // Tuned against real sales history (typically 20-45 paid orders/day): a
+    // 1-day window usually yields fewer than five qualifying products, so
+    // widen to 2 days whenever a single day can't fill the section.
+    const oneDay = computeWindow(1);
+    if (oneDay.items.length >= 5) {
+      return oneDay;
     }
-
-    const windowOrderCount = selectedTransactions.length;
-    const candidates = Array.from(summaryByProduct.values()).map((item) => {
-      const velocity = item.quantitySold / selectedWindowDays;
-      const penetration =
-        windowOrderCount > 0 ? item.orderCount / windowOrderCount : 0;
-      const consistency = item.activeDays.size / selectedWindowDays;
-
-      return {
-        ...item,
-        velocity,
-        penetration,
-        consistency,
-      };
-    });
-
-    const normalize = (values: number[]) => {
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-
-      return (value: number) => {
-        if (!Number.isFinite(value)) {
-          return 0;
-        }
-        if (max === min) {
-          return value > 0 ? 1 : 0;
-        }
-        return (value - min) / (max - min);
-      };
-    };
-
-    const normalizeVelocity = normalize(
-      candidates.map((item) => item.velocity),
-    );
-    const normalizePenetration = normalize(
-      candidates.map((item) => item.penetration),
-    );
-
-    const scoredCandidates = candidates.map((item) => {
-      const score =
-        0.6 * normalizeVelocity(item.velocity) +
-        0.25 * normalizePenetration(item.penetration) +
-        0.15 * item.consistency;
-
-      return {
-        ...item,
-        score,
-      };
-    });
-
-    const eligibleItems = scoredCandidates.filter(
-      (item) => item.quantitySold >= 8 && item.orderCount >= 5,
-    );
-
-    const rankedEligibleItems = eligibleItems.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      if (b.quantitySold !== a.quantitySold) {
-        return b.quantitySold - a.quantitySold;
-      }
-      return a.productName.localeCompare(b.productName);
-    });
-
-    const topPercentCount =
-      rankedEligibleItems.length > 0
-        ? Math.ceil(rankedEligibleItems.length * 0.2)
-        : 0;
-    const takeCount = Math.min(5, Math.max(1, topPercentCount));
-
-    return {
-      selectedWindowDays,
-      totalPaidOrdersInWindow: windowOrderCount,
-      items: rankedEligibleItems.slice(0, takeCount),
-    };
+    const twoDay = computeWindow(2);
+    return twoDay.items.length > oneDay.items.length ? twoDay : oneDay;
   }, [analysisTimeMs, transactions]);
 
-  const popularProductNameSet = useMemo(() => {
-    return new Set(
-      popularItems.items.map((item) => item.productName.trim().toLowerCase()),
-    );
-  }, [popularItems.items]);
-
   const popularProducts = useMemo(() => {
-    if (popularProductNameSet.size === 0) {
+    if (popularItems.items.length === 0) {
       return [] as Product[];
     }
 
@@ -353,10 +331,19 @@ export default function ProductsPage() {
       ]),
     );
 
+    // Match the ranked list against real products first, then cap the
+    // section at 5 — a load/e-wallet line in the ranking can't steal a slot.
     return popularItems.items
       .map((item) => productByName.get(item.productName.trim().toLowerCase()))
-      .filter((product): product is Product => Boolean(product));
-  }, [filteredProducts, popularItems.items, popularProductNameSet]);
+      .filter((product): product is Product => Boolean(product))
+      .slice(0, 5);
+  }, [filteredProducts, popularItems.items]);
+
+  const popularProductNameSet = useMemo(() => {
+    return new Set(
+      popularProducts.map((product) => product.name.trim().toLowerCase()),
+    );
+  }, [popularProducts]);
 
   const regularProducts = useMemo(() => {
     if (popularProductNameSet.size === 0) {
