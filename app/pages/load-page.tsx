@@ -36,7 +36,7 @@ import {
   type LoadBrand,
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
-import { getSellPrice } from "@/lib/load-markup";
+import { getMarkupForAmount, getSellPrice } from "@/lib/load-markup";
 import { buildLoadMessage } from "@/lib/load-message";
 import { buildSmsHref } from "@/lib/sms-link";
 import { detectNetworkGroup, normalizeMobileNumber } from "@/lib/ph-network";
@@ -196,7 +196,16 @@ export default function LoadPage() {
 
     try {
       const sellPrice = getSellPrice(selectedItem.amount, markupSettings);
+      // Only the markup is income — the load's face value is money passed
+      // straight through to the telco, so it must not inflate sales.
+      const markup = getMarkupForAmount(selectedItem.amount, markupSettings);
       const requestId = crypto.randomUUID();
+      // The line item only carries the markup as its price, so the face
+      // value is folded into the name itself (unless the catalog label
+      // already states it, e.g. "Regular Load ₱50").
+      const productName = selectedItem.label.includes("₱")
+        ? selectedItem.label
+        : `${selectedItem.label} ₱${selectedItem.amount.toFixed(2)}`;
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -204,14 +213,14 @@ export default function LoadPage() {
           requestId,
           status: "PAID",
           senderPushEndpoint: senderPushEndpointRef.current,
-          amountPaid: sellPrice,
+          amountPaid: markup,
           note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
           items: [
             {
               productId: selectedItem.id,
-              productName: selectedItem.label,
+              productName,
               quantity: 1,
-              unitPrice: sellPrice,
+              unitPrice: markup,
             },
           ],
         }),
@@ -372,6 +381,11 @@ export default function LoadPage() {
         brandLabel={selectedItem ? brandLabel(selectedItem.brand) : ""}
         price={
           selectedItem ? getSellPrice(selectedItem.amount, markupSettings) : 0
+        }
+        markup={
+          selectedItem
+            ? getMarkupForAmount(selectedItem.amount, markupSettings)
+            : 0
         }
         confirmNumber={confirmNumber}
         completing={completing}

@@ -16,6 +16,7 @@ type LoadConfirmDrawerProps = {
   item: LoadCatalogItem | null;
   brandLabel: string;
   price: number;
+  markup: number;
   confirmNumber: string;
   completing: boolean;
   onClose: () => void;
@@ -29,6 +30,7 @@ export default function LoadConfirmDrawer({
   item,
   brandLabel,
   price,
+  markup,
   confirmNumber,
   completing,
   onClose,
@@ -70,6 +72,15 @@ export default function LoadConfirmDrawer({
           <Typography color="text.secondary">Network: {brandLabel}</Typography>
           <Typography color="text.secondary">
             Price: ₱{price.toFixed(2)}
+          </Typography>
+        </Stack>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="flex-end"
+        >
+          <Typography variant="caption" color="text.secondary">
+            Recorded as sale: ₱{markup.toFixed(2)}
           </Typography>
         </Stack>
       </Box>

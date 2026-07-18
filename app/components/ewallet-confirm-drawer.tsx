@@ -96,13 +96,19 @@ export default function EWalletConfirmDrawer({
             <Typography>₱{fee.toFixed(2)}</Typography>
           </Stack>
           <Divider sx={{ my: 0.5 }} />
+          {isCashIn ? (
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Customer pays
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                ₱{total.toFixed(2)}
+              </Typography>
+            </Stack>
+          ) : null}
           <Stack direction="row" justifyContent="space-between">
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {isCashIn ? "Customer pays" : "Recorded as sale"}
-            </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              ₱{(isCashIn ? total : fee).toFixed(2)}
-            </Typography>
+            <Typography color="text.secondary">Recorded as sale</Typography>
+            <Typography color="text.secondary">₱{fee.toFixed(2)}</Typography>
           </Stack>
         </Stack>
 

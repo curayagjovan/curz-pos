@@ -197,7 +197,9 @@ export default function EWalletPage() {
     setCompleting(true);
 
     try {
-      const unitPrice = isCashIn ? amount + fee : fee;
+      // Only the service fee is income — the amount itself is a pass-through
+      // exchange of cash and e-money, so it must not inflate sales.
+      const unitPrice = fee;
       const requestId = crypto.randomUUID();
       const refText = confirmReferenceNumber.trim();
       const identifierText =
@@ -207,6 +209,10 @@ export default function EWalletPage() {
             ? ` (Ref ${refText})`
             : "";
       const note = `${providerLabel(provider)} ${isCashIn ? "Cash In" : "Cash Out"} ₱${amount.toFixed(2)}${identifierText} (fee ₱${fee.toFixed(2)})`;
+      // The line item only carries the fee as its price, so the transacted
+      // amount is folded into the name itself (e.g. "GCash Cash In ₱200.00")
+      // — otherwise it would only be visible inside the free-text note.
+      const productName = `${entry.label} ₱${amount.toFixed(2)}`;
 
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -220,7 +226,7 @@ export default function EWalletPage() {
           items: [
             {
               productId: entry.id,
-              productName: entry.label,
+              productName,
               quantity: 1,
               unitPrice,
             },
@@ -473,12 +479,22 @@ export default function EWalletPage() {
                   <Typography>₱{fee.toFixed(2)}</Typography>
                 </Stack>
                 <Divider sx={{ my: 0.5 }} />
+                {isCashIn ? (
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontWeight: 700 }}>
+                      Customer pays
+                    </Typography>
+                    <Typography sx={{ fontWeight: 700 }}>
+                      ₱{(amount + fee).toFixed(2)}
+                    </Typography>
+                  </Stack>
+                ) : null}
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {isCashIn ? "Customer pays" : "Recorded as sale"}
+                  <Typography color="text.secondary">
+                    Recorded as sale
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    ₱{(isCashIn ? amount + fee : fee).toFixed(2)}
+                  <Typography color="text.secondary">
+                    ₱{fee.toFixed(2)}
                   </Typography>
                 </Stack>
               </Stack>

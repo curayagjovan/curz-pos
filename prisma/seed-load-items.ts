@@ -37,7 +37,7 @@ async function main() {
 
     await prisma.product.upsert({
       where: { id: loadItem.id },
-      update: {},
+      update: { allowCustomPrice: true },
       create: {
         id: loadItem.id,
         sku,
@@ -48,6 +48,7 @@ async function main() {
         stock: 0,
         isActive: true,
         usesGlobalMarkup: false,
+        allowCustomPrice: true,
       },
     });
 
