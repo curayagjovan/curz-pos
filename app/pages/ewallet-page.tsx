@@ -15,15 +15,18 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
+import QrCode2Rounded from "@mui/icons-material/QrCode2Rounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
 import EWalletConfirmDrawer from "@/app/components/ewallet-confirm-drawer";
 import EWalletFeeDialog from "@/app/components/ewallet-fee-dialog";
 import SegmentedControl from "@/app/components/segmented-control";
 import type { SegmentOption } from "@/app/components/segmented-control";
+import QrCodeDialog from "@/app/components/qr-code-dialog";
 import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useEwalletFeeSettings } from "@/app/hooks/use-ewallet-fee-settings";
+import { useQrCodes } from "@/app/hooks/use-qr-codes";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { useSmsRecipient } from "@/app/hooks/use-sms-recipient";
 import { useTransactions } from "@/app/context/transactions-context";
@@ -93,6 +96,7 @@ export default function EWalletPage() {
   const [completing, setCompleting] = useState(false);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
     useState<HTMLElement | null>(null);
   const { settings: feeSettings, updateSettings: updateFeeSettings } =
@@ -100,6 +104,7 @@ export default function EWalletPage() {
   const { number: smsRecipient, updateNumber: updateSmsRecipient } =
     useSmsRecipient();
   const senderPushEndpointRef = useSenderPushEndpoint();
+  const { qrCodeUrls, uploadQrCode } = useQrCodes();
 
   const amount = Number(amountInput) || 0;
   const fee = useMemo(
@@ -297,6 +302,17 @@ export default function EWalletPage() {
               </ListItemIcon>
               <ListItemText>Request Recipient</ListItemText>
             </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setSettingsMenuAnchor(null);
+                setQrDialogOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <QrCode2Rounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Cash-Out QR Codes</ListItemText>
+            </MenuItem>
           </Menu>
         </>
       }
@@ -373,16 +389,49 @@ export default function EWalletPage() {
                 )}
               </Stack>
             ) : (
-              <Stack spacing={1}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Reference number (optional)
-                </Typography>
-                <TextField
-                  fullWidth
-                  value={referenceNumber}
-                  placeholder="Reference number from the app"
-                  onChange={(event) => setReferenceNumber(event.target.value)}
-                />
+              <Stack spacing={1.5}>
+                {qrCodeUrls[provider] ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={qrCodeUrls[provider] as string}
+                      alt={`${providerLabel(provider)} cash-out QR code`}
+                      sx={{
+                        width: "100%",
+                        maxWidth: 300,
+                        borderRadius: 3,
+                        boxShadow:
+                          "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)",
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    startIcon={<QrCode2Rounded fontSize="small" />}
+                    onClick={() => setQrDialogOpen(true)}
+                  >
+                    Upload {providerLabel(provider)} QR for customers to scan
+                  </Button>
+                )}
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Reference number (optional)
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    value={referenceNumber}
+                    placeholder="Reference number from the app"
+                    onChange={(event) =>
+                      setReferenceNumber(event.target.value)
+                    }
+                  />
+                </Stack>
               </Stack>
             )}
             <Typography variant="subtitle2" color="text.secondary">
@@ -479,6 +528,13 @@ export default function EWalletPage() {
         number={smsRecipient}
         onClose={() => setRecipientDialogOpen(false)}
         onSave={updateSmsRecipient}
+      />
+
+      <QrCodeDialog
+        open={qrDialogOpen}
+        qrCodeUrls={qrCodeUrls}
+        onClose={() => setQrDialogOpen(false)}
+        onUpload={uploadQrCode}
       />
 
       <AppSnackbar
