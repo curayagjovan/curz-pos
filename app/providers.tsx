@@ -10,6 +10,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import { ThemeProvider } from "@mui/material/styles";
+import AppUpdateBanner from "@/app/components/app-update-banner";
 import { PageProvider } from "@/app/context/page-context";
 import { CartProvider } from "@/app/context/cart-context";
 import { LoadItemsProvider } from "@/app/context/load-items-context";
@@ -302,6 +303,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <CssBaseline enableColorScheme />
+        <AppUpdateBanner />
         <PageProvider>
           <ProductsProvider>
             <TransactionsProvider>
