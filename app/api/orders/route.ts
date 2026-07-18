@@ -270,6 +270,8 @@ export async function GET(request: Request) {
     const pageParam = Number(url.searchParams.get("page") ?? "1");
     const limitParam = Number(url.searchParams.get("limit") ?? "10");
     const statusParam = url.searchParams.get("status");
+    const fromParam = url.searchParams.get("from");
+    const toParam = url.searchParams.get("to");
     const hasPaginationParams =
       url.searchParams.has("page") ||
       url.searchParams.has("limit") ||
@@ -289,9 +291,56 @@ export async function GET(request: Request) {
         ? (statusParam as OrderStatus)
         : null;
 
-    const where: Prisma.OrderWhereInput | undefined = status
-      ? { status }
-      : undefined;
+    const fromDate = fromParam ? new Date(fromParam) : null;
+    const toDate = toParam ? new Date(toParam) : null;
+    const hasValidFrom = fromDate !== null && !Number.isNaN(fromDate.getTime());
+    const hasValidTo = toDate !== null && !Number.isNaN(toDate.getTime());
+
+    const where: Prisma.OrderWhereInput | undefined =
+      status || hasValidFrom || hasValidTo
+        ? {
+            ...(status ? { status } : {}),
+            ...(hasValidFrom || hasValidTo
+              ? {
+                  createdAt: {
+                    ...(hasValidFrom ? { gte: fromDate as Date } : {}),
+                    ...(hasValidTo ? { lte: toDate as Date } : {}),
+                  },
+                }
+              : {}),
+          }
+        : undefined;
+
+    // A date range is inherently bounded (a week of real-world sales volume
+    // never approaches this), so it always returns every matching order
+    // rather than being capped like the latest-100 "recent activity" fetch
+    // below — callers navigating to older periods need the real data, not a
+    // sample of it.
+    if (hasValidFrom || hasValidTo) {
+      let orders: unknown[];
+      try {
+        orders = await prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 2000,
+          select: orderListSelectWithAmountPaid,
+        });
+      } catch (error) {
+        if (!isMissingAmountPaidColumnError(error)) {
+          throw error;
+        }
+
+        const fallbackOrders = await prisma.order.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 2000,
+          select: orderListSelectBase,
+        });
+        orders = fallbackOrders.map(withNullAmountPaid);
+      }
+
+      return NextResponse.json(orders);
+    }
 
     if (!hasPaginationParams) {
       let orders: unknown[];

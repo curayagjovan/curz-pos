@@ -14,6 +14,7 @@ import WeekStripFilter, {
   startOfWeek,
 } from "@/app/components/week-strip-filter";
 import { useTransactions } from "@/app/context/transactions-context";
+import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
 
@@ -39,8 +40,58 @@ export default function TransactionsPage() {
     startOfDay(new Date()),
   );
   const [showTotals, setShowTotals] = useState(false);
-  const { transactions, loading, error, updateTransactionStatus } =
-    useTransactions();
+  const {
+    transactions: liveTransactions,
+    loading: liveLoading,
+    error: liveError,
+    updateTransactionStatus,
+  } = useTransactions();
+
+  // The shared context only ever holds the latest ~100 orders (plus
+  // whatever this specific device happened to cache before) — it silently
+  // goes blank for older weeks once sales volume pushes them out of that
+  // window. Fetching the visible week directly from the server guarantees
+  // this page always shows the real data for whatever period is on screen.
+  const weekStart = useMemo(() => startOfWeek(selectedDate), [selectedDate]);
+  const weekStartIso = useMemo(() => weekStart.toISOString(), [weekStart]);
+  const weekEndIso = useMemo(
+    () => addDays(weekStart, 7).toISOString(),
+    [weekStart],
+  );
+  const {
+    transactions: rangeTransactions,
+    loading: rangeLoading,
+    error: rangeError,
+    refetch: refetchRange,
+  } = useTransactionsInRange(weekStartIso, weekEndIso);
+
+  const transactions = useMemo(() => {
+    // Context entries win on id conflicts — they're kept fresh by realtime
+    // updates and local status-change edits, while the range fetch only
+    // needs to fill in whatever the context doesn't have cached.
+    const merged = new Map(
+      rangeTransactions.map((transaction) => [transaction.id, transaction]),
+    );
+    for (const transaction of liveTransactions) {
+      merged.set(transaction.id, transaction);
+    }
+    return Array.from(merged.values());
+  }, [rangeTransactions, liveTransactions]);
+
+  const loading = liveLoading || rangeLoading;
+  const error = rangeError ?? liveError;
+
+  const handleUpdateStatus = async (
+    id: string,
+    status: Transaction["status"],
+    items?: Array<{ id: string; returnedQuantity: number }>,
+  ) => {
+    await updateTransactionStatus(id, status, items);
+    // The order being updated may only exist in the range fetch (an older
+    // order the shared context has never cached) — refetch so the change is
+    // reflected regardless of which source originally supplied it.
+    await refetchRange();
+  };
 
   const filteredTransactions = useMemo(() => {
     const dayStartTime = selectedDate.getTime();
@@ -63,7 +114,6 @@ export default function TransactionsPage() {
   }, [transactions, selectedDate]);
 
   const dayTotals = useMemo(() => {
-    const weekStart = startOfWeek(selectedDate);
     const weekStartTime = weekStart.getTime();
     const weekEndTime = addDays(weekStart, 7).getTime();
     const totals = [0, 0, 0, 0, 0, 0, 0];
@@ -87,7 +137,7 @@ export default function TransactionsPage() {
     }
 
     return totals;
-  }, [transactions, selectedDate]);
+  }, [transactions, weekStart]);
 
   const groupedTransactions = useMemo<TransactionGroup[] | undefined>(() => {
     if (filteredTransactions.length === 0) {
@@ -191,7 +241,7 @@ export default function TransactionsPage() {
             transactions={filteredTransactions}
             loading={loading}
             error={error}
-            onUpdateStatus={updateTransactionStatus}
+            onUpdateStatus={handleUpdateStatus}
             groups={groupedTransactions}
           />
         </Stack>
