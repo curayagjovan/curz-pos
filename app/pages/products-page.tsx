@@ -27,6 +27,7 @@ import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useCart } from "@/app/context/cart-context";
 import { useCheckoutCalculations } from "@/app/hooks/use-checkout-calculations";
+import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
 import type { Product } from "@/types/product";
 import type { Transaction } from "@/types/transaction";
@@ -73,46 +74,11 @@ export default function ProductsPage() {
   const cartPulseTimeoutRef = useRef<number | null>(null);
   const checkoutCooldownTimeoutRef = useRef<number | null>(null);
   const cartFabRef = useRef<HTMLButtonElement | null>(null);
-  const senderPushEndpointRef = useRef<string | undefined>(undefined);
+  const senderPushEndpointRef = useSenderPushEndpoint();
   const cartFlightIdRef = useRef(0);
   const cartFlightFrameRef = useRef<number[]>([]);
   const cartFlightTimeoutRef = useRef<number[]>([]);
   const deferredSearchQuery = useDeferredValue(searchQuery);
-
-  useEffect(() => {
-    let active = true;
-
-    const preloadSenderEndpoint = async () => {
-      if (
-        typeof window === "undefined" ||
-        !("serviceWorker" in navigator) ||
-        !("PushManager" in window)
-      ) {
-        return;
-      }
-
-      try {
-        const registration =
-          (await navigator.serviceWorker.getRegistration()) ||
-          (await navigator.serviceWorker.ready);
-        const subscription = await registration.pushManager.getSubscription();
-
-        if (active) {
-          senderPushEndpointRef.current = subscription?.endpoint;
-        }
-      } catch {
-        if (active) {
-          senderPushEndpointRef.current = undefined;
-        }
-      }
-    };
-
-    void preloadSenderEndpoint();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const triggerCartPulse = useCallback(() => {
     if (cartPulseTimeoutRef.current !== null) {
@@ -594,6 +560,7 @@ export default function ProductsPage() {
     }
   }, [
     cartItems,
+    senderPushEndpointRef,
     parsedPaidAmount,
     cartTotal,
     clearCart,

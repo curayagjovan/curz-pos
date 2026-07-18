@@ -24,6 +24,7 @@ import type { SegmentOption } from "@/app/components/segmented-control";
 import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useEwalletFeeSettings } from "@/app/hooks/use-ewallet-fee-settings";
+import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { useSmsRecipient } from "@/app/hooks/use-sms-recipient";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
@@ -98,6 +99,7 @@ export default function EWalletPage() {
     useEwalletFeeSettings();
   const { number: smsRecipient, updateNumber: updateSmsRecipient } =
     useSmsRecipient();
+  const senderPushEndpointRef = useSenderPushEndpoint();
 
   const amount = Number(amountInput) || 0;
   const fee = useMemo(
@@ -207,6 +209,7 @@ export default function EWalletPage() {
         body: JSON.stringify({
           requestId,
           status: "PAID",
+          senderPushEndpoint: senderPushEndpointRef.current,
           amountPaid: unitPrice,
           note,
           items: [

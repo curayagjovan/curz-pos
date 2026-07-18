@@ -25,6 +25,7 @@ import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
 import type { SegmentOption } from "@/app/components/segmented-control";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
+import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { useSmsRecipient } from "@/app/hooks/use-sms-recipient";
 import { useLoadItems } from "@/app/context/load-items-context";
 import { usePageContext } from "@/app/context/page-context";
@@ -94,6 +95,7 @@ export default function LoadPage() {
     useLoadMarkupSettings();
   const { number: smsRecipient, updateNumber: updateSmsRecipient } =
     useSmsRecipient();
+  const senderPushEndpointRef = useSenderPushEndpoint();
 
   const handleNumberChange = (value: string) => {
     setMobileNumber(value);
@@ -201,6 +203,7 @@ export default function LoadPage() {
         body: JSON.stringify({
           requestId,
           status: "PAID",
+          senderPushEndpoint: senderPushEndpointRef.current,
           amountPaid: sellPrice,
           note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
           items: [
