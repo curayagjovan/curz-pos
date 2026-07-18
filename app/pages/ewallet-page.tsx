@@ -32,6 +32,7 @@ import {
   EWALLET_PROVIDERS,
   findEwalletCatalogEntry,
   type EWalletDirection,
+  type EWalletIdMode,
   type EWalletProvider,
 } from "@/lib/ewallet-catalog";
 import { getFeeForAmount } from "@/lib/ewallet-fee";
@@ -49,6 +50,11 @@ const PROVIDER_SEGMENTS: SegmentOption[] = EWALLET_PROVIDERS.map(
 const DIRECTION_SEGMENTS: SegmentOption[] = EWALLET_DIRECTIONS.map(
   ({ direction, label }) => ({ key: direction, label }),
 );
+
+const ID_MODE_SEGMENTS: SegmentOption[] = [
+  { key: "mobile", label: "Mobile No." },
+  { key: "reference", label: "Reference No." },
+];
 
 function providerLabel(provider: EWalletProvider) {
   return (
@@ -77,8 +83,11 @@ export default function EWalletPage() {
   const [provider, setProvider] = useState<EWalletProvider>("GCASH");
   const [direction, setDirection] = useState<EWalletDirection>("CASH_IN");
   const [amountInput, setAmountInput] = useState("");
+  const [idMode, setIdMode] = useState<EWalletIdMode>("mobile");
   const [accountNumber, setAccountNumber] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
   const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
+  const [confirmReferenceNumber, setConfirmReferenceNumber] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
@@ -103,7 +112,33 @@ export default function EWalletPage() {
       return;
     }
     setConfirmAccountNumber(accountNumber);
+    setConfirmReferenceNumber(referenceNumber);
     setConfirmOpen(true);
+  };
+
+  const validateIdentifier = () => {
+    if (!isCashIn) {
+      return true;
+    }
+    if (idMode === "mobile") {
+      const digits = normalizeMobileNumber(confirmAccountNumber);
+      if (digits.length < 10) {
+        showSnackbar({
+          message: "Enter a valid mobile number",
+          severity: "error",
+        });
+        return false;
+      }
+      return true;
+    }
+    if (confirmReferenceNumber.trim().length < 6) {
+      showSnackbar({
+        message: "Enter a valid reference number",
+        severity: "error",
+      });
+      return false;
+    }
+    return true;
   };
 
   const handleCloseConfirm = () => {
@@ -114,15 +149,8 @@ export default function EWalletPage() {
   };
 
   const handleSendSms = () => {
-    if (isCashIn) {
-      const digits = normalizeMobileNumber(confirmAccountNumber);
-      if (digits.length < 10) {
-        showSnackbar({
-          message: "Enter a valid mobile number",
-          severity: "error",
-        });
-        return;
-      }
+    if (!validateIdentifier()) {
+      return;
     }
 
     if (!smsRecipient) {
@@ -138,21 +166,16 @@ export default function EWalletPage() {
       providerLabel(provider),
       direction,
       amount,
-      isCashIn ? confirmAccountNumber : undefined,
+      isCashIn && idMode === "mobile"
+        ? { accountNumber: confirmAccountNumber }
+        : { referenceNumber: confirmReferenceNumber },
     );
     window.location.href = buildSmsHref(smsRecipient, message);
   };
 
   const handleComplete = async () => {
-    if (isCashIn) {
-      const digits = normalizeMobileNumber(confirmAccountNumber);
-      if (digits.length < 10) {
-        showSnackbar({
-          message: "Enter a valid mobile number",
-          severity: "error",
-        });
-        return;
-      }
+    if (!validateIdentifier()) {
+      return;
     }
 
     const entry = findEwalletCatalogEntry(provider, direction);
@@ -169,9 +192,14 @@ export default function EWalletPage() {
     try {
       const unitPrice = isCashIn ? amount + fee : fee;
       const requestId = crypto.randomUUID();
-      const note = isCashIn
-        ? `${providerLabel(provider)} Cash In ₱${amount.toFixed(2)} to ${confirmAccountNumber} (fee ₱${fee.toFixed(2)})`
-        : `${providerLabel(provider)} Cash Out ₱${amount.toFixed(2)} (fee ₱${fee.toFixed(2)})`;
+      const refText = confirmReferenceNumber.trim();
+      const identifierText =
+        isCashIn && idMode === "mobile"
+          ? ` to ${confirmAccountNumber}`
+          : refText
+            ? ` (Ref ${refText})`
+            : "";
+      const note = `${providerLabel(provider)} ${isCashIn ? "Cash In" : "Cash Out"} ₱${amount.toFixed(2)}${identifierText} (fee ₱${fee.toFixed(2)})`;
 
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -212,6 +240,7 @@ export default function EWalletPage() {
       setConfirmOpen(false);
       setAmountInput("");
       setAccountNumber("");
+      setReferenceNumber("");
     } catch (error) {
       showSnackbar({
         message:
@@ -299,31 +328,60 @@ export default function EWalletPage() {
             {isCashIn ? (
               <Stack spacing={1}>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Recipient mobile number
+                  Recipient
+                </Typography>
+                <SegmentedControl
+                  ariaLabel="cash-in identifier"
+                  segments={ID_MODE_SEGMENTS}
+                  selectedKeys={[idMode]}
+                  onSelect={(key) => setIdMode(key as EWalletIdMode)}
+                />
+                {idMode === "mobile" ? (
+                  <TextField
+                    fullWidth
+                    value={accountNumber}
+                    placeholder="Mobile number"
+                    onChange={(event) => setAccountNumber(event.target.value)}
+                    slotProps={{
+                      htmlInput: {
+                        inputMode: "tel",
+                      },
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <DialpadRounded
+                              fontSize="small"
+                              sx={{ color: "text.secondary" }}
+                            />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                ) : (
+                  <TextField
+                    fullWidth
+                    value={referenceNumber}
+                    placeholder="Reference number from the app"
+                    onChange={(event) =>
+                      setReferenceNumber(event.target.value)
+                    }
+                  />
+                )}
+              </Stack>
+            ) : (
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Reference number (optional)
                 </Typography>
                 <TextField
                   fullWidth
-                  value={accountNumber}
-                  placeholder="Mobile number"
-                  onChange={(event) => setAccountNumber(event.target.value)}
-                  slotProps={{
-                    htmlInput: {
-                      inputMode: "tel",
-                    },
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <DialpadRounded
-                            fontSize="small"
-                            sx={{ color: "text.secondary" }}
-                          />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
+                  value={referenceNumber}
+                  placeholder="Reference number from the app"
+                  onChange={(event) => setReferenceNumber(event.target.value)}
                 />
               </Stack>
-            ) : null}
+            )}
             <Typography variant="subtitle2" color="text.secondary">
               Amount
             </Typography>
@@ -395,10 +453,13 @@ export default function EWalletPage() {
         directionLabel={directionLabel(direction)}
         amount={amount}
         fee={fee}
+        idMode={idMode}
         accountNumber={confirmAccountNumber}
+        referenceNumber={confirmReferenceNumber}
         completing={completing}
         onClose={handleCloseConfirm}
         onAccountNumberChange={setConfirmAccountNumber}
+        onReferenceNumberChange={setConfirmReferenceNumber}
         onSendSms={handleSendSms}
         onComplete={() => void handleComplete()}
       />

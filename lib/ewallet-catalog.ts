@@ -2,6 +2,11 @@ export type EWalletProvider = "GCASH" | "MAYA";
 
 export type EWalletDirection = "CASH_IN" | "CASH_OUT";
 
+// How a cash-in transaction is identified: by the recipient's mobile number,
+// or by the app reference number when the transfer was done via QR scan
+// (the GCash/Maya app masks the mobile number in that case).
+export type EWalletIdMode = "mobile" | "reference";
+
 export type EWalletCatalogEntry = {
   id: string;
   provider: EWalletProvider;

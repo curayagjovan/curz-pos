@@ -10,6 +10,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import type { EWalletDirection, EWalletProvider } from "@/lib/ewallet-catalog";
+import type { EWalletIdMode } from "@/lib/ewallet-catalog";
 
 type EWalletConfirmDrawerProps = {
   open: boolean;
@@ -19,10 +20,13 @@ type EWalletConfirmDrawerProps = {
   directionLabel: string;
   amount: number;
   fee: number;
+  idMode: EWalletIdMode;
   accountNumber: string;
+  referenceNumber: string;
   completing: boolean;
   onClose: () => void;
   onAccountNumberChange: (value: string) => void;
+  onReferenceNumberChange: (value: string) => void;
   onSendSms: () => void;
   onComplete: () => void;
 };
@@ -34,10 +38,13 @@ export default function EWalletConfirmDrawer({
   directionLabel,
   amount,
   fee,
+  idMode,
   accountNumber,
+  referenceNumber,
   completing,
   onClose,
   onAccountNumberChange,
+  onReferenceNumberChange,
   onSendSms,
   onComplete,
 }: EWalletConfirmDrawerProps) {
@@ -99,7 +106,7 @@ export default function EWalletConfirmDrawer({
           </Stack>
         </Stack>
 
-        {isCashIn ? (
+        {isCashIn && idMode === "mobile" ? (
           <TextField
             fullWidth
             value={accountNumber}
@@ -112,7 +119,17 @@ export default function EWalletConfirmDrawer({
               },
             }}
           />
-        ) : null}
+        ) : (
+          <TextField
+            fullWidth
+            value={referenceNumber}
+            placeholder={
+              isCashIn ? "Reference number" : "Reference number (optional)"
+            }
+            onChange={(event) => onReferenceNumberChange(event.target.value)}
+            sx={{ mt: 2 }}
+          />
+        )}
 
         <Stack spacing={1} sx={{ mt: 2 }}>
           <Button
