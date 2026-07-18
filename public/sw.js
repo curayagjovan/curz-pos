@@ -1,4 +1,4 @@
-const CACHE_VERSION = "shopmae-v9.1";
+const CACHE_VERSION = "shopmae-v10";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
