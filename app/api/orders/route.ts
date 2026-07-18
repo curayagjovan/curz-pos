@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
@@ -730,13 +730,20 @@ export async function POST(request: Request) {
     if (createdNewOrder && status === "PAID") {
       const change = Math.max(0, (amountPaid ?? computedTotal) - computedTotal);
 
-      void sendCheckoutSuccessPush({
-        orderNo,
-        total: computedTotal,
-        change,
-        excludeEndpoint: senderPushEndpoint,
-      }).catch((pushError) => {
-        console.error("Failed to send checkout push notification", pushError);
+      // after() keeps the serverless function alive until the sends finish;
+      // a fire-and-forget promise gets frozen with the function as soon as
+      // the response returns, silently dropping notifications.
+      after(async () => {
+        try {
+          await sendCheckoutSuccessPush({
+            orderNo,
+            total: computedTotal,
+            change,
+            excludeEndpoint: senderPushEndpoint,
+          });
+        } catch (pushError) {
+          console.error("Failed to send checkout push notification", pushError);
+        }
       });
     }
 
