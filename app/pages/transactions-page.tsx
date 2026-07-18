@@ -6,151 +6,97 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
 import type { TransactionGroup } from "@/app/components/transactions-catalog";
-import TransactionsFilterBar from "@/app/components/transactions-filter-bar";
-import type { ActiveFilter } from "@/app/components/transactions-filter-bar";
 import TransactionsTotalsBar from "@/app/components/transactions-totals-bar";
+import WeekStripFilter, {
+  addDays,
+  isSameDay,
+  startOfDay,
+  startOfWeek,
+} from "@/app/components/week-strip-filter";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
+import type { Transaction } from "@/types/transaction";
 
-function toDateTimeLocalValue(date: Date) {
-  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
-}
+const periodLabelFormatter = new Intl.DateTimeFormat("en-PH", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
 
-function getPeriodLabel(filter: ActiveFilter) {
-  switch (filter) {
-    case "today":
-      return "Today";
-    case "week":
-      return "This Week";
-    case "month":
-      return "This Month";
-    case "year":
-      return "This Year";
-    case "custom":
-      return "Custom Range";
-    default:
-      return "All Time";
+// Gross sales for the mini per-day figures, matching how the totals bar
+// counts sales (PAID plus REFUNDED before deducting refunds).
+function transactionSalesAmount(transaction: Transaction) {
+  if (transaction.status !== "PAID" && transaction.status !== "REFUNDED") {
+    return 0;
   }
-}
 
-function startOfWeek(date: Date) {
-  const start = new Date(date);
-  const day = start.getDay();
-  const dayOffset = day === 0 ? 6 : day - 1;
-  start.setDate(start.getDate() - dayOffset);
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
-function startOfNextWeek(date: Date) {
-  const start = startOfWeek(date);
-  start.setDate(start.getDate() + 7);
-  return start;
-}
-
-function formatShortDate(date: Date) {
-  return new Intl.DateTimeFormat("en-PH", {
-    month: "short",
-    day: "numeric",
-  }).format(date);
+  const amount = Number(transaction.total);
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 export default function TransactionsPage() {
-  const [startDateTime, setStartDateTime] = useState(() => {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return toDateTimeLocalValue(startOfToday);
-  });
-  const [endDateTime, setEndDateTime] = useState(() =>
-    toDateTimeLocalValue(new Date()),
+  const [selectedDate, setSelectedDate] = useState(() =>
+    startOfDay(new Date()),
   );
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("today");
   const [showTotals, setShowTotals] = useState(false);
   const { transactions, loading, error, updateTransactionStatus } =
     useTransactions();
 
   const filteredTransactions = useMemo(() => {
-    const sortByNewest = (items: typeof transactions) =>
-      [...items].sort((left, right) => {
-        const leftTime = new Date(left.createdAt).getTime();
-        const rightTime = new Date(right.createdAt).getTime();
+    const dayStartTime = selectedDate.getTime();
+    const dayEndTime = addDays(selectedDate, 1).getTime();
 
-        if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
-          return 0;
-        }
-
-        if (Number.isNaN(leftTime)) {
-          return 1;
-        }
-
-        if (Number.isNaN(rightTime)) {
-          return -1;
-        }
-
-        return rightTime - leftTime;
-      });
-
-    if (!startDateTime && !endDateTime) {
-      return sortByNewest(transactions);
-    }
-
-    const startTime = startDateTime ? new Date(startDateTime).getTime() : null;
-    const presetUsesLiveEndTime =
-      activeFilter === "today" ||
-      activeFilter === "week" ||
-      activeFilter === "month" ||
-      activeFilter === "year";
-    const endTime = presetUsesLiveEndTime
-      ? null
-      : endDateTime
-        ? new Date(endDateTime).getTime()
-        : null;
-
-    if (
-      (startTime !== null && Number.isNaN(startTime)) ||
-      (endTime !== null && Number.isNaN(endTime))
-    ) {
-      return sortByNewest(transactions);
-    }
-
-    return sortByNewest(
-      transactions.filter((transaction) => {
+    return transactions
+      .filter((transaction) => {
         const transactionTime = new Date(transaction.createdAt).getTime();
-
-        if (Number.isNaN(transactionTime)) {
-          return false;
-        }
-
         return (
-          (startTime === null || transactionTime >= startTime) &&
-          (endTime === null || transactionTime <= endTime)
+          !Number.isNaN(transactionTime) &&
+          transactionTime >= dayStartTime &&
+          transactionTime < dayEndTime
         );
-      }),
-    );
-  }, [transactions, startDateTime, endDateTime, activeFilter]);
+      })
+      .sort(
+        (left, right) =>
+          new Date(right.createdAt).getTime() -
+          new Date(left.createdAt).getTime(),
+      );
+  }, [transactions, selectedDate]);
+
+  const dayTotals = useMemo(() => {
+    const weekStart = startOfWeek(selectedDate);
+    const weekStartTime = weekStart.getTime();
+    const weekEndTime = addDays(weekStart, 7).getTime();
+    const totals = [0, 0, 0, 0, 0, 0, 0];
+
+    for (const transaction of transactions) {
+      const transactionTime = new Date(transaction.createdAt).getTime();
+      if (
+        Number.isNaN(transactionTime) ||
+        transactionTime < weekStartTime ||
+        transactionTime >= weekEndTime
+      ) {
+        continue;
+      }
+
+      const dayIndex = Math.floor(
+        (transactionTime - weekStartTime) / (24 * 60 * 60 * 1000),
+      );
+      if (dayIndex >= 0 && dayIndex < 7) {
+        totals[dayIndex] += transactionSalesAmount(transaction);
+      }
+    }
+
+    return totals;
+  }, [transactions, selectedDate]);
 
   const groupedTransactions = useMemo<TransactionGroup[] | undefined>(() => {
-    if (
-      activeFilter === null ||
-      activeFilter === "custom" ||
-      filteredTransactions.length === 0
-    ) {
+    if (filteredTransactions.length === 0) {
       return undefined;
     }
 
     const hourFormatter = new Intl.DateTimeFormat("en-PH", {
       hour: "numeric",
       hour12: true,
-    });
-    const dayFormatter = new Intl.DateTimeFormat("en-PH", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-    const monthFormatter = new Intl.DateTimeFormat("en-PH", {
-      month: "long",
-      year: "numeric",
     });
 
     const groupsMap = new Map<string, TransactionGroup>();
@@ -161,39 +107,9 @@ export default function TransactionsPage() {
         continue;
       }
 
-      let groupKey = "";
-      let groupLabel = "";
-
-      if (activeFilter === "today") {
-        const hourStart = new Date(createdAt);
-        hourStart.setMinutes(0, 0, 0);
-        groupKey = `hour-${hourStart.toISOString()}`;
-        groupLabel = hourFormatter.format(hourStart);
-      }
-
-      if (activeFilter === "week") {
-        const dayStart = new Date(createdAt);
-        dayStart.setHours(0, 0, 0, 0);
-        groupKey = `day-${dayStart.toISOString()}`;
-        groupLabel = dayFormatter.format(dayStart);
-      }
-
-      if (activeFilter === "month") {
-        const weekStart = startOfWeek(createdAt);
-        const nextWeekStart = startOfNextWeek(createdAt);
-        groupKey = `week-${weekStart.toISOString()}`;
-        groupLabel = `${formatShortDate(weekStart)} - ${formatShortDate(new Date(nextWeekStart.getTime() - 1))}`;
-      }
-
-      if (activeFilter === "year") {
-        const monthStart = new Date(
-          createdAt.getFullYear(),
-          createdAt.getMonth(),
-          1,
-        );
-        groupKey = `month-${monthStart.getFullYear()}-${monthStart.getMonth()}`;
-        groupLabel = monthFormatter.format(monthStart);
-      }
+      const hourStart = new Date(createdAt);
+      hourStart.setMinutes(0, 0, 0);
+      const groupKey = `hour-${hourStart.toISOString()}`;
 
       const existingGroup = groupsMap.get(groupKey);
       if (existingGroup) {
@@ -201,14 +117,14 @@ export default function TransactionsPage() {
       } else {
         groupsMap.set(groupKey, {
           key: groupKey,
-          label: groupLabel,
+          label: hourFormatter.format(hourStart),
           transactions: [transaction],
         });
       }
     }
 
     return Array.from(groupsMap.values());
-  }, [filteredTransactions, activeFilter]);
+  }, [filteredTransactions]);
 
   const {
     filteredSalesTotal,
@@ -251,44 +167,18 @@ export default function TransactionsPage() {
   }, [filteredTransactions]);
 
   const filteredNetSalesTotal = filteredSalesTotal - filteredRefundedTotal;
-  const periodLabel = getPeriodLabel(activeFilter);
-
-  const applyQuickRange = (
-    filter: Exclude<ActiveFilter, "custom" | null>,
-    start: Date,
-    end: Date,
-  ) => {
-    setActiveFilter(filter);
-    setStartDateTime(toDateTimeLocalValue(start));
-    setEndDateTime(toDateTimeLocalValue(end));
-  };
-
-  const handleSelectCustom = () => {
-    setActiveFilter("custom");
-  };
-
-  const handleStartDateTimeChange = (value: string) => {
-    setActiveFilter("custom");
-    setStartDateTime(value);
-  };
-
-  const handleEndDateTimeChange = (value: string) => {
-    setActiveFilter("custom");
-    setEndDateTime(value);
-  };
+  const periodLabel = isSameDay(selectedDate, startOfDay(new Date()))
+    ? "Today"
+    : periodLabelFormatter.format(selectedDate);
 
   return (
     <MobilePageWrapper title="Sales">
       <Container maxWidth="sm" sx={{ py: 0.5, pb: 8 }}>
         <Stack spacing={1.5}>
-          <TransactionsFilterBar
-            activeFilter={activeFilter}
-            startDateTime={startDateTime}
-            endDateTime={endDateTime}
-            onApplyQuickRange={applyQuickRange}
-            onSelectCustom={handleSelectCustom}
-            onStartDateTimeChange={handleStartDateTimeChange}
-            onEndDateTimeChange={handleEndDateTimeChange}
+          <WeekStripFilter
+            selectedDate={selectedDate}
+            dayTotals={dayTotals}
+            onSelectDate={setSelectedDate}
           />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>

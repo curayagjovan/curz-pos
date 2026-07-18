@@ -1,0 +1,272 @@
+"use client";
+
+import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
+import EventRepeatRounded from "@mui/icons-material/EventRepeatRounded";
+
+const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+export function startOfDay(date: Date) {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+export function startOfWeek(date: Date) {
+  const result = startOfDay(date);
+  const day = result.getDay();
+  result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+  return result;
+}
+
+export function addDays(date: Date, days: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+export function isSameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function toDateInputValue(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+const pillFormatter = new Intl.DateTimeFormat("en-PH", {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
+
+const compactAmountFormatter = new Intl.NumberFormat("en-PH", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+const weekTotalFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 2,
+});
+
+type WeekStripFilterProps = {
+  selectedDate: Date;
+  // Sales totals for the visible week, Monday first.
+  dayTotals: number[];
+  onSelectDate: (date: Date) => void;
+};
+
+export default function WeekStripFilter({
+  selectedDate,
+  dayTotals,
+  onSelectDate,
+}: WeekStripFilterProps) {
+  const today = startOfDay(new Date());
+  const weekStart = startOfWeek(selectedDate);
+  const weekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index));
+  const weekTotal = dayTotals.reduce(
+    (sum, value) => sum + (Number.isFinite(value) ? value : 0),
+    0,
+  );
+
+  const handleDatePicked = (value: string) => {
+    if (!value) {
+      return;
+    }
+
+    const [year, month, day] = value.split("-").map(Number);
+    if (!year || !month || !day) {
+      return;
+    }
+
+    onSelectDate(new Date(year, month - 1, day));
+  };
+
+  return (
+    <Box
+      sx={{
+        position: "sticky",
+        top: 0,
+        zIndex: 5,
+        pt: 0.5,
+        pb: 0.75,
+        bgcolor: "background.default",
+      }}
+    >
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        spacing={1}
+      >
+        {/* The invisible date input sits on top of the pill so tapping it
+            opens the platform's native calendar picker. */}
+        <Box
+          component="label"
+          sx={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            px: 1.5,
+            py: 0.7,
+            borderRadius: "10px",
+            border: "1px solid",
+            borderColor: "divider",
+            cursor: "pointer",
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+            {pillFormatter.format(selectedDate)}
+          </Typography>
+          <Box
+            component="input"
+            type="date"
+            value={toDateInputValue(selectedDate)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              handleDatePicked(event.target.value)
+            }
+            aria-label="pick a date"
+            sx={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              opacity: 0,
+              border: 0,
+              p: 0,
+              cursor: "pointer",
+              "&::-webkit-calendar-picker-indicator": {
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                cursor: "pointer",
+              },
+            }}
+          />
+        </Box>
+
+        <Stack direction="row" alignItems="center" spacing={0}>
+          <IconButton
+            aria-label="back to today"
+            onClick={() => onSelectDate(startOfDay(new Date()))}
+          >
+            <EventRepeatRounded fontSize="small" />
+          </IconButton>
+          <IconButton
+            aria-label="previous week"
+            onClick={() => onSelectDate(addDays(selectedDate, -7))}
+          >
+            <ChevronLeftRounded />
+          </IconButton>
+          <IconButton
+            aria-label="next week"
+            onClick={() => onSelectDate(addDays(selectedDate, 7))}
+          >
+            <ChevronRightRounded />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      <Box
+        sx={{
+          mt: 1,
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+        }}
+      >
+        {weekDays.map((day, index) => {
+          const isSelected = isSameDay(day, selectedDate);
+          const isToday = isSameDay(day, today);
+          const total = dayTotals[index] ?? 0;
+
+          return (
+            <ButtonBase
+              key={day.toISOString()}
+              onClick={() => onSelectDate(day)}
+              aria-label={`view sales for ${pillFormatter.format(day)}`}
+              sx={{
+                flexDirection: "column",
+                gap: 0.5,
+                py: 0.5,
+                borderRadius: "10px",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  color: "text.secondary",
+                }}
+              >
+                {DAY_LABELS[index]}
+              </Typography>
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  typography: "body1",
+                  fontWeight: isSelected ? 700 : 500,
+                  bgcolor: isSelected
+                    ? isToday
+                      ? "primary.main"
+                      : "text.primary"
+                    : "transparent",
+                  color: isSelected
+                    ? isToday
+                      ? "primary.contrastText"
+                      : "background.paper"
+                    : isToday
+                      ? "primary.main"
+                      : "text.primary",
+                  transition: "background-color 160ms ease, color 160ms ease",
+                }}
+              >
+                {day.getDate()}
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: 11,
+                  color:
+                    total > 0
+                      ? isToday
+                        ? "primary.main"
+                        : "text.secondary"
+                      : "text.disabled",
+                }}
+              >
+                ₱{compactAmountFormatter.format(total)}
+              </Typography>
+            </ButtonBase>
+          );
+        })}
+      </Box>
+
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: "block", mt: 0.5, px: 0.5 }}
+      >
+        Week total: {weekTotalFormatter.format(weekTotal)}
+      </Typography>
+    </Box>
+  );
+}
