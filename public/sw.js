@@ -1,5 +1,12 @@
-const CACHE_VERSION = "shopmae-v7";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg"];
+const CACHE_VERSION = "shopmae-v8";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/pwa-icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+];
 
 function isStaticAsset(pathname) {
   return (

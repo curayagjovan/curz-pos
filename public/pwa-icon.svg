@@ -1,15 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">SHOPMAE</title>
-  <desc id="desc">SHOPMAE application icon</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0b6bcb" />
-      <stop offset="100%" stop-color="#12325a" />
+    <linearGradient id="bg" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#3ba0ff" />
+      <stop offset="55%" stop-color="#0a84ff" />
+      <stop offset="100%" stop-color="#0757c9" />
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)" />
-  <g fill="#ffffff">
-    <path d="M137 145h249a18 18 0 0 1 17 23l-33 116a18 18 0 0 1-17 13H198l-7 25h170a17 17 0 1 1 0 34H168a17 17 0 0 1-16-22l35-122-16-51h-34a17 17 0 1 1 0-34zm81 190a24 24 0 1 1-24 24 24 24 0 0 1 24-24zm129 0a24 24 0 1 1-24 24 24 24 0 0 1 24-24z" />
-    <rect x="116" y="95" width="280" height="32" rx="16" opacity="0.9" />
+  <rect width="512" height="512" rx="114" fill="url(#bg)" />
+  <g transform="translate(0,-18)">
+    <!-- awning: bar with scalloped edge -->
+    <g fill="#ffffff">
+      <path d="M106 160 v-28 a20 20 0 0 1 20 -20 h260 a20 20 0 0 1 20 20 v28 z" />
+      <circle cx="136" cy="160" r="30" />
+      <circle cx="196" cy="160" r="30" />
+      <circle cx="256" cy="160" r="30" />
+      <circle cx="316" cy="160" r="30" />
+      <circle cx="376" cy="160" r="30" />
+    </g>
+    <!-- peso sign -->
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M218 424 V240 h62 a58 58 0 0 1 0 116 h-62" stroke-width="42" />
+      <path d="M154 274 H388" stroke-width="28" />
+      <path d="M154 322 H388" stroke-width="28" />
+    </g>
   </g>
 </svg>
