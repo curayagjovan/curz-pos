@@ -69,7 +69,9 @@ type WeekStripFilterProps = {
   onSelectDate: (date: Date) => void;
 };
 
-type SwipeStage = "idle" | "dragging" | "exiting" | "resetting" | "entering";
+type SwipeStage = "idle" | "dragging" | "settling";
+
+const SLIDE_TRANSITION = "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)";
 
 export default function WeekStripFilter({
   selectedDate,
@@ -78,7 +80,9 @@ export default function WeekStripFilter({
 }: WeekStripFilterProps) {
   const today = startOfDay(new Date());
   const weekStart = startOfWeek(selectedDate);
-  const weekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index));
+  const currentWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index));
+  const prevWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index - 7));
+  const nextWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index + 7));
   const weekTotal = dayTotals.reduce(
     (sum, value) => sum + (Number.isFinite(value) ? value : 0),
     0,
@@ -92,7 +96,7 @@ export default function WeekStripFilter({
   const pointerCapturedRef = useRef(false);
   const [dragPx, setDragPx] = useState(0);
   const [stage, setStage] = useState<SwipeStage>("idle");
-  const transitionEnabled = stage === "exiting" || stage === "entering";
+  const transitionEnabled = stage === "settling";
 
   const getTrackWidth = () => trackRef.current?.getBoundingClientRect().width || 0;
 
@@ -102,7 +106,7 @@ export default function WeekStripFilter({
     }
     const width = getTrackWidth() || 1;
     pendingDirectionRef.current = direction;
-    setStage("exiting");
+    setStage("settling");
     setDragPx(-direction * width);
   };
 
@@ -150,38 +154,35 @@ export default function WeekStripFilter({
     if (Math.abs(delta) > threshold) {
       const direction: 1 | -1 = delta < 0 ? 1 : -1;
       pendingDirectionRef.current = direction;
-      setStage("exiting");
+      setStage("settling");
       setDragPx(-direction * width);
     } else {
       pendingDirectionRef.current = null;
-      setStage("entering");
+      setStage("settling");
       setDragPx(0);
     }
   };
 
   const handleTransitionEnd = (event: React.TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== trackRef.current || event.propertyName !== "transform") {
+    if (
+      stage !== "settling" ||
+      event.target !== trackRef.current ||
+      event.propertyName !== "transform"
+    ) {
       return;
     }
 
-    if (stage === "exiting") {
-      const direction = pendingDirectionRef.current;
-      pendingDirectionRef.current = null;
-      if (direction) {
-        onSelectDate(addDays(selectedDate, direction * 7));
-      }
-      const width = getTrackWidth() || 1;
-      setStage("resetting");
-      setDragPx(direction ? direction * width : 0);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setStage("entering");
-          setDragPx(0);
-        });
-      });
-    } else if (stage === "entering") {
-      setStage("idle");
+    // The neighboring pane is already tiled edge-to-edge with the current
+    // one, so once it slides fully into view its content IS the new current
+    // week — swapping selectedDate and resetting dragPx to 0 in the same
+    // update lands on the exact same pixel position, with no teleport.
+    const direction = pendingDirectionRef.current;
+    pendingDirectionRef.current = null;
+    if (direction) {
+      onSelectDate(addDays(selectedDate, direction * 7));
     }
+    setStage("idle");
+    setDragPx(0);
   };
 
   const handleDayClick = (day: Date) => {
@@ -190,6 +191,91 @@ export default function WeekStripFilter({
     }
     onSelectDate(day);
   };
+
+  const renderWeekPane = (days: Date[], interactive: boolean) =>
+    days.map((day, index) => {
+      const isSelected = interactive && isSameDay(day, selectedDate);
+      const isToday = isSameDay(day, today);
+      const total = interactive ? (dayTotals[index] ?? 0) : null;
+
+      const content = (
+        <>
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: 10,
+              letterSpacing: 0.6,
+              color: "text.secondary",
+            }}
+          >
+            {DAY_LABELS[index]}
+          </Typography>
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              typography: "body1",
+              fontWeight: isSelected ? 700 : 500,
+              bgcolor: isSelected
+                ? isToday
+                  ? "primary.main"
+                  : "text.primary"
+                : "transparent",
+              color: isSelected
+                ? isToday
+                  ? "primary.contrastText"
+                  : "background.paper"
+                : isToday
+                  ? "primary.main"
+                  : "text.primary",
+              transition: "background-color 160ms ease, color 160ms ease",
+            }}
+          >
+            {day.getDate()}
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: 11,
+              color:
+                total !== null && total > 0
+                  ? isToday
+                    ? "primary.main"
+                    : "text.secondary"
+                  : "text.disabled",
+            }}
+          >
+            {total === null ? "···" : `₱${compactAmountFormatter.format(total)}`}
+          </Typography>
+        </>
+      );
+
+      const cellSx = {
+        flexDirection: "column",
+        gap: 0.5,
+        py: 0.5,
+        borderRadius: "10px",
+      } as const;
+
+      return interactive ? (
+        <ButtonBase
+          key={day.toISOString()}
+          onClick={() => handleDayClick(day)}
+          aria-label={`view sales for ${pillFormatter.format(day)}`}
+          sx={cellSx}
+        >
+          {content}
+        </ButtonBase>
+      ) : (
+        <Box key={day.toISOString()} aria-hidden sx={{ display: "flex", ...cellSx }}>
+          {content}
+        </Box>
+      );
+    });
 
   const handleDatePicked = (value: string) => {
     if (!value) {
@@ -290,7 +376,34 @@ export default function WeekStripFilter({
         </Stack>
       </Stack>
 
-      <Box sx={{ mt: 1, overflow: "hidden", borderRadius: "10px" }}>
+      <Box
+        sx={{
+          mt: 1,
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: "10px",
+          bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
+        }}
+      >
+        {/* Previous week — tiled immediately to the left, revealed as the
+            current pane is dragged rightward. */}
+        <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 1fr)",
+            pointerEvents: "none",
+            transform: `translateX(calc(-100% + ${dragPx}px))`,
+            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
+          }}
+        >
+          {renderWeekPane(prevWeekDays, false)}
+        </Box>
+
+        {/* Current week — the only interactive pane; also owns the drag
+            gesture and defines the strip's height. */}
         <Box
           ref={trackRef}
           onPointerDown={handlePointerDown}
@@ -301,88 +414,31 @@ export default function WeekStripFilter({
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
-            borderRadius: "10px",
             touchAction: "pan-y",
             cursor: stage === "dragging" ? "grabbing" : "grab",
             userSelect: stage === "idle" ? "auto" : "none",
             transform: `translateX(${dragPx}px)`,
-            transition: transitionEnabled
-              ? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)"
-              : "none",
+            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
           }}
         >
-        {weekDays.map((day, index) => {
-          const isSelected = isSameDay(day, selectedDate);
-          const isToday = isSameDay(day, today);
-          const total = dayTotals[index] ?? 0;
+          {renderWeekPane(currentWeekDays, true)}
+        </Box>
 
-          return (
-            <ButtonBase
-              key={day.toISOString()}
-              onClick={() => handleDayClick(day)}
-              aria-label={`view sales for ${pillFormatter.format(day)}`}
-              sx={{
-                flexDirection: "column",
-                gap: 0.5,
-                py: 0.5,
-                borderRadius: "10px",
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{
-                  fontSize: 10,
-                  letterSpacing: 0.6,
-                  color: "text.secondary",
-                }}
-              >
-                {DAY_LABELS[index]}
-              </Typography>
-              <Box
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  typography: "body1",
-                  fontWeight: isSelected ? 700 : 500,
-                  bgcolor: isSelected
-                    ? isToday
-                      ? "primary.main"
-                      : "text.primary"
-                    : "transparent",
-                  color: isSelected
-                    ? isToday
-                      ? "primary.contrastText"
-                      : "background.paper"
-                    : isToday
-                      ? "primary.main"
-                      : "text.primary",
-                  transition: "background-color 160ms ease, color 160ms ease",
-                }}
-              >
-                {day.getDate()}
-              </Box>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontSize: 11,
-                  color:
-                    total > 0
-                      ? isToday
-                        ? "primary.main"
-                        : "text.secondary"
-                      : "text.disabled",
-                }}
-              >
-                ₱{compactAmountFormatter.format(total)}
-              </Typography>
-            </ButtonBase>
-          );
-        })}
+        {/* Next week — tiled immediately to the right, revealed as the
+            current pane is dragged leftward. */}
+        <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 1fr)",
+            pointerEvents: "none",
+            transform: `translateX(calc(100% + ${dragPx}px))`,
+            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
+          }}
+        >
+          {renderWeekPane(nextWeekDays, false)}
         </Box>
       </Box>
 
