@@ -9,22 +9,16 @@ import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import TransactionsTotalsBar from "@/app/components/transactions-totals-bar";
 import WeekStripFilter, {
   addDays,
-  isSameDay,
   startOfDay,
   startOfWeek,
 } from "@/app/components/week-strip-filter";
 import { useTransactions } from "@/app/context/transactions-context";
+import { useSalesSummary } from "@/app/hooks/use-sales-summary";
 import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
 
-const periodLabelFormatter = new Intl.DateTimeFormat("en-PH", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-});
-
-// Gross sales for the mini per-day figures, matching how the totals bar
+// Gross sales for the mini per-day figures, matching how the sales report
 // counts sales (PAID plus REFUNDED before deducting refunds).
 function transactionSalesAmount(transaction: Transaction) {
   if (transaction.status !== "PAID" && transaction.status !== "REFUNDED") {
@@ -65,6 +59,17 @@ export default function TransactionsPage() {
     refetch: refetchRange,
   } = useTransactionsInRange(weekStartIso, weekEndIso);
 
+  const selectedDateIso = useMemo(
+    () => selectedDate.toISOString(),
+    [selectedDate],
+  );
+  const {
+    summary: salesSummary,
+    loading: salesSummaryLoading,
+    error: salesSummaryError,
+    refetch: refetchSalesSummary,
+  } = useSalesSummary(selectedDateIso);
+
   const transactions = useMemo(() => {
     // Context entries win on id conflicts — they're kept fresh by realtime
     // updates and local status-change edits, while the range fetch only
@@ -91,6 +96,10 @@ export default function TransactionsPage() {
     // order the shared context has never cached) — refetch so the change is
     // reflected regardless of which source originally supplied it.
     await refetchRange();
+    // A refund/void shifts every period the order falls in (day, week,
+    // month, and year all overlap it), so the report needs its own refetch
+    // rather than being derived from the transactions already in memory.
+    await refetchSalesSummary();
   };
 
   const filteredTransactions = useMemo(() => {
@@ -176,51 +185,6 @@ export default function TransactionsPage() {
     return Array.from(groupsMap.values());
   }, [filteredTransactions]);
 
-  const {
-    filteredSalesTotal,
-    filteredRefundedTotal,
-    filteredVoidedTotal,
-    filteredVoidedCount,
-  } = useMemo(() => {
-    return filteredTransactions.reduce(
-      (totals, transaction) => {
-        const amount = Number(transaction.total);
-        if (!Number.isFinite(amount)) {
-          return totals;
-        }
-
-        if (transaction.status === "PAID" || transaction.status === "REFUNDED") {
-          totals.filteredSalesTotal += amount;
-        }
-
-        if (transaction.status === "REFUNDED") {
-          const refundAmount = Number(transaction.refundAmount);
-          totals.filteredRefundedTotal += Number.isFinite(refundAmount)
-            ? refundAmount
-            : 0;
-        }
-
-        if (transaction.status === "VOIDED") {
-          totals.filteredVoidedTotal += amount;
-          totals.filteredVoidedCount += 1;
-        }
-
-        return totals;
-      },
-      {
-        filteredSalesTotal: 0,
-        filteredRefundedTotal: 0,
-        filteredVoidedTotal: 0,
-        filteredVoidedCount: 0,
-      },
-    );
-  }, [filteredTransactions]);
-
-  const filteredNetSalesTotal = filteredSalesTotal - filteredRefundedTotal;
-  const periodLabel = isSameDay(selectedDate, startOfDay(new Date()))
-    ? "Today"
-    : periodLabelFormatter.format(selectedDate);
-
   return (
     <MobilePageWrapper title="Sales">
       <Container maxWidth="sm" sx={{ py: 0.5, pb: 8 }}>
@@ -250,12 +214,10 @@ export default function TransactionsPage() {
       <TransactionsTotalsBar
         expanded={showTotals}
         onToggle={() => setShowTotals((current) => !current)}
-        periodLabel={periodLabel}
-        salesTotal={filteredSalesTotal}
-        netSalesTotal={filteredNetSalesTotal}
-        refundedTotal={filteredRefundedTotal}
-        voidedTotal={filteredVoidedTotal}
-        voidedCount={filteredVoidedCount}
+        referenceDate={selectedDate}
+        summary={salesSummary}
+        loading={salesSummaryLoading}
+        error={salesSummaryError}
       />
     </MobilePageWrapper>
   );
