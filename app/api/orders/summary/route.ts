@@ -1,39 +1,82 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// The store operates in the Philippines (fixed UTC+8, no DST) but this route
+// can run on a server configured in any timezone (commonly UTC on most
+// hosts) — using local-time Date methods here would bucket orders into the
+// wrong day/week/month/year depending purely on where the process happens to
+// run, disagreeing with the client's browser-local (Asia/Manila) totals.
+// Shifting into a synthetic UTC clock offset by the store's fixed offset
+// lets us use the UTC getters/Date.UTC (which never consult process TZ) to
+// get PH wall-clock calendar fields deterministically, then shift back.
+const PH_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function toPhShifted(date: Date) {
+  return new Date(date.getTime() + PH_OFFSET_MS);
+}
+
+function fromPhShifted(shifted: Date) {
+  return new Date(shifted.getTime() - PH_OFFSET_MS);
+}
+
 function startOfDay(date: Date) {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
+  const shifted = toPhShifted(date);
+  const dayStart = Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  );
+  return fromPhShifted(new Date(dayStart));
 }
 
 function startOfWeek(date: Date) {
-  const result = startOfDay(date);
-  const day = result.getDay();
-  result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
-  return result;
+  const shifted = toPhShifted(date);
+  const day = shifted.getUTCDay();
+  const weekStart = Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate() - (day === 0 ? 6 : day - 1),
+  );
+  return fromPhShifted(new Date(weekStart));
 }
 
 function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  const shifted = toPhShifted(date);
+  const monthStart = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), 1);
+  return fromPhShifted(new Date(monthStart));
 }
 
 function startOfYear(date: Date) {
-  return new Date(date.getFullYear(), 0, 1);
+  const shifted = toPhShifted(date);
+  const yearStart = Date.UTC(shifted.getUTCFullYear(), 0, 1);
+  return fromPhShifted(new Date(yearStart));
 }
 
+// Boundaries above always land exactly on PH midnight, and PH never
+// observes DST, so a calendar day is always exactly 24 real-world hours —
+// plain millisecond arithmetic is safe for day increments.
 function addDays(date: Date, days: number) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
 function addMonths(date: Date, months: number) {
-  return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
+  const shifted = toPhShifted(date);
+  const result = Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + months,
+    shifted.getUTCDate(),
+  );
+  return fromPhShifted(new Date(result));
 }
 
 function addYears(date: Date, years: number) {
-  return new Date(date.getFullYear() + years, date.getMonth(), date.getDate());
+  const shifted = toPhShifted(date);
+  const result = Date.UTC(
+    shifted.getUTCFullYear() + years,
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  );
+  return fromPhShifted(new Date(result));
 }
 
 type PeriodSummary = {
