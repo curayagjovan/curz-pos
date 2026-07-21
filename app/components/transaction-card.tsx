@@ -31,6 +31,8 @@ function getStatusColor(status: Transaction["status"]) {
   switch (status) {
     case "PAID":
       return "success" as const;
+    case "PENDING":
+      return "info" as const;
     case "REFUNDED":
       return "warning" as const;
     case "VOIDED":
@@ -98,6 +100,11 @@ const TransactionCard = memo(function TransactionCard({
   >({});
   const paidAmount = transaction.amountPaid ?? transaction.total;
   const change = Math.max(0, Number(paidAmount) - Number(transaction.total));
+  const isPending = transaction.status === "PENDING";
+  const balanceDue = Math.max(
+    0,
+    Number(transaction.total) - Number(paidAmount),
+  );
   const hasNote = Boolean(transaction.note?.trim());
   const itemCount = transactionItems.reduce(
     (sum, item) =>
@@ -326,6 +333,21 @@ const TransactionCard = memo(function TransactionCard({
                 {itemPreview}
               </Typography>
 
+              {isPending ? (
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  disabled={statusUpdating}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleStatusChange("PAID");
+                  }}
+                >
+                  Mark Paid
+                </Button>
+              ) : null}
+
               <Chip
                 size="small"
                 variant="filled"
@@ -360,6 +382,7 @@ const TransactionCard = memo(function TransactionCard({
                 }
                 sx={{ minWidth: 140 }}
               >
+                <MenuItem value="PENDING">PENDING</MenuItem>
                 <MenuItem value="PAID">PAID</MenuItem>
                 <MenuItem value="REFUNDED">REFUNDED</MenuItem>
                 <MenuItem value="VOIDED">VOIDED</MenuItem>
@@ -401,10 +424,14 @@ const TransactionCard = memo(function TransactionCard({
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="caption" color="text.secondary">
-                Change
+                {isPending ? "Balance Due" : "Change"}
               </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.15 }}>
-                {formatCurrency(change)}
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 800, mt: 0.15 }}
+                color={isPending && balanceDue > 0 ? "error.main" : undefined}
+              >
+                {formatCurrency(isPending ? balanceDue : change)}
               </Typography>
             </Box>
           </Stack>

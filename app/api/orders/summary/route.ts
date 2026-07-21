@@ -87,6 +87,8 @@ type PeriodSummary = {
   refundedTotal: number;
   voidedTotal: number;
   voidedCount: number;
+  pendingTotal: number;
+  pendingCount: number;
   orderCount: number;
 };
 
@@ -110,6 +112,8 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
   let refundedTotal = 0;
   let voidedTotal = 0;
   let voidedCount = 0;
+  let pendingTotal = 0;
+  let pendingCount = 0;
   let orderCount = 0;
 
   for (const row of rows) {
@@ -129,6 +133,14 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
       voidedTotal += Number.isFinite(total) ? total : 0;
       voidedCount += row._count._all;
     }
+
+    // Items already taken but not yet paid for — tracked separately from
+    // salesTotal since the payment hasn't landed, so it shouldn't inflate
+    // reported sales until the order is settled to PAID.
+    if (row.status === "PENDING") {
+      pendingTotal += Number.isFinite(total) ? total : 0;
+      pendingCount += row._count._all;
+    }
   }
 
   return {
@@ -139,6 +151,8 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
     refundedTotal: Number(refundedTotal.toFixed(2)),
     voidedTotal: Number(voidedTotal.toFixed(2)),
     voidedCount,
+    pendingTotal: Number(pendingTotal.toFixed(2)),
+    pendingCount,
     orderCount,
   };
 }

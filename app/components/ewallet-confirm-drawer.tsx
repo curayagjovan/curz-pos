@@ -24,6 +24,7 @@ type EWalletConfirmDrawerProps = {
   accountNumber: string;
   referenceNumber: string;
   completing: boolean;
+  sendingRequest: boolean;
   onClose: () => void;
   onAccountNumberChange: (value: string) => void;
   onReferenceNumberChange: (value: string) => void;
@@ -42,6 +43,7 @@ export default function EWalletConfirmDrawer({
   accountNumber,
   referenceNumber,
   completing,
+  sendingRequest,
   onClose,
   onAccountNumberChange,
   onReferenceNumberChange,
@@ -50,7 +52,7 @@ export default function EWalletConfirmDrawer({
 }: EWalletConfirmDrawerProps) {
   const isCashIn = direction === "CASH_IN";
   const total = amount + fee;
-  const busy = completing;
+  const busy = completing || sendingRequest;
 
   return (
     <Drawer
@@ -141,10 +143,11 @@ export default function EWalletConfirmDrawer({
           <Button
             fullWidth
             variant="outlined"
+            color="info"
             onClick={onSendSms}
             disabled={busy}
           >
-            Send Request
+            {sendingRequest ? "Sending..." : "Send Request"}
           </Button>
           <Button
             fullWidth

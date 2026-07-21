@@ -66,6 +66,7 @@ export default function ProductsPage() {
   } = useAppSnackbar();
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [pendingCheckoutLoading, setPendingCheckoutLoading] = useState(false);
   const [checkoutCooldown, setCheckoutCooldown] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState("0");
   const [analysisTimeMs] = useState(() => Date.now());
@@ -450,128 +451,155 @@ export default function ProductsPage() {
     }, 2500);
   }, []);
 
-  const handleCheckout = useCallback(async () => {
-    if (checkoutCooldown) {
-      showSnackbar({
-        message: "Please wait a moment before checking out again",
-        severity: "info",
-      });
-      return;
-    }
-
-    if (cartItems.length === 0) {
-      showSnackbar({ message: "Cart is empty", severity: "error" });
-      return;
-    }
-
-    if (parsedPaidAmount < cartTotal) {
-      showSnackbar({
-        message: "Insufficient payment amount",
-        severity: "error",
-      });
-      return;
-    }
-
-    setCheckoutLoading(true);
-    startCheckoutCooldown();
-    showSnackbar({ message: "Saving checkout...", severity: "info" });
-
-    try {
-      const requestId = crypto.randomUUID();
-      const payload = {
-        requestId,
-        status: "PAID" as const,
-        amountPaid: parsedPaidAmount,
-        senderPushEndpoint: senderPushEndpointRef.current,
-        items: cartItems.map((item) => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.quantity,
-          unitPrice: item.price,
-        })),
-      };
-
-      const submitOrder = () =>
-        fetch("/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+  // Shared by the normal "Checkout" button (status PAID, full payment
+  // required) and the "Item Taken, Unpaid" button (status PENDING — the
+  // customer walks off with the item before payment is settled). Only the
+  // validation and the resulting order status differ between the two.
+  const submitCheckout = useCallback(
+    async (status: "PAID" | "PENDING") => {
+      if (checkoutCooldown) {
+        showSnackbar({
+          message: "Please wait a moment before checking out again",
+          severity: "info",
         });
-
-      let response = await submitOrder();
-      if (!response.ok && response.status >= 500) {
-        response = await submitOrder();
+        return;
       }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (
-          response.status === 409 &&
-          Array.isArray(data?.missingProductIds) &&
-          data.missingProductIds.length > 0
-        ) {
-          for (const productId of data.missingProductIds as string[]) {
-            removeFromCart(productId);
-          }
-
-          throw new Error(
-            data?.message ||
-              "Some items are no longer available and were removed from cart",
-          );
-        }
-
-        throw new Error(data?.message || "Checkout failed");
+      if (cartItems.length === 0) {
+        showSnackbar({ message: "Cart is empty", severity: "error" });
+        return;
       }
 
-      const savedTransaction = data as Partial<Transaction>;
-      if (
-        !savedTransaction ||
-        typeof savedTransaction.id !== "string" ||
-        typeof savedTransaction.orderNo !== "string" ||
-        typeof savedTransaction.createdAt !== "string" ||
-        !Array.isArray(savedTransaction.items)
-      ) {
-        throw new Error("Checkout not yet confirmed. Please try again.");
+      if (status === "PAID" && parsedPaidAmount < cartTotal) {
+        showSnackbar({
+          message: "Insufficient payment amount",
+          severity: "error",
+        });
+        return;
       }
 
-      addTransaction(savedTransaction as Transaction);
-      void refreshTransactions(false);
+      const setLoading =
+        status === "PAID" ? setCheckoutLoading : setPendingCheckoutLoading;
 
-      clearCart();
-      setPaidAmountInput("0");
-      setCartOpen(false);
-      setSearchQuery("");
-      showSnackbar({
-        message: data?.orderNo
-          ? `Order ${data.orderNo} completed`
-          : "Checkout completed",
-      });
-    } catch (err) {
+      setLoading(true);
+      startCheckoutCooldown();
       showSnackbar({
         message:
-          err instanceof Error ? err.message : "Unable to complete checkout",
-        severity: "error",
+          status === "PAID" ? "Saving checkout..." : "Saving pending sale...",
+        severity: "info",
       });
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }, [
-    cartItems,
-    senderPushEndpointRef,
-    parsedPaidAmount,
-    cartTotal,
-    clearCart,
-    removeFromCart,
-    addTransaction,
-    refreshTransactions,
-    showSnackbar,
-    checkoutCooldown,
-    startCheckoutCooldown,
-    setSearchQuery,
-  ]);
+
+      try {
+        const requestId = crypto.randomUUID();
+        const payload = {
+          requestId,
+          status,
+          amountPaid: parsedPaidAmount,
+          senderPushEndpoint: senderPushEndpointRef.current,
+          items: cartItems.map((item) => ({
+            productId: item.id,
+            productName: item.name,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
+        };
+
+        const submitOrder = () =>
+          fetch("/api/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+        let response = await submitOrder();
+        if (!response.ok && response.status >= 500) {
+          response = await submitOrder();
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (
+            response.status === 409 &&
+            Array.isArray(data?.missingProductIds) &&
+            data.missingProductIds.length > 0
+          ) {
+            for (const productId of data.missingProductIds as string[]) {
+              removeFromCart(productId);
+            }
+
+            throw new Error(
+              data?.message ||
+                "Some items are no longer available and were removed from cart",
+            );
+          }
+
+          throw new Error(data?.message || "Checkout failed");
+        }
+
+        const savedTransaction = data as Partial<Transaction>;
+        if (
+          !savedTransaction ||
+          typeof savedTransaction.id !== "string" ||
+          typeof savedTransaction.orderNo !== "string" ||
+          typeof savedTransaction.createdAt !== "string" ||
+          !Array.isArray(savedTransaction.items)
+        ) {
+          throw new Error("Checkout not yet confirmed. Please try again.");
+        }
+
+        addTransaction(savedTransaction as Transaction);
+        void refreshTransactions(false);
+
+        clearCart();
+        setPaidAmountInput("0");
+        setCartOpen(false);
+        setSearchQuery("");
+        showSnackbar({
+          message: data?.orderNo
+            ? status === "PAID"
+              ? `Order ${data.orderNo} completed`
+              : `Order ${data.orderNo} marked pending — payment not yet received`
+            : status === "PAID"
+              ? "Checkout completed"
+              : "Sale marked pending",
+        });
+      } catch (err) {
+        showSnackbar({
+          message:
+            err instanceof Error ? err.message : "Unable to complete checkout",
+          severity: "error",
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      cartItems,
+      senderPushEndpointRef,
+      parsedPaidAmount,
+      cartTotal,
+      clearCart,
+      removeFromCart,
+      addTransaction,
+      refreshTransactions,
+      showSnackbar,
+      checkoutCooldown,
+      startCheckoutCooldown,
+      setSearchQuery,
+    ],
+  );
+
+  const handleCheckout = useCallback(
+    () => submitCheckout("PAID"),
+    [submitCheckout],
+  );
+  const handleCheckoutPending = useCallback(
+    () => submitCheckout("PENDING"),
+    [submitCheckout],
+  );
 
   const handleCloseCart = useCallback(() => {
     setCartOpen(false);
@@ -741,6 +769,7 @@ export default function ProductsPage() {
         amountDue={amountDue}
         changeAmount={changeAmount}
         checkoutLoading={checkoutLoading}
+        pendingCheckoutLoading={pendingCheckoutLoading}
         checkoutDisabled={checkoutCooldown}
         onClose={handleCloseCart}
         onPaidAmountChange={handlePaidAmountChange}
@@ -748,6 +777,7 @@ export default function ProductsPage() {
         onUpdateQuantity={updateQuantity}
         onClearCart={handleClearCart}
         onCheckout={handleCheckout}
+        onCheckoutPending={handleCheckoutPending}
       />
     </MobilePageWrapper>
   );

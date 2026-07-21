@@ -94,6 +94,7 @@ export default function EWalletPage() {
   const [confirmReferenceNumber, setConfirmReferenceNumber] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -149,52 +150,29 @@ export default function EWalletPage() {
   };
 
   const handleCloseConfirm = () => {
-    if (completing) {
+    if (completing || sendingRequest) {
       return;
     }
     setConfirmOpen(false);
   };
 
-  const handleSendSms = () => {
-    if (!validateIdentifier()) {
-      return;
-    }
-
-    if (!smsRecipient) {
-      setRecipientDialogOpen(true);
-      showSnackbar({
-        message: "Set the request recipient number first",
-        severity: "info",
-      });
-      return;
-    }
-
-    const message = buildEwalletMessage(
-      providerLabel(provider),
-      direction,
-      amount,
-      isCashIn && idMode === "mobile"
-        ? { accountNumber: confirmAccountNumber }
-        : { referenceNumber: confirmReferenceNumber },
-    );
-    window.location.href = buildSmsHref(smsRecipient, message);
-  };
-
-  const handleComplete = async () => {
-    if (!validateIdentifier()) {
-      return;
-    }
-
+  // Shared by "Send Request" (records the sale as PENDING — the request is
+  // sent via SMS but not yet paid for) and "Completed" (records it as PAID
+  // immediately). Only the resulting order status differs.
+  const submitEwalletSale = async (
+    status: "PENDING" | "PAID",
+  ): Promise<Transaction | null> => {
     const entry = findEwalletCatalogEntry(provider, direction);
     if (!entry) {
       showSnackbar({
         message: "Unable to resolve e-wallet product",
         severity: "error",
       });
-      return;
+      return null;
     }
 
-    setCompleting(true);
+    const setLoading = status === "PAID" ? setCompleting : setSendingRequest;
+    setLoading(true);
 
     try {
       // Only the service fee is income — the amount itself is a pass-through
@@ -219,9 +197,9 @@ export default function EWalletPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           requestId,
-          status: "PAID",
+          status,
           senderPushEndpoint: senderPushEndpointRef.current,
-          amountPaid: unitPrice,
+          ...(status === "PAID" ? { amountPaid: unitPrice } : {}),
           note,
           items: [
             {
@@ -238,34 +216,100 @@ export default function EWalletPage() {
 
       if (!response.ok) {
         throw new Error(
-          data?.message || "Unable to record e-wallet transaction",
+          data?.message ||
+            (status === "PAID"
+              ? "Unable to record e-wallet transaction"
+              : "Unable to record pending e-wallet transaction"),
         );
       }
 
       const savedTransaction = data as Partial<Transaction>;
       if (
-        savedTransaction &&
-        typeof savedTransaction.id === "string" &&
-        Array.isArray(savedTransaction.items)
+        !savedTransaction ||
+        typeof savedTransaction.id !== "string" ||
+        typeof savedTransaction.orderNo !== "string" ||
+        !Array.isArray(savedTransaction.items)
       ) {
-        addTransaction(savedTransaction as Transaction);
+        throw new Error(
+          status === "PAID"
+            ? "Transaction not yet confirmed. Please try again."
+            : "Request not yet confirmed. Please try again.",
+        );
       }
 
-      setConfirmOpen(false);
-      setAmountInput("");
-      setAccountNumber("");
-      setReferenceNumber("");
+      addTransaction(savedTransaction as Transaction);
+      return savedTransaction as Transaction;
     } catch (error) {
       showSnackbar({
         message:
           error instanceof Error
             ? error.message
-            : "Unable to record e-wallet transaction",
+            : status === "PAID"
+              ? "Unable to record e-wallet transaction"
+              : "Unable to record pending e-wallet transaction",
         severity: "error",
       });
+      return null;
     } finally {
-      setCompleting(false);
+      setLoading(false);
     }
+  };
+
+  const handleSendSms = async () => {
+    if (!validateIdentifier()) {
+      return;
+    }
+
+    if (!smsRecipient) {
+      setRecipientDialogOpen(true);
+      showSnackbar({
+        message: "Set the request recipient number first",
+        severity: "info",
+      });
+      return;
+    }
+
+    const savedTransaction = await submitEwalletSale("PENDING");
+    if (!savedTransaction) {
+      return;
+    }
+
+    showSnackbar({
+      message: `Order ${savedTransaction.orderNo} recorded as pending — payment not yet received`,
+      severity: "info",
+    });
+
+    const message = buildEwalletMessage(
+      providerLabel(provider),
+      direction,
+      amount,
+      isCashIn && idMode === "mobile"
+        ? { accountNumber: confirmAccountNumber }
+        : { referenceNumber: confirmReferenceNumber },
+    );
+    window.location.href = buildSmsHref(smsRecipient, message);
+
+    setConfirmOpen(false);
+    setAmountInput("");
+    setAccountNumber("");
+    setReferenceNumber("");
+  };
+
+  const handleComplete = async () => {
+    if (!validateIdentifier()) {
+      return;
+    }
+
+    const savedTransaction = await submitEwalletSale("PAID");
+    if (!savedTransaction) {
+      return;
+    }
+
+    showSnackbar({ message: `Order ${savedTransaction.orderNo} completed` });
+    setConfirmOpen(false);
+    setAmountInput("");
+    setAccountNumber("");
+    setReferenceNumber("");
   };
 
   return (
@@ -525,10 +569,11 @@ export default function EWalletPage() {
         accountNumber={confirmAccountNumber}
         referenceNumber={confirmReferenceNumber}
         completing={completing}
+        sendingRequest={sendingRequest}
         onClose={handleCloseConfirm}
         onAccountNumberChange={setConfirmAccountNumber}
         onReferenceNumberChange={setConfirmReferenceNumber}
-        onSendSms={handleSendSms}
+        onSendSms={() => void handleSendSms()}
         onComplete={() => void handleComplete()}
       />
 

@@ -10,6 +10,8 @@ export type SalesPeriodSummary = {
   refundedTotal: number;
   voidedTotal: number;
   voidedCount: number;
+  pendingTotal: number;
+  pendingCount: number;
   orderCount: number;
 };
 

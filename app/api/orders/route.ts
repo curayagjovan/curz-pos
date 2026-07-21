@@ -14,7 +14,7 @@ type OrderItemInput = {
 
 type OrderPayload = {
   requestId?: string;
-  status?: "PAID" | "REFUNDED" | "VOIDED";
+  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
   total?: number;
   amountPaid?: number;
   note?: string;
@@ -29,7 +29,7 @@ type OrderItemReturnInput = {
 
 type OrderStatusUpdatePayload = {
   id?: string;
-  status?: "PAID" | "REFUNDED" | "VOIDED";
+  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
   items?: OrderItemReturnInput[];
 };
 
@@ -285,6 +285,7 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const status: OrderStatus | null =
+      statusParam === "PENDING" ||
       statusParam === "PAID" ||
       statusParam === "REFUNDED" ||
       statusParam === "VOIDED"
@@ -438,7 +439,7 @@ export async function POST(request: Request) {
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (
-      !["PAID", "REFUNDED", "VOIDED"].includes(status) ||
+      !["PENDING", "PAID", "REFUNDED", "VOIDED"].includes(status) ||
       items.length === 0
     ) {
       return NextResponse.json(
@@ -586,11 +587,29 @@ export async function POST(request: Request) {
         ? requestedAmountPaid === null
           ? computedTotal
           : Number(requestedAmountPaid.toFixed(2))
-        : null;
+        // The item is taken before payment is settled in full, so a
+        // PENDING order tracks whatever was actually collected (often
+        // nothing) rather than requiring the full total up front.
+        : status === "PENDING"
+          ? Number((requestedAmountPaid ?? 0).toFixed(2))
+          : null;
 
     if (
+      status === "PAID" &&
       amountPaid !== null &&
       (!Number.isFinite(amountPaid) || amountPaid < computedTotal)
+    ) {
+      return NextResponse.json(
+        { message: "Invalid amount paid" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      status === "PENDING" &&
+      (!Number.isFinite(amountPaid as number) ||
+        (amountPaid as number) < 0 ||
+        (amountPaid as number) > computedTotal)
     ) {
       return NextResponse.json(
         { message: "Invalid amount paid" },
@@ -814,7 +833,11 @@ export async function PATCH(request: Request) {
     const status = body.status;
     const itemsInput = Array.isArray(body.items) ? body.items : [];
 
-    if (!id || !status || !["PAID", "REFUNDED", "VOIDED"].includes(status)) {
+    if (
+      !id ||
+      !status ||
+      !["PENDING", "PAID", "REFUNDED", "VOIDED"].includes(status)
+    ) {
       return NextResponse.json(
         { message: "Invalid status update payload" },
         { status: 400 },
@@ -890,9 +913,30 @@ export async function PATCH(request: Request) {
     let updatedOrder: unknown;
 
     try {
+      // Collecting payment on a PENDING sale (item already taken, balance
+      // still outstanding) settles it to PAID — backfill amountPaid to the
+      // full total here so the sale no longer shows an outstanding balance,
+      // without requiring every caller of this generic status PATCH to pass
+      // the amount explicitly.
+      const existingOrder =
+        status === "PAID"
+          ? await prisma.order.findUnique({
+              where: { id },
+              select: { status: true, total: true },
+            })
+          : null;
+
+      const shouldSettleFullPayment =
+        existingOrder !== null && existingOrder.status !== "PAID";
+
       updatedOrder = await prisma.order.update({
         where: { id },
-        data: { status },
+        data: {
+          status,
+          ...(shouldSettleFullPayment
+            ? { amountPaid: existingOrder!.total }
+            : {}),
+        },
         select: orderCreateSelectWithAmountPaid,
       });
     } catch (error) {

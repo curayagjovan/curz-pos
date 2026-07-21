@@ -19,6 +19,7 @@ type LoadConfirmDrawerProps = {
   markup: number;
   confirmNumber: string;
   completing: boolean;
+  sendingRequest: boolean;
   onClose: () => void;
   onConfirmNumberChange: (value: string) => void;
   onSendSms: () => void;
@@ -33,12 +34,13 @@ export default function LoadConfirmDrawer({
   markup,
   confirmNumber,
   completing,
+  sendingRequest,
   onClose,
   onConfirmNumberChange,
   onSendSms,
   onComplete,
 }: LoadConfirmDrawerProps) {
-  const busy = completing;
+  const busy = completing || sendingRequest;
   return (
     <Drawer
       anchor="bottom"
@@ -105,10 +107,11 @@ export default function LoadConfirmDrawer({
           <Button
             fullWidth
             variant="outlined"
+            color="info"
             onClick={onSendSms}
             disabled={busy}
           >
-            Send Request
+            {sendingRequest ? "Sending..." : "Send Request"}
           </Button>
           <Button
             fullWidth

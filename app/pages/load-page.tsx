@@ -87,6 +87,7 @@ export default function LoadPage() {
   );
   const [confirmNumber, setConfirmNumber] = useState("");
   const [completing, setCompleting] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
   const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [settingsMenuAnchor, setSettingsMenuAnchor] =
@@ -145,13 +146,101 @@ export default function LoadPage() {
   };
 
   const handleCloseConfirm = () => {
-    if (completing) {
+    if (completing || sendingRequest) {
       return;
     }
     setSelectedItem(null);
   };
 
-  const handleSendSms = () => {
+  // Shared by "Send Request" (records the sale as PENDING — the load is
+  // requested via SMS but not yet paid for) and "Completed" (records it as
+  // PAID immediately). Only the resulting order status differs.
+  const submitLoadSale = async (
+    status: "PENDING" | "PAID",
+  ): Promise<Transaction | null> => {
+    if (!selectedItem) {
+      return null;
+    }
+
+    const setLoading = status === "PAID" ? setCompleting : setSendingRequest;
+    setLoading(true);
+
+    try {
+      const sellPrice = getSellPrice(selectedItem.amount, markupSettings);
+      // Only the markup is income — the load's face value is money passed
+      // straight through to the telco, so it must not inflate sales.
+      const markup = getMarkupForAmount(selectedItem.amount, markupSettings);
+      const requestId = crypto.randomUUID();
+      // The line item only carries the markup as its price, so the face
+      // value is folded into the name itself (unless the catalog label
+      // already states it, e.g. "Regular Load ₱50").
+      const productName = selectedItem.label.includes("₱")
+        ? selectedItem.label
+        : `${selectedItem.label} ₱${selectedItem.amount.toFixed(2)}`;
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId,
+          status,
+          senderPushEndpoint: senderPushEndpointRef.current,
+          ...(status === "PAID" ? { amountPaid: markup } : {}),
+          note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
+          items: [
+            {
+              productId: selectedItem.id,
+              productName,
+              quantity: 1,
+              unitPrice: markup,
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            (status === "PAID"
+              ? "Unable to record load sale"
+              : "Unable to record pending load sale"),
+        );
+      }
+
+      const savedTransaction = data as Partial<Transaction>;
+      if (
+        !savedTransaction ||
+        typeof savedTransaction.id !== "string" ||
+        typeof savedTransaction.orderNo !== "string" ||
+        !Array.isArray(savedTransaction.items)
+      ) {
+        throw new Error(
+          status === "PAID"
+            ? "Sale not yet confirmed. Please try again."
+            : "Request not yet confirmed. Please try again.",
+        );
+      }
+
+      addTransaction(savedTransaction as Transaction);
+      return savedTransaction as Transaction;
+    } catch (error) {
+      showSnackbar({
+        message:
+          error instanceof Error
+            ? error.message
+            : status === "PAID"
+              ? "Unable to record load sale"
+              : "Unable to record pending load sale",
+        severity: "error",
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendSms = async () => {
     if (!selectedItem) {
       return;
     }
@@ -174,8 +263,19 @@ export default function LoadPage() {
       return;
     }
 
+    const savedTransaction = await submitLoadSale("PENDING");
+    if (!savedTransaction) {
+      return;
+    }
+
+    showSnackbar({
+      message: `Order ${savedTransaction.orderNo} recorded as pending — payment not yet received`,
+      severity: "info",
+    });
+
     const message = buildLoadMessage(selectedItem, confirmNumber);
     window.location.href = buildSmsHref(smsRecipient, message);
+    setSelectedItem(null);
   };
 
   const handleComplete = async () => {
@@ -192,65 +292,13 @@ export default function LoadPage() {
       return;
     }
 
-    setCompleting(true);
-
-    try {
-      const sellPrice = getSellPrice(selectedItem.amount, markupSettings);
-      // Only the markup is income — the load's face value is money passed
-      // straight through to the telco, so it must not inflate sales.
-      const markup = getMarkupForAmount(selectedItem.amount, markupSettings);
-      const requestId = crypto.randomUUID();
-      // The line item only carries the markup as its price, so the face
-      // value is folded into the name itself (unless the catalog label
-      // already states it, e.g. "Regular Load ₱50").
-      const productName = selectedItem.label.includes("₱")
-        ? selectedItem.label
-        : `${selectedItem.label} ₱${selectedItem.amount.toFixed(2)}`;
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId,
-          status: "PAID",
-          senderPushEndpoint: senderPushEndpointRef.current,
-          amountPaid: markup,
-          note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
-          items: [
-            {
-              productId: selectedItem.id,
-              productName,
-              quantity: 1,
-              unitPrice: markup,
-            },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Unable to record load sale");
-      }
-
-      const savedTransaction = data as Partial<Transaction>;
-      if (
-        savedTransaction &&
-        typeof savedTransaction.id === "string" &&
-        Array.isArray(savedTransaction.items)
-      ) {
-        addTransaction(savedTransaction as Transaction);
-      }
-
-      setSelectedItem(null);
-    } catch (error) {
-      showSnackbar({
-        message:
-          error instanceof Error ? error.message : "Unable to record load sale",
-        severity: "error",
-      });
-    } finally {
-      setCompleting(false);
+    const savedTransaction = await submitLoadSale("PAID");
+    if (!savedTransaction) {
+      return;
     }
+
+    showSnackbar({ message: `Order ${savedTransaction.orderNo} completed` });
+    setSelectedItem(null);
   };
 
   return (
@@ -389,9 +437,10 @@ export default function LoadPage() {
         }
         confirmNumber={confirmNumber}
         completing={completing}
+        sendingRequest={sendingRequest}
         onClose={handleCloseConfirm}
         onConfirmNumberChange={setConfirmNumber}
-        onSendSms={handleSendSms}
+        onSendSms={() => void handleSendSms()}
         onComplete={() => void handleComplete()}
       />
 

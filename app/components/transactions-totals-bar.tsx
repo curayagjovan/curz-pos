@@ -146,6 +146,22 @@ function PeriodReport({
         </Box>
       </Stack>
 
+      {(data?.pendingCount ?? 0) > 0 ? (
+        <Stack
+          direction="row"
+          alignItems="baseline"
+          justifyContent="space-between"
+          sx={{ mt: 1 }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            Pending ({data?.pendingCount ?? 0})
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700 }} color="info.main">
+            {toCurrency(data?.pendingTotal ?? 0)}
+          </Typography>
+        </Stack>
+      ) : null}
+
       <Divider sx={{ my: 1, borderStyle: "dashed" }} />
 
       <Typography variant="caption" color="text.secondary">

@@ -29,6 +29,7 @@ type CheckoutDrawerProps = {
   amountDue: number;
   changeAmount: number;
   checkoutLoading: boolean;
+  pendingCheckoutLoading?: boolean;
   checkoutDisabled?: boolean;
   onClose: () => void;
   onPaidAmountChange: (value: string) => void;
@@ -36,6 +37,7 @@ type CheckoutDrawerProps = {
   onUpdateQuantity: (id: string, quantity: number) => void;
   onClearCart: () => void;
   onCheckout: () => void;
+  onCheckoutPending: () => void;
 };
 
 type CartItemRowProps = {
@@ -99,6 +101,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
   amountDue,
   changeAmount,
   checkoutLoading,
+  pendingCheckoutLoading = false,
   checkoutDisabled = false,
   onClose,
   onPaidAmountChange,
@@ -106,7 +109,9 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
   onUpdateQuantity,
   onClearCart,
   onCheckout,
+  onCheckoutPending,
 }: CheckoutDrawerProps) {
+  const anyCheckoutLoading = checkoutLoading || pendingCheckoutLoading;
   return (
     <Drawer
       anchor="bottom"
@@ -221,20 +226,32 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
 
         <Stack direction="row" spacing={1}>
           <Button
-            fullWidth
             variant="outlined"
             color="inherit"
-            disabled={cartItems.length === 0 || checkoutLoading}
+            disabled={cartItems.length === 0 || anyCheckoutLoading}
             onClick={onClearCart}
           >
             Clear
           </Button>
           <Button
             fullWidth
+            variant="outlined"
+            color="warning"
+            disabled={
+              cartItems.length === 0 ||
+              anyCheckoutLoading ||
+              checkoutDisabled
+            }
+            onClick={onCheckoutPending}
+          >
+            {pendingCheckoutLoading ? "Saving..." : "Item Taken, Unpaid"}
+          </Button>
+          <Button
+            fullWidth
             variant="contained"
             disabled={
               cartItems.length === 0 ||
-              checkoutLoading ||
+              anyCheckoutLoading ||
               checkoutDisabled ||
               amountDue > 0
             }
