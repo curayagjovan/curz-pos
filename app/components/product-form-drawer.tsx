@@ -2,7 +2,7 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Drawer from "@mui/material/Drawer";
+import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -45,10 +45,12 @@ export default function ProductFormDrawer({
   onSave,
 }: ProductFormDrawerProps) {
   return (
-    <Drawer
+    <SwipeableDrawer
       anchor="bottom"
       open={open}
       onClose={onClose}
+      onOpen={() => {}}
+      disableSwipeToOpen
       slotProps={{
         paper: {
           sx: {
@@ -202,6 +204,6 @@ export default function ProductFormDrawer({
           </Button>
         </Stack>
       </Box>
-    </Drawer>
+    </SwipeableDrawer>
   );
 }

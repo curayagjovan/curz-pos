@@ -2,7 +2,7 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Drawer from "@mui/material/Drawer";
+import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
@@ -52,10 +52,12 @@ export default function AddLoadItemDrawer({
   onSave,
 }: AddLoadItemDrawerProps) {
   return (
-    <Drawer
+    <SwipeableDrawer
       anchor="bottom"
       open={open}
       onClose={onClose}
+      onOpen={() => {}}
+      disableSwipeToOpen
       slotProps={{
         paper: {
           sx: {
@@ -203,6 +205,6 @@ export default function AddLoadItemDrawer({
           </Button>
         </Stack>
       </Box>
-    </Drawer>
+    </SwipeableDrawer>
   );
 }

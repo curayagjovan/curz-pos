@@ -5,7 +5,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
-import Drawer from "@mui/material/Drawer";
+import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -113,10 +113,12 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
 }: CheckoutDrawerProps) {
   const anyCheckoutLoading = checkoutLoading || pendingCheckoutLoading;
   return (
-    <Drawer
+    <SwipeableDrawer
       anchor="bottom"
       open={open}
       onClose={onClose}
+      onOpen={() => {}}
+      disableSwipeToOpen
       slotProps={{
         paper: {
           sx: {
@@ -261,7 +263,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
           </Button>
         </Stack>
       </Box>
-    </Drawer>
+    </SwipeableDrawer>
   );
 });
 
