@@ -244,7 +244,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
             }
             onClick={onCheckoutPending}
           >
-            {pendingCheckoutLoading ? "Saving..." : "Item Taken, Unpaid"}
+            {pendingCheckoutLoading ? "Saving..." : "Pending"}
           </Button>
           <Button
             fullWidth
