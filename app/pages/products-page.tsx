@@ -448,7 +448,7 @@ export default function ProductsPage() {
     checkoutCooldownTimeoutRef.current = window.setTimeout(() => {
       setCheckoutCooldown(false);
       checkoutCooldownTimeoutRef.current = null;
-    }, 2500);
+    }, 500);
   }, []);
 
   // Shared by the normal "Checkout" button (status PAID, full payment

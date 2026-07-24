@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type PointerEvent,
   type TouchEvent,
 } from "react";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
@@ -30,6 +31,11 @@ type ProductCardProps = {
 };
 
 const SWIPE_ACTION_WIDTH = 92;
+// Delay before a press starts auto-adding, and the pace of each add while
+// held — tuned so a quick tap never triggers it, but a deliberate hold can
+// stack up a multi-unit sale (e.g. 6 sodas) without repeated tapping.
+const LONG_PRESS_DELAY_MS = 350;
+const HOLD_REPEAT_INTERVAL_MS = 140;
 
 function getProductInitials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -79,29 +85,84 @@ const ProductCard = memo(function ProductCard({
   const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isAddedFeedbackVisible, setIsAddedFeedbackVisible] = useState(false);
+  const [addedFeedbackCount, setAddedFeedbackCount] = useState(1);
+  const [holdAddCount, setHoldAddCount] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const swipingRef = useRef(false);
   const addedFeedbackTimeoutRef = useRef<number | null>(null);
+  const holdTimeoutRef = useRef<number | null>(null);
+  const holdIntervalRef = useRef<number | null>(null);
+  const holdCountRef = useRef(0);
+  const isLongPressRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     return () => {
       if (addedFeedbackTimeoutRef.current !== null) {
         window.clearTimeout(addedFeedbackTimeoutRef.current);
       }
+      if (holdTimeoutRef.current !== null) {
+        window.clearTimeout(holdTimeoutRef.current);
+      }
+      if (holdIntervalRef.current !== null) {
+        window.clearInterval(holdIntervalRef.current);
+      }
     };
   }, []);
 
-  const triggerAddedFeedback = () => {
+  const triggerAddedFeedback = (count = 1) => {
     if (addedFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(addedFeedbackTimeoutRef.current);
     }
 
+    setAddedFeedbackCount(count);
     setIsAddedFeedbackVisible(true);
     addedFeedbackTimeoutRef.current = window.setTimeout(() => {
       setIsAddedFeedbackVisible(false);
       addedFeedbackTimeoutRef.current = null;
     }, 820);
+  };
+
+  const clearHoldTimers = () => {
+    if (holdTimeoutRef.current !== null) {
+      window.clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+    if (holdIntervalRef.current !== null) {
+      window.clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  };
+
+  const handleCatalogPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    isLongPressRef.current = false;
+    holdCountRef.current = 0;
+    clearHoldTimers();
+
+    holdTimeoutRef.current = window.setTimeout(() => {
+      isLongPressRef.current = true;
+      holdIntervalRef.current = window.setInterval(() => {
+        holdCountRef.current += 1;
+        setHoldAddCount(holdCountRef.current);
+        onAddToCart(product);
+      }, HOLD_REPEAT_INTERVAL_MS);
+    }, LONG_PRESS_DELAY_MS);
+  };
+
+  const endCatalogHold = () => {
+    clearHoldTimers();
+
+    if (isLongPressRef.current) {
+      triggerAddedFeedback(holdCountRef.current);
+      suppressClickRef.current = true;
+    }
+
+    setHoldAddCount(0);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -186,7 +247,13 @@ const ProductCard = memo(function ProductCard({
   };
 
   const handleCatalogCardTap = (event: MouseEvent<HTMLButtonElement>) => {
-    triggerAddedFeedback();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      isLongPressRef.current = false;
+      return;
+    }
+
+    triggerAddedFeedback(1);
     onAddToCart(product, event.currentTarget.getBoundingClientRect());
   };
 
@@ -364,28 +431,49 @@ const ProductCard = memo(function ProductCard({
             top: 10,
             left: 10,
             zIndex: 2,
-            opacity: isAddedFeedbackVisible ? 1 : 0,
-            transform: isAddedFeedbackVisible
-              ? "translateY(0) scale(1)"
-              : "translateY(-6px) scale(0.96)",
+            opacity: isAddedFeedbackVisible || holdAddCount > 0 ? 1 : 0,
+            transform:
+              isAddedFeedbackVisible || holdAddCount > 0
+                ? "translateY(0) scale(1)"
+                : "translateY(-6px) scale(0.96)",
             transition: "opacity 160ms ease, transform 180ms ease",
             pointerEvents: "none",
           }}
         >
-          <Chip
-            icon={<CheckCircleRounded fontSize="small" />}
-            size="small"
-            color="success"
-            label="Added"
-            sx={{ fontWeight: 700 }}
-          />
+          {holdAddCount > 0 ? (
+            <Chip
+              size="small"
+              color="primary"
+              label={`+${holdAddCount}`}
+              sx={{ fontWeight: 700 }}
+            />
+          ) : (
+            <Chip
+              icon={<CheckCircleRounded fontSize="small" />}
+              size="small"
+              color="success"
+              label={
+                addedFeedbackCount > 1
+                  ? `Added ×${addedFeedbackCount}`
+                  : "Added"
+              }
+              sx={{ fontWeight: 700 }}
+            />
+          )}
         </Box>
 
         <CardActionArea
           onClick={handleCatalogCardTap}
+          onPointerDown={handleCatalogPointerDown}
+          onPointerUp={endCatalogHold}
+          onPointerLeave={endCatalogHold}
+          onPointerCancel={endCatalogHold}
+          onContextMenu={(event) => event.preventDefault()}
           sx={{
             px: 1.25,
             py: 1.1,
+            userSelect: "none",
+            WebkitTouchCallout: "none",
             "&:last-child": {
               pb: 1.1,
             },
