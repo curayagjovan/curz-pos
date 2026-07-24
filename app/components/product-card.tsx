@@ -511,15 +511,15 @@ const ProductCard = memo(function ProductCard({
               >
                 {product.name}
               </Typography>
-              {hasDescription ? (
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mt: 0.25 }}
-                >
-                  {product.description}
-                </Typography>
-              ) : null}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.25 }}
+              >
+                {hasDescription
+                  ? `${categoryLabel}, ${product.description}`
+                  : categoryLabel}
+              </Typography>
             </Box>
 
             <Stack alignItems="flex-end" spacing={0.75}>
