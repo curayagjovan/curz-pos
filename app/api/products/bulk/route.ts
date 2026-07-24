@@ -3,6 +3,10 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { setImportProgress } from "@/lib/import-progress-store";
 import { normalizeUnit } from "@/lib/units";
+import {
+  DEFAULT_PRODUCT_CATEGORY,
+  isValidProductCategory,
+} from "@/lib/product-categories";
 
 // Use direct DB connection for bulk imports to reduce pooled-connection issues.
 const prisma = new PrismaClient({
@@ -18,6 +22,7 @@ type BulkProductData = {
   sku?: string;
   name?: string;
   unit?: string;
+  category?: string;
   description?: string;
   price?: number | string;
   stock?: number | string;
@@ -282,6 +287,9 @@ export async function POST(request: Request) {
       const unit = normalizedUnitInfo.unit;
 
       const description = item.description?.toString().trim();
+      const category = isValidProductCategory(item.category)
+        ? item.category
+        : DEFAULT_PRODUCT_CATEGORY;
       const price = Number(item.price);
       const stock = Number(item.stock ?? 0);
 
@@ -480,6 +488,7 @@ export async function POST(request: Request) {
                     sku: uniqueSku,
                     name,
                     unit: unit || null,
+                    category,
                     description: description || null,
                     cost: importedCost,
                     markupPct: appliedMarkup,
@@ -662,6 +671,7 @@ export async function POST(request: Request) {
                 sku: targetSku,
                 name,
                 unit: unit || null,
+                category,
                 description: description || null,
                 cost: importedCost,
                 markupPct: appliedMarkup,

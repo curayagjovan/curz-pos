@@ -19,8 +19,16 @@ import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import type { Product } from "@/types/product";
 import CardActionArea from "@mui/material/CardActionArea";
+import {
+  DEFAULT_PRODUCT_CATEGORY,
+  PRODUCT_CATEGORY_ICONS,
+  PRODUCT_CATEGORY_LABELS,
+  getCategoryColor,
+  isValidProductCategory,
+} from "@/lib/product-categories";
 
 type ProductCardProps = {
   product: Product;
@@ -36,20 +44,6 @@ const SWIPE_ACTION_WIDTH = 92;
 // stack up a multi-unit sale (e.g. 6 sodas) without repeated tapping.
 const LONG_PRESS_DELAY_MS = 350;
 const HOLD_REPEAT_INTERVAL_MS = 140;
-
-function getProductInitials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-
-  if (words.length === 0) {
-    return "--";
-  }
-
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${words[0][0]}${words[1][0]}`.toUpperCase();
-}
 
 function getBundleMeta(product: Product) {
   const bundleQty =
@@ -82,6 +76,14 @@ const ProductCard = memo(function ProductCard({
   const hasUnit = Boolean(product.unit?.trim());
   const hasDescription = Boolean(product.description?.trim());
   const { hasBundle, label: bundleLabel } = getBundleMeta(product);
+  // Products cached in IndexedDB before the category field shipped won't
+  // have one until the next refetch — fall back rather than crash on render.
+  const safeCategory = isValidProductCategory(product.category)
+    ? product.category
+    : DEFAULT_PRODUCT_CATEGORY;
+  const categoryColor = getCategoryColor(safeCategory);
+  const CategoryIcon = PRODUCT_CATEGORY_ICONS[safeCategory];
+  const categoryLabel = PRODUCT_CATEGORY_LABELS[safeCategory];
   const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isAddedFeedbackVisible, setIsAddedFeedbackVisible] = useState(false);
@@ -378,6 +380,17 @@ const ProductCard = memo(function ProductCard({
                   useFlexGap
                   flexWrap="wrap"
                 >
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    icon={<CategoryIcon fontSize="small" />}
+                    label={categoryLabel}
+                    sx={{
+                      borderColor: categoryColor,
+                      color: categoryColor,
+                      "& .MuiChip-icon": { color: categoryColor },
+                    }}
+                  />
                   {hasUnit ? (
                     <Chip
                       size="small"
@@ -485,13 +498,10 @@ const ProductCard = memo(function ProductCard({
               sx={{
                 width: 34,
                 height: 34,
-                fontSize: 12,
-                fontWeight: 700,
-                bgcolor: "action.selected",
-                color: "text.primary",
+                bgcolor: alpha(categoryColor, 0.16),
               }}
             >
-              {getProductInitials(product.name)}
+              <CategoryIcon sx={{ color: categoryColor, fontSize: 18 }} />
             </Avatar>
 
             <Box sx={{ flex: 1, minWidth: 0 }}>

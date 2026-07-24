@@ -18,6 +18,7 @@ import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
 import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
+import CategoryFilterChips from "@/app/components/category-filter-chips";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
@@ -29,6 +30,7 @@ import { useCart } from "@/app/context/cart-context";
 import { useCheckoutCalculations } from "@/app/hooks/use-checkout-calculations";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
+import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
 import type { Transaction } from "@/types/transaction";
 
@@ -64,6 +66,8 @@ export default function ProductsPage() {
     showSnackbar,
     closeSnackbar,
   } = useAppSnackbar();
+  const [categoryFilter, setCategoryFilter] =
+    useState<ProductCategoryValue | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [pendingCheckoutLoading, setPendingCheckoutLoading] = useState(false);
@@ -113,13 +117,21 @@ export default function ProductsPage() {
     };
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    const query = deferredSearchQuery.trim().toLowerCase();
-    if (!query) {
+  const categoryFilteredProducts = useMemo(() => {
+    if (!categoryFilter) {
       return products;
     }
 
-    return products.filter((product) => {
+    return products.filter((product) => product.category === categoryFilter);
+  }, [products, categoryFilter]);
+
+  const filteredProducts = useMemo(() => {
+    const query = deferredSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return categoryFilteredProducts;
+    }
+
+    return categoryFilteredProducts.filter((product) => {
       const name = product.name.toLowerCase();
       const sku = product.sku.toLowerCase();
       const description = product.description?.toLowerCase() ?? "";
@@ -129,7 +141,7 @@ export default function ProductsPage() {
         description.includes(query)
       );
     });
-  }, [products, deferredSearchQuery]);
+  }, [categoryFilteredProducts, deferredSearchQuery]);
 
   const popularItems = useMemo(() => {
     const paidTransactions = transactions.filter(
@@ -629,6 +641,12 @@ export default function ProductsPage() {
             value={searchQuery}
             onChange={setSearchQuery}
             icon="search"
+          />
+
+          <CategoryFilterChips
+            products={products}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
           />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>

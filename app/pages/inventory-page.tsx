@@ -7,6 +7,7 @@ import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
 import AppSnackbar from "@/app/components/app-snackbar";
+import CategoryFilterChips from "@/app/components/category-filter-chips";
 import DeleteProductDialog from "@/app/components/delete-product-dialog";
 import ProductFormDrawer from "@/app/components/product-form-drawer";
 import type {
@@ -20,11 +21,16 @@ import ProductsSearchBar from "@/app/components/products-search-bar";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Product } from "@/types/product";
+import {
+  DEFAULT_PRODUCT_CATEGORY,
+  type ProductCategoryValue,
+} from "@/lib/product-categories";
 
 const EMPTY_FORM: ProductFormState = {
   id: null,
   sku: "",
   name: "",
+  category: DEFAULT_PRODUCT_CATEGORY,
   description: "",
   price: "0",
   bundleQty: "",
@@ -65,22 +71,33 @@ export default function InventoryPage() {
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
+  const [categoryFilter, setCategoryFilter] =
+    useState<ProductCategoryValue | null>(null);
 
-  const filteredProducts = useMemo(() => {
-    if (!deferredSearchQuery.trim()) {
+  const categoryFilteredProducts = useMemo(() => {
+    if (!categoryFilter) {
       return products;
     }
 
-    return products.filter((product) =>
+    return products.filter((product) => product.category === categoryFilter);
+  }, [products, categoryFilter]);
+
+  const filteredProducts = useMemo(() => {
+    if (!deferredSearchQuery.trim()) {
+      return categoryFilteredProducts;
+    }
+
+    return categoryFilteredProducts.filter((product) =>
       matchesSearch(product, deferredSearchQuery),
     );
-  }, [products, deferredSearchQuery]);
+  }, [categoryFilteredProducts, deferredSearchQuery]);
 
   const handleProductTap = useCallback((product: Product) => {
     setForm({
       id: product.id,
       sku: product.sku,
       name: product.name,
+      category: product.category ?? DEFAULT_PRODUCT_CATEGORY,
       description: product.description ?? "",
       price: Number(product.price).toFixed(2),
       bundleQty:
@@ -230,6 +247,7 @@ export default function InventoryPage() {
       const payload = {
         ...(form.sku.trim() ? { sku: form.sku.trim() } : {}),
         name,
+        category: form.category,
         description: form.description.trim() ? form.description.trim() : null,
         price,
         bundleQty,
@@ -287,6 +305,12 @@ export default function InventoryPage() {
             onChange={setSearchQuery}
             placeholder="Search inventory"
             ariaLabel="search inventory"
+          />
+
+          <CategoryFilterChips
+            products={products}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
           />
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>

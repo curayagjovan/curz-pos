@@ -2,17 +2,20 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import MenuItem from "@mui/material/MenuItem";
 import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
+import { PRODUCT_CATEGORY_OPTIONS } from "@/lib/product-categories";
 
 export type ProductFormState = {
   id: string | null;
   sku: string;
   name: string;
+  category: string;
   description: string;
   price: string;
   bundleQty: string;
@@ -114,6 +117,24 @@ export default function ProductFormDrawer({
             error={Boolean(formErrors.name)}
             helperText={formErrors.name}
           />
+          <TextField
+            select
+            label="Category"
+            value={form.category}
+            onChange={(event) => onFieldChange("category", event.target.value)}
+            size="medium"
+            fullWidth
+            required
+          >
+            {PRODUCT_CATEGORY_OPTIONS.map(({ value, label, Icon }) => (
+              <MenuItem key={value} value={value}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Icon fontSize="small" color="action" />
+                  <span>{label}</span>
+                </Stack>
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Description"
             value={form.description}

@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
+import {
+  DEFAULT_PRODUCT_CATEGORY,
+  isValidProductCategory,
+} from "@/lib/product-categories";
 
 const PRODUCT_LIST_SELECT = {
   id: true,
   sku: true,
   name: true,
   unit: true,
+  category: true,
   description: true,
   price: true,
   bundleQty: true,
@@ -56,6 +61,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const query = url.searchParams.get("q")?.trim() ?? "";
+    const categoryParam = url.searchParams.get("category")?.trim() || null;
     const cursorParam = url.searchParams.get("cursor")?.trim() || null;
     const pageParam = Number(url.searchParams.get("page") ?? "1");
     const skipParam = Number(url.searchParams.get("skip") ?? "0");
@@ -82,6 +88,9 @@ export async function GET(request: Request) {
       isActive: true,
       AND: [
         { OR: [{ unit: null }, { unit: { not: "load" } }] },
+        ...(isValidProductCategory(categoryParam)
+          ? [{ category: categoryParam }]
+          : []),
         ...(query
           ? [
               {
@@ -267,6 +276,7 @@ export async function POST(request: Request) {
       sku?: string;
       name?: string;
       unit?: string;
+      category?: string;
       description?: string;
       bundleQty?: number | null;
       bundlePrice?: number | null;
@@ -276,6 +286,9 @@ export async function POST(request: Request) {
     const rawSku = body.sku?.trim();
     const name = body.name?.trim();
     const unit = body.unit?.trim();
+    const category = isValidProductCategory(body.category)
+      ? body.category
+      : DEFAULT_PRODUCT_CATEGORY;
     const description = body.description?.trim();
     const bundleQty =
       body.bundleQty === null || body.bundleQty === undefined
@@ -327,6 +340,7 @@ export async function POST(request: Request) {
               sku: nextSku,
               name,
               unit: unit || null,
+              category,
               description: description || null,
               cost: price,
               markupPct: 0,
@@ -365,6 +379,7 @@ export async function POST(request: Request) {
         sku: rawSku,
         name,
         unit: unit || null,
+        category,
         description: description || null,
         cost: price,
         markupPct: 0,

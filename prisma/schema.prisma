@@ -9,24 +9,25 @@ datasource db {
 }
 
 model Product {
-  id                String   @id @default(cuid())
-  sku               String   @unique
+  id                String          @id @default(cuid())
+  sku               String          @unique
   name              String
   unit              String?
+  category          ProductCategory @default(OTHER)
   description       String?
-  cost              Decimal  @default(0) @db.Decimal(10, 2)
-  markupPct         Decimal  @default(0) @db.Decimal(5, 2)
+  cost              Decimal         @default(0) @db.Decimal(10, 2)
+  markupPct         Decimal         @default(0) @db.Decimal(5, 2)
   bundleQty         Int?
-  bundleMarkdownPct Decimal? @db.Decimal(5, 2)
-  bundlePrice       Decimal? @db.Decimal(10, 2)
-  price             Decimal  @db.Decimal(10, 2)
-  stock             Int      @default(0)
-  isActive          Boolean  @default(true)
-  usesGlobalMarkup  Boolean  @default(true)
-  isPinned          Boolean  @default(false)
-  allowCustomPrice  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  bundleMarkdownPct Decimal?        @db.Decimal(5, 2)
+  bundlePrice       Decimal?        @db.Decimal(10, 2)
+  price             Decimal         @db.Decimal(10, 2)
+  stock             Int             @default(0)
+  isActive          Boolean         @default(true)
+  usesGlobalMarkup  Boolean         @default(true)
+  isPinned          Boolean         @default(false)
+  allowCustomPrice  Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
@@ -178,6 +179,25 @@ enum LoadNetworkGroup {
 enum LoadCategory {
   REGULAR_LOAD
   DATA_PROMO
+}
+
+enum ProductCategory {
+  SNACKS
+  BEVERAGES
+  COFFEE
+  ALCOHOL
+  CONDIMENTS
+  CANNED_GOODS
+  GROCERY_STAPLES
+  DAIRY
+  PERSONAL_CARE
+  FEMININE_CARE
+  BABY_CARE
+  MEDICINE
+  HOUSEHOLD
+  SCHOOL_OFFICE_SUPPLIES
+  LOAD_AND_PROMO
+  OTHER
 }
 
 model SmsRecipientSetting {

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
+import {
+  DEFAULT_PRODUCT_CATEGORY,
+  isValidProductCategory,
+} from "@/lib/product-categories";
 
 type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
@@ -39,6 +43,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const body = (await request.json()) as {
       name?: string;
       unit?: string;
+      category?: string;
       description?: string;
       bundleQty?: number | null;
       bundlePrice?: number | null;
@@ -47,6 +52,9 @@ export async function PUT(request: Request, context: RouteContext) {
 
     const name = body.name?.trim();
     const unit = body.unit?.trim();
+    const category = isValidProductCategory(body.category)
+      ? body.category
+      : DEFAULT_PRODUCT_CATEGORY;
     const description = body.description?.trim();
     const bundleQty =
       body.bundleQty === null || body.bundleQty === undefined
@@ -96,6 +104,7 @@ export async function PUT(request: Request, context: RouteContext) {
             sku: nextSku,
             name,
             unit: unit || null,
+            category,
             description: description || null,
             cost: price,
             markupPct: 0,
