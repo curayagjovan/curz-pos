@@ -65,6 +65,14 @@ export default function MobilePageWrapper({
         return;
       }
 
+      // MUI Drawer/Modal content is portaled to document.body, but React
+      // still bubbles its touch events along the component tree, so a swipe
+      // inside a bottom sheet would otherwise reach this handler too.
+      if ((event.target as Element | null)?.closest(".MuiModal-root")) {
+        touchStartYRef.current = null;
+        return;
+      }
+
       const scrollTop = mainRef.current?.scrollTop ?? 0;
       if (scrollTop > 0) {
         touchStartYRef.current = null;

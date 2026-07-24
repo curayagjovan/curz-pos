@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
-import Drawer from "@mui/material/Drawer";
+import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
@@ -228,10 +228,12 @@ export default function TransactionsTotalsBar({
         <ReceiptLongRounded fontSize="small" />
       </Fab>
 
-      <Drawer
+      <SwipeableDrawer
         anchor="bottom"
         open={expanded}
         onClose={onToggle}
+        onOpen={() => {}}
+        disableSwipeToOpen
         slotProps={{
           paper: {
             sx: {
@@ -283,7 +285,7 @@ export default function TransactionsTotalsBar({
             </Stack>
           )}
         </Box>
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 }
