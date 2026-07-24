@@ -87,7 +87,10 @@ export async function GET(request: Request) {
     const baseWhere: Prisma.ProductWhereInput = {
       isActive: true,
       AND: [
-        { OR: [{ unit: null }, { unit: { not: "load" } }] },
+        // Load/promo/e-wallet items are managed through their own dedicated
+        // flow (app/pages/load-page.tsx) and shouldn't surface in the
+        // general product catalog or its category filter.
+        { category: { not: "LOAD_AND_PROMO" } },
         ...(isValidProductCategory(categoryParam)
           ? [{ category: categoryParam }]
           : []),
