@@ -18,15 +18,22 @@ import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
 
-// Gross sales for the mini per-day figures, matching how the sales report
-// counts sales (PAID plus REFUNDED before deducting refunds).
+// Sales for the mini per-day figures, matching how the sales report counts
+// sales: PAID/REFUNDED contribute their full total, and PENDING contributes
+// only whatever has actually been collected against it so far (the balance
+// still owed doesn't count as sales yet).
 function transactionSalesAmount(transaction: Transaction) {
-  if (transaction.status !== "PAID" && transaction.status !== "REFUNDED") {
-    return 0;
+  if (transaction.status === "PAID" || transaction.status === "REFUNDED") {
+    const amount = Number(transaction.total);
+    return Number.isFinite(amount) ? amount : 0;
   }
 
-  const amount = Number(transaction.total);
-  return Number.isFinite(amount) ? amount : 0;
+  if (transaction.status === "PENDING") {
+    const paid = Number(transaction.amountPaid ?? 0);
+    return Number.isFinite(paid) ? paid : 0;
+  }
+
+  return 0;
 }
 
 export default function TransactionsPage() {

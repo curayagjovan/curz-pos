@@ -312,8 +312,17 @@ const TransactionCard = memo(function TransactionCard({
                   variant="body1"
                   sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
                 >
-                  {formatCurrency(transaction.total)}
+                  {formatCurrency(balanceDue > 0 ? paidAmount : transaction.total)}
                 </Typography>
+                {balanceDue > 0 ? (
+                  <Typography
+                    variant="caption"
+                    color="warning.main"
+                    sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                  >
+                    Balance {formatCurrency(balanceDue)}
+                  </Typography>
+                ) : null}
               </Stack>
             </Stack>
 

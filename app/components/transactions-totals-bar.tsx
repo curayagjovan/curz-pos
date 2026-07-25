@@ -154,7 +154,7 @@ function PeriodReport({
           sx={{ mt: 1 }}
         >
           <Typography variant="caption" color="text.secondary">
-            Pending ({data?.pendingCount ?? 0})
+            Balance Due ({data?.pendingCount ?? 0})
           </Typography>
           <Typography variant="body2" sx={{ fontWeight: 700 }} color="info.main">
             {toCurrency(data?.pendingTotal ?? 0)}

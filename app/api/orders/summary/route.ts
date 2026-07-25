@@ -94,7 +94,7 @@ type PeriodSummary = {
 
 type GroupByRow = {
   status: string;
-  _sum: { total: unknown; refundAmount: unknown };
+  _sum: { total: unknown; refundAmount: unknown; amountPaid: unknown };
   _count: { _all: number };
 };
 
@@ -102,7 +102,7 @@ function rangeQuery(start: Date, end: Date) {
   return prisma.order.groupBy({
     by: ["status"],
     where: { createdAt: { gte: start, lt: end } },
-    _sum: { total: true, refundAmount: true },
+    _sum: { total: true, refundAmount: true, amountPaid: true },
     _count: { _all: true },
   });
 }
@@ -119,8 +119,12 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
   for (const row of rows) {
     const total = Number(row._sum.total ?? 0);
     const refundAmount = Number(row._sum.refundAmount ?? 0);
+    const amountPaid = Number(row._sum.amountPaid ?? 0);
     orderCount += row._count._all;
 
+    // PAID/REFUNDED always have amountPaid >= total (cash tendered can
+    // exceed the total, with change handed back), so `total` — not
+    // amountPaid — is the actual revenue contribution here.
     if (row.status === "PAID" || row.status === "REFUNDED") {
       salesTotal += Number.isFinite(total) ? total : 0;
     }
@@ -134,11 +138,15 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
       voidedCount += row._count._all;
     }
 
-    // Items already taken but not yet paid for — tracked separately from
-    // salesTotal since the payment hasn't landed, so it shouldn't inflate
-    // reported sales until the order is settled to PAID.
+    // Items already taken but not yet fully paid for. Whatever has actually
+    // been collected against a PENDING order (amountPaid, always <= total)
+    // is real money in hand, so it counts toward sales now; only the
+    // outstanding balance (total - amountPaid) is reported as "pending".
     if (row.status === "PENDING") {
-      pendingTotal += Number.isFinite(total) ? total : 0;
+      const paid = Number.isFinite(amountPaid) ? amountPaid : 0;
+      const orderTotal = Number.isFinite(total) ? total : 0;
+      salesTotal += paid;
+      pendingTotal += Math.max(0, orderTotal - paid);
       pendingCount += row._count._all;
     }
   }
