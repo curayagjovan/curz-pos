@@ -636,18 +636,31 @@ export default function ProductsPage() {
       }
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
-        <Stack spacing={1.5}>
-          <ProductsSearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            icon="search"
-          />
+        <Stack spacing={1}>
+          <Box
+            sx={{
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+              pt: 1,
+              bgcolor: "background.default",
+            }}
+          >
+            <ProductsSearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              icon="search"
+              sticky={false}
+            />
 
-          <CategoryFilterChips
-            products={products}
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-          />
+            <Box sx={{ mt: 1, pb: 0.5 }}>
+              <CategoryFilterChips
+                products={products}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+              />
+            </Box>
+          </Box>
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
             {loading

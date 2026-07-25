@@ -73,7 +73,6 @@ const ProductCard = memo(function ProductCard({
   deleteDisabled = false,
   variant = "catalog",
 }: ProductCardProps) {
-  const hasUnit = Boolean(product.unit?.trim());
   const hasDescription = Boolean(product.description?.trim());
   const { hasBundle, label: bundleLabel } = getBundleMeta(product);
   // Products cached in IndexedDB before the category field shipped won't
@@ -368,17 +367,12 @@ const ProductCard = memo(function ProductCard({
                   </Box>
                 </Stack>
 
-                {hasDescription ? (
-                  <Typography variant="caption" color="text.secondary">
-                    {product.description}
-                  </Typography>
-                ) : null}
-
                 <Stack
                   direction="row"
                   spacing={0.75}
                   useFlexGap
                   flexWrap="wrap"
+                  sx={{ mt: `6px !important` }}
                 >
                   <Chip
                     size="small"
@@ -391,11 +385,12 @@ const ProductCard = memo(function ProductCard({
                       "& .MuiChip-icon": { color: categoryColor },
                     }}
                   />
-                  {hasUnit ? (
+
+                  {hasDescription ? (
                     <Chip
                       size="small"
                       variant="outlined"
-                      label={`Unit ${product.unit}`}
+                      label={`${product.description}`}
                     />
                   ) : null}
                   {hasBundle ? (
@@ -404,6 +399,7 @@ const ProductCard = memo(function ProductCard({
                       color="success"
                       variant="filled"
                       label={bundleLabel}
+                      sx={{ ml: "auto" }}
                     />
                   ) : null}
                 </Stack>
@@ -525,7 +521,7 @@ const ProductCard = memo(function ProductCard({
             <Stack alignItems="flex-end" spacing={0.75}>
               <Chip
                 size="small"
-                label={`Unit ₱${Number(product.price).toFixed(2)}`}
+                label={`₱${Number(product.price).toFixed(2)}`}
                 sx={{ fontWeight: 700 }}
               />
               {hasBundle ? (
