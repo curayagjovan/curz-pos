@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LOAD_MARKUP_SETTINGS } from "@/lib/load-markup";
 import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 
 const SETTINGS_ID = "load-markup";
 
@@ -69,6 +70,10 @@ export async function PUT(request: Request) {
     );
   }
 
+  const existingRecord = await prisma.loadMarkupSetting.findUnique({
+    where: { id: SETTINGS_ID },
+  });
+
   const record = await prisma.loadMarkupSetting.upsert({
     where: { id: SETTINGS_ID },
     update: { tier1Max, tier1Markup, tier2Max, tier2Markup, tier3Markup },
@@ -81,6 +86,22 @@ export async function PUT(request: Request) {
       tier3Markup,
     },
   });
+
+  const changes = diffFields(
+    existingRecord ? serialize(existingRecord) : DEFAULT_LOAD_MARKUP_SETTINGS,
+    { tier1Max, tier1Markup, tier2Max, tier2Markup, tier3Markup },
+  );
+
+  if (Object.keys(changes).length > 0) {
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.SETTINGS_UPDATE,
+      entityType: "LoadMarkupSetting",
+      entityId: SETTINGS_ID,
+      summary: "Updated load markup settings",
+      changes,
+    });
+  }
 
   return NextResponse.json(serialize(record));
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_EWALLET_FEE_SETTINGS } from "@/lib/ewallet-fee";
 import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 
 const SETTINGS_ID = "ewallet-fee";
 
@@ -62,6 +63,10 @@ export async function PUT(request: Request) {
     );
   }
 
+  const existingRecord = await prisma.eWalletFeeSetting.findUnique({
+    where: { id: SETTINGS_ID },
+  });
+
   const record = await prisma.eWalletFeeSetting.upsert({
     where: { id: SETTINGS_ID },
     update: { tier1Fee, tier2Fee, tier3Fee, tier4Fee, stepFee },
@@ -74,6 +79,22 @@ export async function PUT(request: Request) {
       stepFee,
     },
   });
+
+  const changes = diffFields(
+    existingRecord ? serialize(existingRecord) : DEFAULT_EWALLET_FEE_SETTINGS,
+    { tier1Fee, tier2Fee, tier3Fee, tier4Fee, stepFee },
+  );
+
+  if (Object.keys(changes).length > 0) {
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.SETTINGS_UPDATE,
+      entityType: "EWalletFeeSetting",
+      entityId: SETTINGS_ID,
+      summary: "Updated e-wallet fee settings",
+      changes,
+    });
+  }
 
   return NextResponse.json(serialize(record));
 }

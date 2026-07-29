@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -367,6 +368,14 @@ export async function POST(request: Request) {
             },
           });
 
+          await recordAudit({
+            actor: auth.appUser,
+            action: AUDIT_ACTIONS.PRODUCT_CREATE,
+            entityType: "Product",
+            entityId: product.id,
+            summary: `Created product ${product.name} (${product.sku})`,
+          });
+
           return NextResponse.json(product, { status: 201 });
         } catch (error) {
           if (
@@ -404,6 +413,14 @@ export async function POST(request: Request) {
         isActive: true,
         usesGlobalMarkup: false,
       },
+    });
+
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.PRODUCT_CREATE,
+      entityType: "Product",
+      entityId: product.id,
+      summary: `Created product ${product.name} (${product.sku})`,
     });
 
     return NextResponse.json(product, { status: 201 });

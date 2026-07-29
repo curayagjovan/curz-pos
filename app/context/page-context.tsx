@@ -9,7 +9,8 @@ type PageType =
   | "load"
   | "manageLoad"
   | "ewallet"
-  | "manageStaff";
+  | "manageStaff"
+  | "auditLog";
 
 type PageContextType = {
   currentPage: PageType;

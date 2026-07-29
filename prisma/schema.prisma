@@ -88,6 +88,22 @@ model InventoryMovement {
   @@index([referenceType, referenceId])
 }
 
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  changes    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
+
 model ImportLog {
   id           String   @id @default(cuid())
   fileHash     String   @unique

@@ -6,6 +6,7 @@ import {
   normalizeSmsRecipient,
 } from "@/lib/sms-link";
 import { requireOwner } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 
 const SETTINGS_ID = "sms-recipient";
 
@@ -38,11 +39,27 @@ export async function PUT(request: Request) {
     );
   }
 
+  const existingRecord = await prisma.smsRecipientSetting.findUnique({
+    where: { id: SETTINGS_ID },
+  });
+
   const record = await prisma.smsRecipientSetting.upsert({
     where: { id: SETTINGS_ID },
     update: { number },
     create: { id: SETTINGS_ID, number },
   });
+
+  const previousNumber = existingRecord?.number ?? DEFAULT_SMS_RECIPIENT;
+  if (previousNumber !== number) {
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.SETTINGS_UPDATE,
+      entityType: "SmsRecipientSetting",
+      entityId: SETTINGS_ID,
+      summary: "Updated SMS recipient number",
+      changes: { number: { before: previousNumber, after: number } },
+    });
+  }
 
   return NextResponse.json({ number: record.number });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth/require-user";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 
 export async function GET() {
   const auth = await requireOwner();
@@ -44,6 +45,14 @@ export async function POST(request: Request) {
   try {
     const staffMember = await prisma.appUser.create({
       data: { email, role, displayName },
+    });
+
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.STAFF_CREATE,
+      entityType: "AppUser",
+      entityId: staffMember.id,
+      summary: `Added staff member ${staffMember.email} as ${staffMember.role}`,
     });
 
     if (sendInvite) {
@@ -101,6 +110,11 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    const existingStaffMember = await prisma.appUser.findUnique({
+      where: { id },
+      select: { role: true, isActive: true, displayName: true },
+    });
+
     const staffMember = await prisma.appUser.update({
       where: { id },
       data: {
@@ -115,6 +129,31 @@ export async function PATCH(request: Request) {
           : {}),
       },
     });
+
+    if (existingStaffMember) {
+      const changes = diffFields(existingStaffMember, {
+        ...(body.role === "OWNER" || body.role === "CASHIER"
+          ? { role: body.role }
+          : {}),
+        ...(typeof body.isActive === "boolean"
+          ? { isActive: body.isActive }
+          : {}),
+        ...(body.displayName !== undefined
+          ? { displayName: body.displayName?.trim() || null }
+          : {}),
+      });
+
+      if (Object.keys(changes).length > 0) {
+        await recordAudit({
+          actor: auth.appUser,
+          action: AUDIT_ACTIONS.STAFF_UPDATE,
+          entityType: "AppUser",
+          entityId: staffMember.id,
+          summary: `Updated staff member ${staffMember.email}`,
+          changes,
+        });
+      }
+    }
 
     return NextResponse.json(staffMember);
   } catch (error) {

@@ -3,6 +3,7 @@ import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
 import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, auditLogCreateArgs, recordAudit } from "@/lib/audit";
 
 type OrderItemInput = {
   productId?: string;
@@ -724,8 +725,21 @@ export async function POST(request: Request) {
           : orderCreateSelectBase,
       });
 
-    const createSideEffects = () => {
-      return [] as Prisma.PrismaPromise<unknown>[];
+    const createSideEffects = (orderIdentifier: {
+      id: string;
+      orderNo: string;
+    }) => {
+      return [
+        prisma.auditLog.create(
+          auditLogCreateArgs({
+            actor: auth.appUser,
+            action: AUDIT_ACTIONS.ORDER_CREATE,
+            entityType: "Order",
+            entityId: orderIdentifier.id,
+            summary: `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)}`,
+          }),
+        ),
+      ] as Prisma.PrismaPromise<unknown>[];
     };
 
     const runCreateOrder = async () => {
@@ -735,7 +749,7 @@ export async function POST(request: Request) {
         try {
           const operations: Prisma.PrismaPromise<unknown>[] = [
             createOrderOperation(true, orderIdentifier),
-            ...createSideEffects(),
+            ...createSideEffects(orderIdentifier),
           ];
           const [result] = await prisma.$transaction(operations);
           return result;
@@ -744,7 +758,7 @@ export async function POST(request: Request) {
             try {
               const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
                 createOrderOperation(false, orderIdentifier),
-                ...createSideEffects(),
+                ...createSideEffects(orderIdentifier),
               ];
               const [fallbackResult] =
                 await prisma.$transaction(fallbackOperations);
@@ -869,6 +883,7 @@ export async function PATCH(request: Request) {
       const order = await prisma.order.findUnique({
         where: { id },
         select: {
+          orderNo: true,
           items: { select: { id: true, quantity: true, unitPrice: true } },
         },
       });
@@ -926,6 +941,15 @@ export async function PATCH(request: Request) {
               data: { returnedQuantity },
             }),
           ),
+        prisma.auditLog.create(
+          auditLogCreateArgs({
+            actor: auth.appUser,
+            action: AUDIT_ACTIONS.ORDER_REFUND,
+            entityType: "Order",
+            entityId: id,
+            summary: `Refunded sale ${order.orderNo} for ₱${refundAmount.toFixed(2)}`,
+          }),
+        ),
       ]);
 
       return NextResponse.json(refundedOrder, { status: 200 });
@@ -980,6 +1004,27 @@ export async function PATCH(request: Request) {
         throw error;
       }
     }
+
+    const updatedOrderNo =
+      (updatedOrder as { orderNo?: string } | null)?.orderNo ?? id;
+
+    await recordAudit(
+      status === "VOIDED"
+        ? {
+            actor: auth.appUser,
+            action: AUDIT_ACTIONS.ORDER_VOID,
+            entityType: "Order",
+            entityId: id,
+            summary: `Voided sale ${updatedOrderNo}`,
+          }
+        : {
+            actor: auth.appUser,
+            action: AUDIT_ACTIONS.ORDER_STATUS_CHANGE,
+            entityType: "Order",
+            entityId: id,
+            summary: `Changed sale ${updatedOrderNo} status to ${status}`,
+          },
+    );
 
     return NextResponse.json(updatedOrder, { status: 200 });
   } catch (error) {

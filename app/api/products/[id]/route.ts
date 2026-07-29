@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -99,6 +100,19 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        unit: true,
+        category: true,
+        description: true,
+        bundleQty: true,
+        bundlePrice: true,
+        price: true,
+      },
+    });
+
     // Always regenerate SKU from the latest name/price during edits.
     const baseSku = generateSmartSku(name, price);
 
@@ -126,6 +140,43 @@ export async function PUT(request: Request, context: RouteContext) {
             usesGlobalMarkup: false,
           },
         });
+
+        if (existingProduct) {
+          const changes = diffFields(
+            {
+              name: existingProduct.name,
+              unit: existingProduct.unit,
+              category: existingProduct.category,
+              description: existingProduct.description,
+              bundleQty: existingProduct.bundleQty,
+              bundlePrice:
+                existingProduct.bundlePrice === null
+                  ? null
+                  : Number(existingProduct.bundlePrice),
+              price: Number(existingProduct.price),
+            },
+            {
+              name,
+              unit: unit || null,
+              category,
+              description: description || null,
+              bundleQty,
+              bundlePrice,
+              price,
+            },
+          );
+
+          if (Object.keys(changes).length > 0) {
+            await recordAudit({
+              actor: auth.appUser,
+              action: AUDIT_ACTIONS.PRODUCT_UPDATE,
+              entityType: "Product",
+              entityId: product.id,
+              summary: `Updated product ${product.name}`,
+              changes,
+            });
+          }
+        }
 
         return NextResponse.json(product);
       } catch (error) {
@@ -192,9 +243,17 @@ export async function DELETE(_: Request, context: RouteContext) {
   try {
     const id = await resolveId(context);
 
-    await prisma.product.update({
+    const product = await prisma.product.update({
       where: { id },
       data: { isActive: false },
+    });
+
+    await recordAudit({
+      actor: auth.appUser,
+      action: AUDIT_ACTIONS.PRODUCT_DELETE,
+      entityType: "Product",
+      entityId: product.id,
+      summary: `Deleted product ${product.name} (${product.sku})`,
     });
 
     return NextResponse.json({ message: "Product deleted successfully" });

@@ -19,6 +19,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
 import GroupRounded from "@mui/icons-material/GroupRounded";
+import HistoryRounded from "@mui/icons-material/HistoryRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
@@ -255,6 +256,19 @@ export default function MobilePageWrapper({
                   <GroupRounded fontSize="small" />
                 </ListItemIcon>
                 <ListItemText>Manage Staff</ListItemText>
+              </MenuItem>
+            ) : null}
+            {appUser?.role === "OWNER" ? (
+              <MenuItem
+                onClick={() => {
+                  closeAccountMenu();
+                  setCurrentPage("auditLog");
+                }}
+              >
+                <ListItemIcon>
+                  <HistoryRounded fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Audit Trail</ListItemText>
               </MenuItem>
             ) : null}
             <Divider />
