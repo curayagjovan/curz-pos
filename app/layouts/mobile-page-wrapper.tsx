@@ -6,16 +6,22 @@ import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
+import AccountCircleRounded from "@mui/icons-material/AccountCircleRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import AccountBalanceWalletRounded from "@mui/icons-material/AccountBalanceWalletRounded";
+import { useAuth } from "@/app/context/auth-context";
 import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
@@ -43,11 +49,14 @@ export default function MobilePageWrapper({
   children,
 }: MobilePageWrapperProps) {
   const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
+  const { user, appUser, signOut } = useAuth();
   const mainRef = useRef<HTMLElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [accountMenuAnchor, setAccountMenuAnchor] =
+    useState<HTMLElement | null>(null);
 
   const handleScroll = useCallback(() => {
     const scrollTop = mainRef.current?.scrollTop ?? 0;
@@ -202,6 +211,46 @@ export default function MobilePageWrapper({
           </Typography>
 
           {headerActions}
+
+          <IconButton
+            onClick={(event) => setAccountMenuAnchor(event.currentTarget)}
+            aria-label="account menu"
+          >
+            <AccountCircleRounded fontSize="small" />
+          </IconButton>
+          <Menu
+            anchorEl={accountMenuAnchor}
+            open={Boolean(accountMenuAnchor)}
+            onClose={() => setAccountMenuAnchor(null)}
+          >
+            <MenuItem disabled divider>
+              <ListItemText
+                primary={user?.email ?? "Signed in"}
+                secondary={
+                  appUser?.role === "OWNER" ? "Owner" : "Cashier"
+                }
+              />
+            </MenuItem>
+            {appUser?.role === "OWNER" ? (
+              <MenuItem
+                onClick={() => {
+                  setAccountMenuAnchor(null);
+                  setCurrentPage("manageStaff");
+                }}
+              >
+                Manage Staff
+              </MenuItem>
+            ) : null}
+            <Divider />
+            <MenuItem
+              onClick={() => {
+                setAccountMenuAnchor(null);
+                void signOut();
+              }}
+            >
+              Sign Out
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 

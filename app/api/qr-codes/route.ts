@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 
 const BUCKET = "qr-codes";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -21,6 +22,11 @@ function publicUrl(fileName: string, version: string) {
 }
 
 export async function GET() {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const { data: files, error } = await supabaseAdmin.storage
       .from(BUCKET)
@@ -49,6 +55,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const form = await request.formData();
     const provider = String(form.get("provider") ?? "");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { LOAD_BRANDS, type LoadBrand, type LoadCategory } from "@/lib/mobile-load-catalog";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 
 function resolveGroup(brand: LoadBrand) {
   return LOAD_BRANDS.find((entry) => entry.brand === brand)?.group ?? null;
@@ -11,6 +12,11 @@ function buildSkuPrefix(category: LoadCategory) {
 }
 
 export async function GET() {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const loadItems = await prisma.loadItem.findMany({
       where: { isActive: true },
@@ -28,6 +34,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as {
       brand?: string;

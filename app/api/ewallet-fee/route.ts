@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_EWALLET_FEE_SETTINGS } from "@/lib/ewallet-fee";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 
 const SETTINGS_ID = "ewallet-fee";
 
@@ -21,6 +22,11 @@ function serialize(record: {
 }
 
 export async function GET() {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const record = await prisma.eWalletFeeSetting.findUnique({
     where: { id: SETTINGS_ID },
   });
@@ -33,6 +39,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const body = await request.json();
 
   const tier1Fee = Number(body.tier1Fee);

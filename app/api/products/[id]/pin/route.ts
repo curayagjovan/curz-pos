@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { requireOwner } from "@/lib/auth/require-user";
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const params = await context.params;
     const { id } = params;

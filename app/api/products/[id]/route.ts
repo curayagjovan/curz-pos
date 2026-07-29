@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -16,6 +17,11 @@ async function resolveId(context: RouteContext) {
 }
 
 export async function GET(_: Request, context: RouteContext) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const id = await resolveId(context);
 
@@ -38,6 +44,11 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const id = await resolveId(context);
     const body = (await request.json()) as {
@@ -173,6 +184,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const id = await resolveId(context);
 

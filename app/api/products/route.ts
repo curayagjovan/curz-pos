@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -58,6 +59,11 @@ function decodeCursorToken(cursor: string): CursorToken | null {
 }
 
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const url = new URL(request.url);
     const query = url.searchParams.get("q")?.trim() ?? "";
@@ -274,6 +280,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as {
       sku?: string;

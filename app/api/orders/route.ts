@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
+import { requireOwner, requireUser } from "@/lib/auth/require-user";
 
 type OrderItemInput = {
   productId?: string;
@@ -265,6 +266,11 @@ function computeLineTotal(
 }
 
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const url = new URL(request.url);
     const pageParam = Number(url.searchParams.get("page") ?? "1");
@@ -419,6 +425,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as OrderPayload;
     const normalizedRequestId =
@@ -842,6 +853,16 @@ export async function PATCH(request: Request) {
         { message: "Invalid status update payload" },
         { status: 400 },
       );
+    }
+
+    // Voiding/refunding is an Owner-only action; settling a pending sale to
+    // paid (or back) is fine for any authenticated cashier.
+    const auth =
+      status === "REFUNDED" || status === "VOIDED"
+        ? await requireOwner()
+        : await requireUser();
+    if (!auth.ok) {
+      return auth.response;
     }
 
     if (status === "REFUNDED" && itemsInput.length > 0) {

@@ -3,6 +3,7 @@ import {
   subscribeImportProgress,
   type ImportJobProgress,
 } from "@/lib/import-progress-store";
+import { requireOwner } from "@/lib/auth/require-user";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,11 @@ function encodeSseData(
 }
 
 export async function GET(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId")?.trim();
 

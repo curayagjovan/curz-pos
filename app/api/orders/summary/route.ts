@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/require-user";
 
 // The store operates in the Philippines (fixed UTC+8, no DST) but this route
 // can run on a server configured in any timezone (commonly UTC on most
@@ -173,6 +174,11 @@ function reduceRows(rows: GroupByRow[], start: Date, end: Date): PeriodSummary {
 // Promise.all — independent calls each pay their own connection round-trip
 // against the pool, which measured ~3x slower than a single batched request.
 export async function GET(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const url = new URL(request.url);
     const dateParam = url.searchParams.get("date");

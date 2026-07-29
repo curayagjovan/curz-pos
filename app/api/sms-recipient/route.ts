@@ -5,10 +5,16 @@ import {
   isValidSmsRecipient,
   normalizeSmsRecipient,
 } from "@/lib/sms-link";
+import { requireOwner } from "@/lib/auth/require-user";
 
 const SETTINGS_ID = "sms-recipient";
 
 export async function GET() {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const record = await prisma.smsRecipientSetting.findUnique({
     where: { id: SETTINGS_ID },
   });
@@ -17,6 +23,11 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const body = await request.json();
   const number = normalizeSmsRecipient(String(body.number ?? ""));
 

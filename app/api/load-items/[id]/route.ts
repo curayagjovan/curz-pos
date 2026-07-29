@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { LOAD_BRANDS, type LoadBrand, type LoadCategory } from "@/lib/mobile-load-catalog";
+import { requireOwner } from "@/lib/auth/require-user";
 
 type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
@@ -20,6 +21,11 @@ function buildSkuPrefix(category: LoadCategory) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const id = await resolveId(context);
     const body = (await request.json()) as {
@@ -141,6 +147,11 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const id = await resolveId(context);
 

@@ -3,6 +3,7 @@ import {
   removePushSubscriptionByEndpoint,
   upsertPushSubscription,
 } from "@/lib/push-notifications";
+import { requireUser } from "@/lib/auth/require-user";
 
 type UpsertPushSubscriptionPayload = {
   subscription?: {
@@ -20,6 +21,11 @@ type RemovePushSubscriptionPayload = {
 };
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as UpsertPushSubscriptionPayload;
 
@@ -53,6 +59,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as RemovePushSubscriptionPayload;
     await removePushSubscriptionByEndpoint(body.endpoint);

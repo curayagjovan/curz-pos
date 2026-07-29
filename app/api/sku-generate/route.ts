@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { generateSmartSku } from "@/lib/sku-generator";
+import { requireOwner } from "@/lib/auth/require-user";
 
 export async function POST(request: Request) {
+  const auth = await requireOwner();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = (await request.json()) as {
       name?: string;

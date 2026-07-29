@@ -16,6 +16,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
+import { useAuth } from "@/app/context/auth-context";
 import type { Transaction } from "@/types/transaction";
 
 type TransactionCardProps = {
@@ -112,7 +113,9 @@ const TransactionCard = memo(function TransactionCard({
       Math.max(0, Number(item.quantity) - Number(item.returnedQuantity ?? 0)),
     0,
   );
-  const canReturnItems = transaction.status === "PAID";
+  const { appUser } = useAuth();
+  const isOwner = appUser?.role === "OWNER";
+  const canReturnItems = transaction.status === "PAID" && isOwner;
 
   const itemPreview = useMemo(() => {
     const visibleItems = transactionItems.filter(
@@ -393,8 +396,12 @@ const TransactionCard = memo(function TransactionCard({
               >
                 <MenuItem value="PENDING">PENDING</MenuItem>
                 <MenuItem value="PAID">PAID</MenuItem>
-                <MenuItem value="REFUNDED">REFUNDED</MenuItem>
-                <MenuItem value="VOIDED">VOIDED</MenuItem>
+                <MenuItem value="REFUNDED" disabled={!isOwner}>
+                  REFUNDED
+                </MenuItem>
+                <MenuItem value="VOIDED" disabled={!isOwner}>
+                  VOIDED
+                </MenuItem>
               </Select>
             </Stack>
 
