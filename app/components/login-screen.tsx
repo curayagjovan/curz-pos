@@ -11,13 +11,16 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useAuth } from "@/app/context/auth-context";
+import GoogleIcon from "@/app/components/google-icon";
 
 export default function LoginScreen() {
   const { user, appUser, signInWithPassword, signUpWithPassword, signInWithGoogle, signOut } =
     useAuth();
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     if (typeof window === "undefined") {
@@ -60,6 +63,12 @@ export default function LoginScreen() {
     event.preventDefault();
     setError(null);
     setInfo(null);
+
+    if (mode === "signUp" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setBusy(true);
 
     try {
@@ -75,11 +84,14 @@ export default function LoginScreen() {
         const { error: signUpError } = await signUpWithPassword(
           email.trim(),
           password,
+          fullName.trim(),
         );
         if (signUpError) {
           setError(signUpError);
         } else {
-          setInfo("Check your email to confirm your account, then sign in.");
+          setInfo(
+            "Check your email to confirm your account. An Owner will still need to add you as staff before you can sign in.",
+          );
         }
       }
     } finally {
@@ -88,14 +100,22 @@ export default function LoginScreen() {
   };
 
   return (
-    <Container maxWidth="xs" sx={{ py: 8 }}>
-      <Stack spacing={2.5}>
+    <Container
+      maxWidth="xs"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        minHeight: "100dvh",
+        py: 8,
+      }}
+    >
+      <Stack spacing={2.5} sx={{ width: "100%" }}>
         <Box textAlign="center">
           <Typography variant="h5" sx={{ fontWeight: 800 }}>
             SHOPMAE
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {mode === "signIn" ? "Sign in to continue" : "Create the owner account"}
+            {mode === "signIn" ? "Sign in to continue" : "Create an account"}
           </Typography>
         </Box>
 
@@ -104,6 +124,7 @@ export default function LoginScreen() {
           size="large"
           disabled={busy}
           onClick={() => void signInWithGoogle()}
+          startIcon={<GoogleIcon />}
         >
           Continue with Google
         </Button>
@@ -112,6 +133,18 @@ export default function LoginScreen() {
 
         <Box component="form" onSubmit={(event) => void handleSubmit(event)}>
           <Stack spacing={1.5}>
+            {mode === "signUp" ? (
+              <TextField
+                label="Full Name"
+                type="text"
+                autoComplete="name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+                fullWidth
+                size="small"
+              />
+            ) : null}
             <TextField
               label="Email"
               type="email"
@@ -120,6 +153,7 @@ export default function LoginScreen() {
               onChange={(event) => setEmail(event.target.value)}
               required
               fullWidth
+              size="small"
             />
             <TextField
               label="Password"
@@ -131,7 +165,20 @@ export default function LoginScreen() {
               onChange={(event) => setPassword(event.target.value)}
               required
               fullWidth
+              size="small"
             />
+            {mode === "signUp" ? (
+              <TextField
+                label="Confirm Password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                required
+                fullWidth
+                size="small"
+              />
+            ) : null}
 
             {error ? <Alert severity="error">{error}</Alert> : null}
             {info ? <Alert severity="success">{info}</Alert> : null}
@@ -157,7 +204,7 @@ export default function LoginScreen() {
           }}
         >
           {mode === "signIn"
-            ? "First time setting up? Create the owner account"
+            ? "New here? Create an account"
             : "Already have an account? Sign in"}
         </Button>
       </Stack>

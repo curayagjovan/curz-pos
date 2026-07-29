@@ -23,6 +23,7 @@ type AuthContextType = {
   signUpWithPassword: (
     email: string,
     password: string,
+    displayName: string,
   ) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -52,17 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (cancelled) return;
-      setUser(data.user);
-      if (data.user) {
-        await refreshProfile();
-      }
-      if (!cancelled) {
-        setLoading(false);
-      }
-    });
-
+    // supabase-js fires an INITIAL_SESSION event immediately on subscribe,
+    // so a separate getUser() call here would race this callback and cause
+    // two independent loading/appUser transitions (a visible double flash).
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -73,7 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setAppUser(null);
       }
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -94,11 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signUpWithPassword = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, displayName: string) => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { full_name: displayName },
+        },
       });
       return { error: error?.message ?? null };
     },

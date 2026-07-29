@@ -11,7 +11,9 @@ import {
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
-import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Badge from "@mui/material/Badge";
 import Typography from "@mui/material/Typography";
@@ -626,14 +628,19 @@ export default function ProductsPage() {
   return (
     <MobilePageWrapper
       title="Products"
-      headerActions={
-        <IconButton
-          onClick={() => setCurrentPage("inventory")}
-          aria-label="open inventory"
+      pageMenuItems={(closeMenu) => (
+        <MenuItem
+          onClick={() => {
+            closeMenu();
+            setCurrentPage("inventory");
+          }}
         >
-          <Inventory2Rounded fontSize="small" />
-        </IconButton>
-      }
+          <ListItemIcon>
+            <Inventory2Rounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Inventory</ListItemText>
+        </MenuItem>
+      )}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1}>

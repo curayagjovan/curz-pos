@@ -15,7 +15,7 @@ import appTheme from "@/app/theme";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AppRouterCacheProvider options={{ enableCssLayer: true }}>
+    <AppRouterCacheProvider>
       <ThemeProvider
         theme={appTheme}
         defaultMode="system"

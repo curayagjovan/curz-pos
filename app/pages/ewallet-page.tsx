@@ -5,15 +5,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import QrCode2Rounded from "@mui/icons-material/QrCode2Rounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
@@ -98,8 +95,6 @@ export default function EWalletPage() {
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [settingsMenuAnchor, setSettingsMenuAnchor] =
-    useState<HTMLElement | null>(null);
   const { settings: feeSettings, updateSettings: updateFeeSettings } =
     useEwalletFeeSettings();
   const { number: smsRecipient, updateNumber: updateSmsRecipient } =
@@ -315,57 +310,44 @@ export default function EWalletPage() {
   return (
     <MobilePageWrapper
       title="E-Wallet"
-      headerActions={
-        <>
-          <IconButton
-            onClick={(event) => setSettingsMenuAnchor(event.currentTarget)}
-            aria-label="e-wallet settings"
-            aria-haspopup="menu"
-            aria-expanded={Boolean(settingsMenuAnchor)}
-          >
-            <SettingsRounded fontSize="small" />
-          </IconButton>
-          <Menu
-            anchorEl={settingsMenuAnchor}
-            open={Boolean(settingsMenuAnchor)}
-            onClose={() => setSettingsMenuAnchor(null)}
-          >
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setFeeDialogOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <PercentRounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Fee Settings</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setRecipientDialogOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <SendToMobileRounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Request Recipient</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setQrDialogOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <QrCode2Rounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Cash-Out QR Codes</ListItemText>
-            </MenuItem>
-          </Menu>
-        </>
-      }
+      pageMenuItems={(closeMenu) => [
+        <MenuItem
+          key="fee-settings"
+          onClick={() => {
+            closeMenu();
+            setFeeDialogOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <PercentRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Fee Settings</ListItemText>
+        </MenuItem>,
+        <MenuItem
+          key="request-recipient"
+          onClick={() => {
+            closeMenu();
+            setRecipientDialogOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <SendToMobileRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Request Recipient</ListItemText>
+        </MenuItem>,
+        <MenuItem
+          key="qr-codes"
+          onClick={() => {
+            closeMenu();
+            setQrDialogOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <QrCode2Rounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Cash-Out QR Codes</ListItemText>
+        </MenuItem>,
+      ]}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={2}>

@@ -3,14 +3,11 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
-import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
-import SettingsRounded from "@mui/icons-material/SettingsRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import ListAltRounded from "@mui/icons-material/ListAltRounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
@@ -90,8 +87,6 @@ export default function LoadPage() {
   const [sendingRequest, setSendingRequest] = useState(false);
   const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
-  const [settingsMenuAnchor, setSettingsMenuAnchor] =
-    useState<HTMLElement | null>(null);
   const { settings: markupSettings, updateSettings: updateMarkupSettings } =
     useLoadMarkupSettings();
   const { number: smsRecipient, updateNumber: updateSmsRecipient } =
@@ -304,57 +299,44 @@ export default function LoadPage() {
   return (
     <MobilePageWrapper
       title="Load"
-      headerActions={
-        <>
-          <IconButton
-            onClick={(event) => setSettingsMenuAnchor(event.currentTarget)}
-            aria-label="load settings"
-            aria-haspopup="menu"
-            aria-expanded={Boolean(settingsMenuAnchor)}
-          >
-            <SettingsRounded fontSize="small" />
-          </IconButton>
-          <Menu
-            anchorEl={settingsMenuAnchor}
-            open={Boolean(settingsMenuAnchor)}
-            onClose={() => setSettingsMenuAnchor(null)}
-          >
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setMarkupDialogOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <PercentRounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Markup Settings</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setCurrentPage("manageLoad");
-              }}
-            >
-              <ListItemIcon>
-                <ListAltRounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Manage Load Items</ListItemText>
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setSettingsMenuAnchor(null);
-                setRecipientDialogOpen(true);
-              }}
-            >
-              <ListItemIcon>
-                <SendToMobileRounded fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Request Recipient</ListItemText>
-            </MenuItem>
-          </Menu>
-        </>
-      }
+      pageMenuItems={(closeMenu) => [
+        <MenuItem
+          key="markup-settings"
+          onClick={() => {
+            closeMenu();
+            setMarkupDialogOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <PercentRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Markup Settings</ListItemText>
+        </MenuItem>,
+        <MenuItem
+          key="manage-load-items"
+          onClick={() => {
+            closeMenu();
+            setCurrentPage("manageLoad");
+          }}
+        >
+          <ListItemIcon>
+            <ListAltRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Manage Load Items</ListItemText>
+        </MenuItem>,
+        <MenuItem
+          key="request-recipient"
+          onClick={() => {
+            closeMenu();
+            setRecipientDialogOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <SendToMobileRounded fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Request Recipient</ListItemText>
+        </MenuItem>,
+      ]}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>

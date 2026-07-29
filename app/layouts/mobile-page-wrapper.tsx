@@ -2,11 +2,13 @@
 
 import { useCallback, useRef, useState } from "react";
 import AppBar from "@mui/material/AppBar";
+import Avatar from "@mui/material/Avatar";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -16,7 +18,8 @@ import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
-import AccountCircleRounded from "@mui/icons-material/AccountCircleRounded";
+import GroupRounded from "@mui/icons-material/GroupRounded";
+import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
@@ -26,7 +29,9 @@ import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
   title: string;
-  headerActions?: React.ReactNode;
+  /** Page-specific menu items rendered inside the shared account menu. Call
+   * the provided closeMenu() before triggering any page-local action. */
+  pageMenuItems?: (closeMenu: () => void) => React.ReactNode;
   onBack?: () => void;
   hideBottomNav?: boolean;
   children: React.ReactNode;
@@ -43,7 +48,7 @@ const easeIOS = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 export default function MobilePageWrapper({
   title,
-  headerActions,
+  pageMenuItems,
   onBack,
   hideBottomNav = false,
   children,
@@ -57,6 +62,9 @@ export default function MobilePageWrapper({
   const [scrolled, setScrolled] = useState(false);
   const [accountMenuAnchor, setAccountMenuAnchor] =
     useState<HTMLElement | null>(null);
+  const closeAccountMenu = useCallback(() => setAccountMenuAnchor(null), []);
+  const avatarUrl: string | undefined =
+    user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture;
 
   const handleScroll = useCallback(() => {
     const scrollTop = mainRef.current?.scrollTop ?? 0;
@@ -210,18 +218,21 @@ export default function MobilePageWrapper({
             {title}
           </Typography>
 
-          {headerActions}
-
           <IconButton
             onClick={(event) => setAccountMenuAnchor(event.currentTarget)}
             aria-label="account menu"
+            sx={{ p: 0.25 }}
           >
-            <AccountCircleRounded fontSize="small" />
+            <Avatar src={avatarUrl} sx={{ width: 30, height: 30 }}>
+              {!avatarUrl
+                ? (user?.email?.[0]?.toUpperCase() ?? "?")
+                : null}
+            </Avatar>
           </IconButton>
           <Menu
             anchorEl={accountMenuAnchor}
             open={Boolean(accountMenuAnchor)}
-            onClose={() => setAccountMenuAnchor(null)}
+            onClose={closeAccountMenu}
           >
             <MenuItem disabled divider>
               <ListItemText
@@ -231,24 +242,32 @@ export default function MobilePageWrapper({
                 }
               />
             </MenuItem>
+            {pageMenuItems ? pageMenuItems(closeAccountMenu) : null}
+            {pageMenuItems ? <Divider key="page-menu-divider" /> : null}
             {appUser?.role === "OWNER" ? (
               <MenuItem
                 onClick={() => {
-                  setAccountMenuAnchor(null);
+                  closeAccountMenu();
                   setCurrentPage("manageStaff");
                 }}
               >
-                Manage Staff
+                <ListItemIcon>
+                  <GroupRounded fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Manage Staff</ListItemText>
               </MenuItem>
             ) : null}
             <Divider />
             <MenuItem
               onClick={() => {
-                setAccountMenuAnchor(null);
+                closeAccountMenu();
                 void signOut();
               }}
             >
-              Sign Out
+              <ListItemIcon>
+                <LogoutRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Sign Out</ListItemText>
             </MenuItem>
           </Menu>
         </Toolbar>
