@@ -102,7 +102,6 @@ export default function AddLoadItemDrawer({
             onChange={(event) =>
               onFieldChange("brand", event.target.value as LoadBrand)
             }
-            size="medium"
             fullWidth
             required
             error={Boolean(formErrors.brand)}
@@ -122,7 +121,6 @@ export default function AddLoadItemDrawer({
             onChange={(event) =>
               onFieldChange("category", event.target.value as LoadCategory)
             }
-            size="medium"
             fullWidth
             required
           >
@@ -134,7 +132,6 @@ export default function AddLoadItemDrawer({
             label="Label"
             value={form.label}
             onChange={(event) => onFieldChange("label", event.target.value)}
-            size="medium"
             fullWidth
             required
             error={Boolean(formErrors.label)}
@@ -145,7 +142,6 @@ export default function AddLoadItemDrawer({
             label="Code"
             value={form.code}
             onChange={(event) => onFieldChange("code", event.target.value)}
-            size="medium"
             fullWidth
             required
             error={Boolean(formErrors.code)}
@@ -156,7 +152,6 @@ export default function AddLoadItemDrawer({
             label="Amount"
             value={form.amount}
             onChange={(event) => onFieldChange("amount", event.target.value)}
-            size="medium"
             fullWidth
             type="number"
             required
@@ -175,7 +170,6 @@ export default function AddLoadItemDrawer({
             label="Description"
             value={form.description}
             onChange={(event) => onFieldChange("description", event.target.value)}
-            size="medium"
             fullWidth
             multiline
             minRows={2}

@@ -196,6 +196,11 @@ const appTheme = createTheme({
         },
       },
     },
+    MuiTextField: {
+      defaultProps: {
+        size: "small",
+      },
+    },
     MuiDialog: {
       styleOverrides: {
         paper: {

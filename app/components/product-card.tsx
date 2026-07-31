@@ -507,32 +507,40 @@ const ProductCard = memo(function ProductCard({
               >
                 {product.name}
               </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.25 }}
+              <Stack
+                direction="row"
+                spacing={0.5}
+                alignItems="center"
+                useFlexGap
+                flexWrap="wrap"
+                sx={{ mt: 0.25 }}
               >
-                {hasDescription
-                  ? `${categoryLabel}, ${product.description}`
-                  : categoryLabel}
-              </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {hasDescription
+                    ? `${categoryLabel}, ${product.description}`
+                    : categoryLabel}
+                </Typography>
+                {hasBundle ? (
+                  <Chip
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    label={bundleLabel}
+                    sx={{
+                      height: 18,
+                      fontSize: "0.75rem",
+                      "& .MuiChip-label": { px: 0.75 },
+                    }}
+                  />
+                ) : null}
+              </Stack>
             </Box>
 
-            <Stack alignItems="flex-end" spacing={0.75}>
-              <Chip
-                size="small"
-                label={`₱${Number(product.price).toFixed(2)}`}
-                sx={{ fontWeight: 700 }}
-              />
-              {hasBundle ? (
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  color="success"
-                  label={bundleLabel}
-                />
-              ) : null}
-            </Stack>
+            <Chip
+              size="small"
+              label={`₱${Number(product.price).toFixed(2)}`}
+              sx={{ fontWeight: 700 }}
+            />
           </Stack>
         </CardActionArea>
       </Card>

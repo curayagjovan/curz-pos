@@ -102,7 +102,6 @@ export default function ProductFormDrawer({
                 },
               }}
               helperText={formErrors.sku ? formErrors.sku : "SKU is read-only"}
-              size="medium"
               fullWidth
               error={Boolean(formErrors.sku)}
             />
@@ -111,7 +110,6 @@ export default function ProductFormDrawer({
             label="Name"
             value={form.name}
             onChange={(event) => onFieldChange("name", event.target.value)}
-            size="medium"
             fullWidth
             required
             error={Boolean(formErrors.name)}
@@ -122,7 +120,6 @@ export default function ProductFormDrawer({
             label="Category"
             value={form.category}
             onChange={(event) => onFieldChange("category", event.target.value)}
-            size="medium"
             fullWidth
             required
           >
@@ -141,7 +138,6 @@ export default function ProductFormDrawer({
             onChange={(event) =>
               onFieldChange("description", event.target.value)
             }
-            size="medium"
             fullWidth
             multiline
             minRows={2}
@@ -151,7 +147,6 @@ export default function ProductFormDrawer({
             label="Price"
             value={form.price}
             onChange={(event) => onFieldChange("price", event.target.value)}
-            size="medium"
             fullWidth
             type="number"
             error={Boolean(formErrors.price)}
@@ -171,7 +166,6 @@ export default function ProductFormDrawer({
             onChange={(event) =>
               onFieldChange("bundleQty", event.target.value)
             }
-            size="medium"
             fullWidth
             type="number"
             slotProps={{
@@ -189,7 +183,6 @@ export default function ProductFormDrawer({
             onChange={(event) =>
               onFieldChange("bundlePrice", event.target.value)
             }
-            size="medium"
             fullWidth
             type="number"
             slotProps={{
