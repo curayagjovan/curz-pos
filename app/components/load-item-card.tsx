@@ -9,8 +9,11 @@ import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { alpha } from "@mui/material/styles";
-import { LOAD_BRAND_COLORS, type LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import {
+  LOAD_BRAND_COLORS,
+  LOAD_BRAND_LOGOS,
+  type LoadCatalogItem,
+} from "@/lib/mobile-load-catalog";
 
 type LoadItemCardProps = {
   item: LoadCatalogItem;
@@ -51,12 +54,16 @@ const LoadItemCard = memo(function LoadItemCard({
           <Stack direction="row" spacing={1} alignItems="center">
             <Avatar
               variant="rounded"
+              src={LOAD_BRAND_LOGOS[item.brand]}
+              slotProps={{
+                img: { style: { objectFit: "contain", padding: 4 } },
+              }}
               sx={{
                 width: 34,
                 height: 34,
                 fontSize: 12,
                 fontWeight: 700,
-                bgcolor: alpha(brandColor, 0.16),
+                bgcolor: "#ffffff",
                 color: brandColor,
               }}
             >

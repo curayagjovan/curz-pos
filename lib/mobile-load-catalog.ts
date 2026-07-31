@@ -40,6 +40,16 @@ export const LOAD_BRAND_COLORS: Record<LoadBrand, string> = {
   DITO: "#E4032C",
 };
 
+// Official logos sourced from Wikimedia Commons (public-domain-licensed
+// uploads used for brand identification), stored under public/load-brands.
+export const LOAD_BRAND_LOGOS: Record<LoadBrand, string> = {
+  GLOBE: "/load-brands/globe.svg",
+  TM: "/load-brands/tm.svg",
+  SMART: "/load-brands/smart.png",
+  TNT: "/load-brands/tnt.png",
+  DITO: "/load-brands/dito.svg",
+};
+
 const REGULAR_LOAD_AMOUNTS = [10, 15, 20, 30, 50, 60, 100, 150, 200, 300, 500, 1000];
 
 const REGULAR_LOAD_CATALOG: LoadCatalogItem[] = LOAD_BRANDS.flatMap(
