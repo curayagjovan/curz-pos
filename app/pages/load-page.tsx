@@ -16,10 +16,10 @@ import ListEmptyState from "@/app/components/list-empty-state";
 import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
 import LoadItemCard from "@/app/components/load-item-card";
 import LoadMarkupDialog from "@/app/components/load-markup-dialog";
+import FilterPopoverButton from "@/app/components/filter-popover-button";
+import type { FilterPopoverOption } from "@/app/components/filter-popover-button";
 import ProductsSearchBar from "@/app/components/products-search-bar";
-import SegmentedControl from "@/app/components/segmented-control";
 import SmsRecipientDialog from "@/app/components/sms-recipient-dialog";
-import type { SegmentOption } from "@/app/components/segmented-control";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadMarkupSettings } from "@/app/hooks/use-load-markup-settings";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
@@ -44,7 +44,7 @@ function brandLabel(brand: LoadBrand) {
   return LOAD_BRANDS.find((entry) => entry.brand === brand)?.label ?? brand;
 }
 
-const BRAND_SEGMENTS: SegmentOption[] = [
+const BRAND_OPTIONS: FilterPopoverOption[] = [
   { key: "all", label: "All" },
   ...LOAD_BRANDS.map(({ brand, label }) => ({ key: brand, label })),
 ];
@@ -361,27 +361,31 @@ export default function LoadPage() {
                 sticky={false}
                 inputMode="tel"
               />
-              <ProductsSearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search load type"
-                ariaLabel="search load type"
-                icon="search"
-                sticky={false}
-              />
-
-              <SegmentedControl
-                ariaLabel="load brand"
-                segments={BRAND_SEGMENTS}
-                selectedKeys={
-                  brandFilter.size === 0 ? ["all"] : Array.from(brandFilter)
-                }
-                onSelect={(key) =>
-                  key === "all"
-                    ? clearBrandFilter()
-                    : selectBrand(key as LoadBrand)
-                }
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <ProductsSearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search load type"
+                    ariaLabel="search load type"
+                    icon="search"
+                    sticky={false}
+                  />
+                </Box>
+                <Divider orientation="vertical" sx={{ height: 30 }} />
+                <FilterPopoverButton
+                  ariaLabel="load brand"
+                  options={BRAND_OPTIONS}
+                  selectedKeys={
+                    brandFilter.size === 0 ? ["all"] : Array.from(brandFilter)
+                  }
+                  onSelect={(key) =>
+                    key === "all"
+                      ? clearBrandFilter()
+                      : selectBrand(key as LoadBrand)
+                  }
+                />
+              </Stack>
             </Stack>
           </Box>
 
