@@ -17,9 +17,12 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
+import { useColorScheme } from "@mui/material/styles";
 import ArrowBackIosNewRounded from "@mui/icons-material/ArrowBackIosNewRounded";
+import DarkModeRounded from "@mui/icons-material/DarkModeRounded";
 import GroupRounded from "@mui/icons-material/GroupRounded";
 import HistoryRounded from "@mui/icons-material/HistoryRounded";
+import LightModeRounded from "@mui/icons-material/LightModeRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
@@ -56,6 +59,11 @@ export default function MobilePageWrapper({
 }: MobilePageWrapperProps) {
   const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
   const { user, appUser, signOut } = useAuth();
+  const { mode, systemMode, setMode } = useColorScheme();
+  const resolvedMode = mode === "system" ? systemMode : mode;
+  const toggleColorMode = useCallback(() => {
+    setMode(resolvedMode === "dark" ? "light" : "dark");
+  }, [resolvedMode, setMode]);
   const mainRef = useRef<HTMLElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
@@ -219,17 +227,29 @@ export default function MobilePageWrapper({
             {title}
           </Typography>
 
-          <IconButton
-            onClick={(event) => setAccountMenuAnchor(event.currentTarget)}
-            aria-label="account menu"
-            sx={{ p: 0.25 }}
-          >
-            <Avatar src={avatarUrl} sx={{ width: 30, height: 30 }}>
-              {!avatarUrl
-                ? (user?.email?.[0]?.toUpperCase() ?? "?")
-                : null}
-            </Avatar>
-          </IconButton>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <IconButton
+              onClick={toggleColorMode}
+              aria-label="toggle color mode"
+            >
+              {resolvedMode === "dark" ? (
+                <LightModeRounded fontSize="small" />
+              ) : (
+                <DarkModeRounded fontSize="small" />
+              )}
+            </IconButton>
+            <IconButton
+              onClick={(event) => setAccountMenuAnchor(event.currentTarget)}
+              aria-label="account menu"
+              sx={{ p: 0.25 }}
+            >
+              <Avatar src={avatarUrl} sx={{ width: 30, height: 30 }}>
+                {!avatarUrl
+                  ? (user?.email?.[0]?.toUpperCase() ?? "?")
+                  : null}
+              </Avatar>
+            </IconButton>
+          </Stack>
           <Menu
             anchorEl={accountMenuAnchor}
             open={Boolean(accountMenuAnchor)}

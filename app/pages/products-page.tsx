@@ -649,24 +649,25 @@ export default function ProductsPage() {
               position: "sticky",
               top: 0,
               zIndex: 5,
-              pt: 1,
+              pt: 0.5,
+              pb: 1,
               bgcolor: "background.default",
             }}
           >
-            <ProductsSearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              icon="search"
-              sticky={false}
-            />
+            <Stack spacing={0.5}>
+              <ProductsSearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                icon="search"
+                sticky={false}
+              />
 
-            <Box sx={{ mt: 1, pb: 0.5 }}>
               <CategoryFilterChips
                 products={products}
                 value={categoryFilter}
                 onChange={setCategoryFilter}
               />
-            </Box>
+            </Stack>
           </Box>
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
