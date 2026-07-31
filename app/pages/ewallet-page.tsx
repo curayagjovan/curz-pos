@@ -3,14 +3,19 @@
 import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import ButtonBase from "@mui/material/ButtonBase";
+import Card from "@mui/material/Card";
+import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import InputBase from "@mui/material/InputBase";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material/styles";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import QrCode2Rounded from "@mui/icons-material/QrCode2Rounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
@@ -30,6 +35,8 @@ import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import {
   EWALLET_DIRECTIONS,
+  EWALLET_PROVIDER_COLORS,
+  EWALLET_PROVIDER_LOGOS,
   EWALLET_PROVIDERS,
   findEwalletCatalogEntry,
   type EWalletDirection,
@@ -44,9 +51,7 @@ import type { Transaction } from "@/types/transaction";
 import InputAdornment from "@mui/material/InputAdornment";
 import DialpadRounded from "@mui/icons-material/DialpadRounded";
 
-const PROVIDER_SEGMENTS: SegmentOption[] = EWALLET_PROVIDERS.map(
-  ({ provider, label }) => ({ key: provider, label }),
-);
+const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 
 const DIRECTION_SEGMENTS: SegmentOption[] = EWALLET_DIRECTIONS.map(
   ({ direction, label }) => ({ key: direction, label }),
@@ -350,17 +355,71 @@ export default function EWalletPage() {
       ]}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
-        <Stack spacing={2}>
+        <Stack spacing={1}>
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Provider
             </Typography>
-            <SegmentedControl
-              ariaLabel="e-wallet provider"
-              segments={PROVIDER_SEGMENTS}
-              selectedKeys={[provider]}
-              onSelect={(key) => setProvider(key as EWalletProvider)}
-            />
+            <Stack direction="row" spacing={1.25}>
+              {EWALLET_PROVIDERS.map(({ provider: entryProvider, label }) => {
+                const selected = entryProvider === provider;
+                const color = EWALLET_PROVIDER_COLORS[entryProvider];
+
+                return (
+                  <ButtonBase
+                    key={entryProvider}
+                    onClick={() => setProvider(entryProvider)}
+                    aria-pressed={selected}
+                    sx={{
+                      flex: 1,
+                      flexDirection: "column",
+                      gap: 0.75,
+                      py: 1.25,
+                      borderRadius: 1,
+                      border: "2px solid",
+                      borderColor: selected ? color : "divider",
+                      bgcolor: selected ? alpha(color, 0.1) : "transparent",
+                      transition:
+                        "border-color 200ms ease, background-color 200ms ease",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor:
+                          entryProvider === "MAYA" ? "#0b0b0c" : "#ffffff",
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.16)",
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={EWALLET_PROVIDER_LOGOS[entryProvider]}
+                        alt={label}
+                        sx={{
+                          width: "76%",
+                          height: "58%",
+                          objectFit: "contain",
+                        }}
+                      />
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: selected ? color : "text.primary",
+                      }}
+                    >
+                      {label}
+                    </Typography>
+                  </ButtonBase>
+                );
+              })}
+            </Stack>
           </Stack>
 
           <Stack spacing={1}>
@@ -375,156 +434,195 @@ export default function EWalletPage() {
             />
           </Stack>
 
-          <Stack spacing={1}>
-            {isCashIn ? (
+          {isCashIn ? (
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Recipient
+              </Typography>
+              <SegmentedControl
+                ariaLabel="cash-in identifier"
+                segments={ID_MODE_SEGMENTS}
+                selectedKeys={[idMode]}
+                onSelect={(key) => setIdMode(key as EWalletIdMode)}
+              />
+              {idMode === "mobile" ? (
+                <TextField
+                  fullWidth
+                  value={accountNumber}
+                  placeholder="Mobile number"
+                  onChange={(event) => setAccountNumber(event.target.value)}
+                  slotProps={{
+                    htmlInput: {
+                      inputMode: "tel",
+                    },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <DialpadRounded
+                            fontSize="small"
+                            sx={{ color: "text.secondary" }}
+                          />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              ) : (
+                <TextField
+                  fullWidth
+                  value={referenceNumber}
+                  placeholder="Reference number from the app"
+                  onChange={(event) => setReferenceNumber(event.target.value)}
+                />
+              )}
+            </Stack>
+          ) : (
+            <Stack spacing={1.5}>
+              {qrCodeUrls[provider] ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={qrCodeUrls[provider] as string}
+                    alt={`${providerLabel(provider)} cash-out QR code`}
+                    sx={{
+                      width: "100%",
+                      maxWidth: 300,
+                      borderRadius: 3,
+                      boxShadow:
+                        "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)",
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Button
+                  variant="outlined"
+                  startIcon={<QrCode2Rounded fontSize="small" />}
+                  onClick={() => setQrDialogOpen(true)}
+                >
+                  Upload {providerLabel(provider)} QR for customers to scan
+                </Button>
+              )}
               <Stack spacing={1}>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Recipient
+                  Reference number (optional)
                 </Typography>
-                <SegmentedControl
-                  ariaLabel="cash-in identifier"
-                  segments={ID_MODE_SEGMENTS}
-                  selectedKeys={[idMode]}
-                  onSelect={(key) => setIdMode(key as EWalletIdMode)}
+                <TextField
+                  fullWidth
+                  value={referenceNumber}
+                  placeholder="Reference number from the app"
+                  onChange={(event) => setReferenceNumber(event.target.value)}
                 />
-                {idMode === "mobile" ? (
-                  <TextField
-                    fullWidth
-                    value={accountNumber}
-                    placeholder="Mobile number"
-                    onChange={(event) => setAccountNumber(event.target.value)}
-                    slotProps={{
-                      htmlInput: {
-                        inputMode: "tel",
-                      },
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <DialpadRounded
-                              fontSize="small"
-                              sx={{ color: "text.secondary" }}
-                            />
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                  />
-                ) : (
-                  <TextField
-                    fullWidth
-                    value={referenceNumber}
-                    placeholder="Reference number from the app"
-                    onChange={(event) =>
-                      setReferenceNumber(event.target.value)
-                    }
-                  />
-                )}
               </Stack>
-            ) : (
-              <Stack spacing={1.5}>
-                {qrCodeUrls[provider] ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={qrCodeUrls[provider] as string}
-                      alt={`${providerLabel(provider)} cash-out QR code`}
-                      sx={{
-                        width: "100%",
-                        maxWidth: 300,
-                        borderRadius: 3,
-                        boxShadow:
-                          "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)",
-                      }}
-                    />
-                  </Box>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    startIcon={<QrCode2Rounded fontSize="small" />}
-                    onClick={() => setQrDialogOpen(true)}
-                  >
-                    Upload {providerLabel(provider)} QR for customers to scan
-                  </Button>
-                )}
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Reference number (optional)
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    value={referenceNumber}
-                    placeholder="Reference number from the app"
-                    onChange={(event) =>
-                      setReferenceNumber(event.target.value)
-                    }
-                  />
-                </Stack>
-              </Stack>
-            )}
-            <Typography variant="subtitle2" color="text.secondary">
-              Amount
+            </Stack>
+          )}
+
+          <Box sx={{ textAlign: "center", py: 0.5 }}>
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 1 }}
+            >
+              {isCashIn ? "Amount to send" : "Amount to hand customer"}
             </Typography>
-            <TextField
-              fullWidth
-              type="number"
-              value={amountInput}
-              placeholder="0.00"
-              onChange={(event) => setAmountInput(event.target.value)}
-              slotProps={{
-                htmlInput: {
-                  min: 0,
-                  step: "0.01",
-                  inputMode: "decimal",
-                },
-              }}
-            />
-          </Stack>
+            <Stack
+              direction="row"
+              justifyContent="center"
+              alignItems="center"
+              spacing={0.5}
+              sx={{ mt: 0.25 }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: amount > 0 ? "text.primary" : "text.disabled",
+                }}
+              >
+                ₱
+              </Typography>
+              <InputBase
+                value={amountInput}
+                onChange={(event) => setAmountInput(event.target.value)}
+                placeholder="0.00"
+                type="number"
+                autoFocus={false}
+                slotProps={{
+                  input: {
+                    inputMode: "decimal",
+                    min: 0,
+                    step: "0.01",
+                    style: { textAlign: "center", padding: 0 },
+                  },
+                }}
+                sx={{
+                  fontSize: 44,
+                  fontWeight: 800,
+                  width: `${(amountInput || "0.00").length + 1}ch`,
+                }}
+              />
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.75}
+              useFlexGap
+              flexWrap="wrap"
+              justifyContent="center"
+              sx={{ mt: 1.5 }}
+            >
+              {QUICK_AMOUNTS.map((quickAmount) => (
+                <Chip
+                  key={quickAmount}
+                  size="small"
+                  clickable
+                  label={`₱${quickAmount.toLocaleString()}`}
+                  onClick={() => setAmountInput(String(quickAmount))}
+                />
+              ))}
+            </Stack>
+          </Box>
 
           {amount > 0 ? (
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: "action.hover",
-              }}
-            >
-              <Stack spacing={0.75}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">
-                    {isCashIn ? "Amount to send" : "Amount to hand customer"}
-                  </Typography>
-                  <Typography>₱{amount.toFixed(2)}</Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">Service fee</Typography>
-                  <Typography>₱{fee.toFixed(2)}</Typography>
-                </Stack>
-                <Divider sx={{ my: 0.5 }} />
-                {isCashIn ? (
+            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+              <Box sx={{ p: 1.5 }}>
+                <Stack spacing={0.75}>
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontWeight: 700 }}>
-                      Customer pays
+                    <Typography color="text.secondary">
+                      {isCashIn ? "Amount to send" : "Amount to hand customer"}
                     </Typography>
-                    <Typography sx={{ fontWeight: 700 }}>
-                      ₱{(amount + fee).toFixed(2)}
+                    <Typography>₱{amount.toFixed(2)}</Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary">Service fee</Typography>
+                    <Typography>₱{fee.toFixed(2)}</Typography>
+                  </Stack>
+                  <Divider sx={{ my: 0.5 }} />
+                  {isCashIn ? (
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography sx={{ fontWeight: 700 }}>
+                        Customer pays
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700 }}>
+                        ₱{(amount + fee).toFixed(2)}
+                      </Typography>
+                    </Stack>
+                  ) : null}
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary">
+                      Recorded as sale
+                    </Typography>
+                    <Typography color="text.secondary">
+                      ₱{fee.toFixed(2)}
                     </Typography>
                   </Stack>
-                ) : null}
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">
-                    Recorded as sale
-                  </Typography>
-                  <Typography color="text.secondary">
-                    ₱{fee.toFixed(2)}
-                  </Typography>
                 </Stack>
-              </Stack>
-            </Box>
+              </Box>
+            </Card>
           ) : null}
 
           <Button
@@ -534,7 +632,7 @@ export default function EWalletPage() {
             disabled={amount <= 0}
             onClick={handleOpenConfirm}
           >
-            Complete Transaction
+            Review Transaction
           </Button>
         </Stack>
       </Container>

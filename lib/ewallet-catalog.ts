@@ -14,6 +14,19 @@ export type EWalletCatalogEntry = {
   label: string;
 };
 
+// Hex values read directly from each provider's official logo artwork
+// (GCash blue, Maya mint green) — the same sourcing approach used for the
+// load brands.
+export const EWALLET_PROVIDER_COLORS: Record<EWalletProvider, string> = {
+  GCASH: "#007CFF",
+  MAYA: "#75EEA5",
+};
+
+export const EWALLET_PROVIDER_LOGOS: Record<EWalletProvider, string> = {
+  GCASH: "/ewallet-brands/gcash.svg",
+  MAYA: "/ewallet-brands/maya.svg",
+};
+
 export const EWALLET_PROVIDERS: Array<{
   provider: EWalletProvider;
   label: string;
