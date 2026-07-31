@@ -328,7 +328,7 @@ export default function WeekStripFilter({
           alignItems="center"
           justifyContent="space-between"
           spacing={1}
-          sx={{ px: 2 }}
+          sx={{ pl: 2, pr: 1 }}
         >
           {/* The invisible date input sits on top of the pill so tapping it
             opens the platform's native calendar picker. */}
@@ -461,7 +461,7 @@ export default function WeekStripFilter({
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ display: "block", mt: 0.5, px: 2.5 }}
+          sx={{ display: "block", mt: 0.5, px: 2 }}
         >
           Week total: {weekTotalFormatter.format(weekTotal)}
         </Typography>
