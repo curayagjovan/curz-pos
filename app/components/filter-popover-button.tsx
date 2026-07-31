@@ -29,6 +29,9 @@ type FilterPopoverButtonProps = {
   /** Set false for a plain mode toggle where every option is a deliberate
    * choice rather than an optional filter — hides the "filter active" dot. */
   showActiveBadge?: boolean;
+  /** Borders the button to match an adjacent outlined TextField, instead of
+   * the default filled-pill look. */
+  outlined?: boolean;
 };
 
 export default function FilterPopoverButton({
@@ -37,6 +40,7 @@ export default function FilterPopoverButton({
   selectedKeys,
   onSelect,
   showActiveBadge = true,
+  outlined = false,
 }: FilterPopoverButtonProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const closePopover = () => setAnchorEl(null);
@@ -64,12 +68,23 @@ export default function FilterPopoverButton({
           onClick={(event) => setAnchorEl(event.currentTarget)}
           aria-label={ariaLabel}
           aria-haspopup="true"
-          sx={{
-            borderRadius: "10px",
-            border: "1px solid",
-            borderColor: selectedOption?.color ?? "divider",
-            color: selectedOption?.color ?? "text.secondary",
-          }}
+          sx={
+            outlined
+              ? {
+                  borderRadius: "10px",
+                  border: "1px solid",
+                  borderColor:
+                    selectedOption?.color ??
+                    "rgba(var(--mui-palette-common-onBackgroundChannel) / 0.23)",
+                  color: selectedOption?.color ?? "text.secondary",
+                }
+              : {
+                  borderRadius: 1,
+                  bgcolor:
+                    "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
+                  color: selectedOption?.color ?? "text.secondary",
+                }
+          }
         >
           {SelectedIcon ? (
             <SelectedIcon fontSize="small" />

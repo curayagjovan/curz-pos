@@ -472,6 +472,7 @@ export default function EWalletPage() {
                   selectedKeys={[idMode]}
                   onSelect={(key) => setIdMode(key as EWalletIdMode)}
                   showActiveBadge={false}
+                  outlined
                 />
               </Stack>
             </Stack>
