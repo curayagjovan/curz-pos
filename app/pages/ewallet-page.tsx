@@ -16,12 +16,14 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
+import NumbersRounded from "@mui/icons-material/NumbersRounded";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import QrCode2Rounded from "@mui/icons-material/QrCode2Rounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
-import EWalletConfirmDrawer from "@/app/components/ewallet-confirm-drawer";
 import EWalletFeeDialog from "@/app/components/ewallet-fee-dialog";
+import FilterPopoverButton from "@/app/components/filter-popover-button";
+import type { FilterPopoverOption } from "@/app/components/filter-popover-button";
 import SegmentedControl from "@/app/components/segmented-control";
 import type { SegmentOption } from "@/app/components/segmented-control";
 import QrCodeDialog from "@/app/components/qr-code-dialog";
@@ -57,22 +59,15 @@ const DIRECTION_SEGMENTS: SegmentOption[] = EWALLET_DIRECTIONS.map(
   ({ direction, label }) => ({ key: direction, label }),
 );
 
-const ID_MODE_SEGMENTS: SegmentOption[] = [
-  { key: "mobile", label: "Mobile No." },
-  { key: "reference", label: "Reference No." },
+const ID_MODE_OPTIONS: FilterPopoverOption[] = [
+  { key: "mobile", label: "Mobile No.", icon: DialpadRounded },
+  { key: "reference", label: "Reference No.", icon: NumbersRounded },
 ];
 
 function providerLabel(provider: EWalletProvider) {
   return (
     EWALLET_PROVIDERS.find((entry) => entry.provider === provider)?.label ??
     provider
-  );
-}
-
-function directionLabel(direction: EWalletDirection) {
-  return (
-    EWALLET_DIRECTIONS.find((entry) => entry.direction === direction)?.label ??
-    direction
   );
 }
 
@@ -89,12 +84,10 @@ export default function EWalletPage() {
   const [provider, setProvider] = useState<EWalletProvider>("GCASH");
   const [direction, setDirection] = useState<EWalletDirection>("CASH_IN");
   const [amountInput, setAmountInput] = useState("");
+  const [amountFocused, setAmountFocused] = useState(false);
   const [idMode, setIdMode] = useState<EWalletIdMode>("mobile");
   const [accountNumber, setAccountNumber] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
-  const [confirmReferenceNumber, setConfirmReferenceNumber] = useState("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
@@ -113,15 +106,14 @@ export default function EWalletPage() {
     [amount, feeSettings],
   );
   const isCashIn = direction === "CASH_IN";
+  const busy = completing || sendingRequest;
 
-  const handleOpenConfirm = () => {
+  const validateAmount = () => {
     if (amount <= 0) {
       showSnackbar({ message: "Enter a valid amount", severity: "error" });
-      return;
+      return false;
     }
-    setConfirmAccountNumber(accountNumber);
-    setConfirmReferenceNumber(referenceNumber);
-    setConfirmOpen(true);
+    return true;
   };
 
   const validateIdentifier = () => {
@@ -129,7 +121,7 @@ export default function EWalletPage() {
       return true;
     }
     if (idMode === "mobile") {
-      const digits = normalizeMobileNumber(confirmAccountNumber);
+      const digits = normalizeMobileNumber(accountNumber);
       if (digits.length < 10) {
         showSnackbar({
           message: "Enter a valid mobile number",
@@ -139,7 +131,7 @@ export default function EWalletPage() {
       }
       return true;
     }
-    if (confirmReferenceNumber.trim().length < 6) {
+    if (referenceNumber.trim().length < 6) {
       showSnackbar({
         message: "Enter a valid reference number",
         severity: "error",
@@ -149,11 +141,10 @@ export default function EWalletPage() {
     return true;
   };
 
-  const handleCloseConfirm = () => {
-    if (completing || sendingRequest) {
-      return;
-    }
-    setConfirmOpen(false);
+  const handleCancel = () => {
+    setAmountInput("");
+    setAccountNumber("");
+    setReferenceNumber("");
   };
 
   // Shared by "Send Request" (records the sale as PENDING — the request is
@@ -179,10 +170,10 @@ export default function EWalletPage() {
       // exchange of cash and e-money, so it must not inflate sales.
       const unitPrice = fee;
       const requestId = crypto.randomUUID();
-      const refText = confirmReferenceNumber.trim();
+      const refText = referenceNumber.trim();
       const identifierText =
         isCashIn && idMode === "mobile"
-          ? ` to ${confirmAccountNumber}`
+          ? ` to ${accountNumber}`
           : refText
             ? ` (Ref ${refText})`
             : "";
@@ -256,7 +247,7 @@ export default function EWalletPage() {
   };
 
   const handleSendSms = async () => {
-    if (!validateIdentifier()) {
+    if (!validateAmount() || !validateIdentifier()) {
       return;
     }
 
@@ -284,19 +275,18 @@ export default function EWalletPage() {
       direction,
       amount,
       isCashIn && idMode === "mobile"
-        ? { accountNumber: confirmAccountNumber }
-        : { referenceNumber: confirmReferenceNumber },
+        ? { accountNumber }
+        : { referenceNumber },
     );
     window.location.href = buildSmsHref(smsRecipient, message);
 
-    setConfirmOpen(false);
     setAmountInput("");
     setAccountNumber("");
     setReferenceNumber("");
   };
 
   const handleComplete = async () => {
-    if (!validateIdentifier()) {
+    if (!validateAmount() || !validateIdentifier()) {
       return;
     }
 
@@ -306,7 +296,6 @@ export default function EWalletPage() {
     }
 
     showSnackbar({ message: `Order ${savedTransaction.orderNo} completed` });
-    setConfirmOpen(false);
     setAmountInput("");
     setAccountNumber("");
     setReferenceNumber("");
@@ -439,42 +428,52 @@ export default function EWalletPage() {
               <Typography variant="subtitle2" color="text.secondary">
                 Recipient
               </Typography>
-              <SegmentedControl
-                ariaLabel="cash-in identifier"
-                segments={ID_MODE_SEGMENTS}
-                selectedKeys={[idMode]}
-                onSelect={(key) => setIdMode(key as EWalletIdMode)}
-              />
-              {idMode === "mobile" ? (
-                <TextField
-                  fullWidth
-                  value={accountNumber}
-                  placeholder="Mobile number"
-                  onChange={(event) => setAccountNumber(event.target.value)}
-                  slotProps={{
-                    htmlInput: {
-                      inputMode: "tel",
-                    },
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <DialpadRounded
-                            fontSize="small"
-                            sx={{ color: "text.secondary" }}
-                          />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {idMode === "mobile" ? (
+                    <TextField
+                      fullWidth
+                      value={accountNumber}
+                      placeholder="Mobile number"
+                      onChange={(event) =>
+                        setAccountNumber(event.target.value)
+                      }
+                      slotProps={{
+                        htmlInput: {
+                          inputMode: "tel",
+                        },
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <DialpadRounded
+                                fontSize="small"
+                                sx={{ color: "text.secondary" }}
+                              />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      value={referenceNumber}
+                      placeholder="Reference number from the app"
+                      onChange={(event) =>
+                        setReferenceNumber(event.target.value)
+                      }
+                    />
+                  )}
+                </Box>
+                <Divider orientation="vertical" sx={{ height: 30 }} />
+                <FilterPopoverButton
+                  ariaLabel="cash-in identifier"
+                  options={ID_MODE_OPTIONS}
+                  selectedKeys={[idMode]}
+                  onSelect={(key) => setIdMode(key as EWalletIdMode)}
+                  showActiveBadge={false}
                 />
-              ) : (
-                <TextField
-                  fullWidth
-                  value={referenceNumber}
-                  placeholder="Reference number from the app"
-                  onChange={(event) => setReferenceNumber(event.target.value)}
-                />
-              )}
+              </Stack>
             </Stack>
           ) : (
             <Stack spacing={1.5}>
@@ -548,7 +547,9 @@ export default function EWalletPage() {
               <InputBase
                 value={amountInput}
                 onChange={(event) => setAmountInput(event.target.value)}
-                placeholder="0.00"
+                onFocus={() => setAmountFocused(true)}
+                onBlur={() => setAmountFocused(false)}
+                placeholder={amountFocused ? "" : "0.00"}
                 type="number"
                 autoFocus={false}
                 slotProps={{
@@ -562,7 +563,7 @@ export default function EWalletPage() {
                 sx={{
                   fontSize: 44,
                   fontWeight: 800,
-                  width: `${(amountInput || "0.00").length + 1}ch`,
+                  width: `${Math.max(2, amountFocused ? amountInput.length : (amountInput || "0.00").length) + 1}ch`,
                 }}
               />
             </Stack>
@@ -625,37 +626,35 @@ export default function EWalletPage() {
             </Card>
           ) : null}
 
-          <Button
-            fullWidth
-            size="large"
-            variant="contained"
-            disabled={amount <= 0}
-            onClick={handleOpenConfirm}
-          >
-            Review Transaction
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              color="inherit"
+              disabled={busy}
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="info"
+              disabled={amount <= 0 || busy}
+              onClick={() => void handleSendSms()}
+            >
+              {sendingRequest ? "Sending..." : "Send Request"}
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={amount <= 0 || busy}
+              onClick={() => void handleComplete()}
+            >
+              {completing ? "Saving..." : "Completed"}
+            </Button>
+          </Stack>
         </Stack>
       </Container>
-
-      <EWalletConfirmDrawer
-        open={confirmOpen}
-        provider={provider}
-        providerLabel={providerLabel(provider)}
-        direction={direction}
-        directionLabel={directionLabel(direction)}
-        amount={amount}
-        fee={fee}
-        idMode={idMode}
-        accountNumber={confirmAccountNumber}
-        referenceNumber={confirmReferenceNumber}
-        completing={completing}
-        sendingRequest={sendingRequest}
-        onClose={handleCloseConfirm}
-        onAccountNumberChange={setConfirmAccountNumber}
-        onReferenceNumberChange={setConfirmReferenceNumber}
-        onSendSms={() => void handleSendSms()}
-        onComplete={() => void handleComplete()}
-      />
 
       <EWalletFeeDialog
         open={feeDialogOpen}

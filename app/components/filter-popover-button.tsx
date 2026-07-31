@@ -26,6 +26,9 @@ type FilterPopoverButtonProps = {
   options: FilterPopoverOption[];
   selectedKeys: string[];
   onSelect: (key: string) => void;
+  /** Set false for a plain mode toggle where every option is a deliberate
+   * choice rather than an optional filter — hides the "filter active" dot. */
+  showActiveBadge?: boolean;
 };
 
 export default function FilterPopoverButton({
@@ -33,6 +36,7 @@ export default function FilterPopoverButton({
   options,
   selectedKeys,
   onSelect,
+  showActiveBadge = true,
 }: FilterPopoverButtonProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const closePopover = () => setAnchorEl(null);
@@ -43,7 +47,7 @@ export default function FilterPopoverButton({
     selectedKeys.every((key) => key === allOption?.key);
 
   const selectedOption =
-    !isAllSelected && selectedKeys.length === 1
+    selectedKeys.length === 1
       ? options.find((option) => option.key === selectedKeys[0]) ?? null
       : null;
   const SelectedIcon = selectedOption?.icon;
@@ -54,15 +58,16 @@ export default function FilterPopoverButton({
         color="primary"
         variant="dot"
         overlap="circular"
-        invisible={isAllSelected}
+        invisible={!showActiveBadge || isAllSelected}
       >
         <IconButton
           onClick={(event) => setAnchorEl(event.currentTarget)}
           aria-label={ariaLabel}
           aria-haspopup="true"
           sx={{
-            borderRadius: 1,
-            bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
+            borderRadius: "10px",
+            border: "1px solid",
+            borderColor: selectedOption?.color ?? "divider",
             color: selectedOption?.color ?? "text.secondary",
           }}
         >
