@@ -461,7 +461,7 @@ export default function WeekStripFilter({
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ display: "block", mt: 0.5, px: 3 }}
+          sx={{ display: "block", mt: 0.5, px: 2.5 }}
         >
           Week total: {weekTotalFormatter.format(weekTotal)}
         </Typography>
