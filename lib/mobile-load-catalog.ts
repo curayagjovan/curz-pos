@@ -28,6 +28,18 @@ export const LOAD_BRANDS: Array<{
   { brand: "DITO", group: "DITO", label: "DITO" },
 ];
 
+// Smart's green (#78BE20) and TNT's orange (#E28C39) are pulled from each
+// brand's own published style guide. Globe, TM, and DITO don't have a
+// publicly indexed one, so these use each network's well-known signature
+// color instead (Globe blue, TM's flag-based orange/yellow, DITO red).
+export const LOAD_BRAND_COLORS: Record<LoadBrand, string> = {
+  GLOBE: "#0033A0",
+  TM: "#F8B133",
+  SMART: "#78BE20",
+  TNT: "#E28C39",
+  DITO: "#E4032C",
+};
+
 const REGULAR_LOAD_AMOUNTS = [10, 15, 20, 30, 50, 60, 100, 150, 200, 300, 500, 1000];
 
 const REGULAR_LOAD_CATALOG: LoadCatalogItem[] = LOAD_BRANDS.flatMap(

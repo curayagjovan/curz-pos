@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
 import CheckRounded from "@mui/icons-material/CheckRounded";
 import FilterListRounded from "@mui/icons-material/FilterListRounded";
 import IconButton from "@mui/material/IconButton";
@@ -101,6 +102,17 @@ export default function FilterPopoverButton({
                 {Icon ? (
                   <ListItemIcon>
                     <Icon fontSize="small" sx={{ color: option.color }} />
+                  </ListItemIcon>
+                ) : option.color ? (
+                  <ListItemIcon>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        bgcolor: option.color,
+                      }}
+                    />
                   </ListItemIcon>
                 ) : null}
                 <ListItemText>{option.label}</ListItemText>

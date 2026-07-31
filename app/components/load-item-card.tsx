@@ -9,7 +9,8 @@ import Chip from "@mui/material/Chip";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import { alpha } from "@mui/material/styles";
+import { LOAD_BRAND_COLORS, type LoadCatalogItem } from "@/lib/mobile-load-catalog";
 
 type LoadItemCardProps = {
   item: LoadCatalogItem;
@@ -24,6 +25,8 @@ const LoadItemCard = memo(function LoadItemCard({
   price,
   onSelect,
 }: LoadItemCardProps) {
+  const brandColor = LOAD_BRAND_COLORS[item.brand];
+
   return (
     <ListItem disablePadding sx={{ mb: 1 }}>
       <Card
@@ -53,8 +56,8 @@ const LoadItemCard = memo(function LoadItemCard({
                 height: 34,
                 fontSize: 12,
                 fontWeight: 700,
-                bgcolor: "action.selected",
-                color: "text.primary",
+                bgcolor: alpha(brandColor, 0.16),
+                color: brandColor,
               }}
             >
               {brandLabel.slice(0, 2).toUpperCase()}

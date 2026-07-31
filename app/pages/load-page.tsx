@@ -29,6 +29,7 @@ import { usePageContext } from "@/app/context/page-context";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import {
+  LOAD_BRAND_COLORS,
   LOAD_BRANDS,
   type LoadBrand,
   type LoadCatalogItem,
@@ -46,7 +47,11 @@ function brandLabel(brand: LoadBrand) {
 
 const BRAND_OPTIONS: FilterPopoverOption[] = [
   { key: "all", label: "All" },
-  ...LOAD_BRANDS.map(({ brand, label }) => ({ key: brand, label })),
+  ...LOAD_BRANDS.map(({ brand, label }) => ({
+    key: brand,
+    label,
+    color: LOAD_BRAND_COLORS[brand],
+  })),
 ];
 
 function matchesLoadSearch(item: LoadCatalogItem, query: string) {
