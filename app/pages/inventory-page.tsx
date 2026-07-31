@@ -299,19 +299,35 @@ export default function InventoryPage() {
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
-          <ProductsSearchBar
-            icon="search"
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search inventory"
-            ariaLabel="search inventory"
-          />
+          <Box
+            sx={{
+              position: "sticky",
+              top: 0,
+              zIndex: 5,
+              pt: 0.5,
+              pb: 1,
+              bgcolor: "background.default",
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <ProductsSearchBar
+                  icon="search"
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search inventory"
+                  ariaLabel="search inventory"
+                  sticky={false}
+                />
+              </Box>
 
-          <CategoryFilterChips
-            products={products}
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-          />
+              <CategoryFilterChips
+                products={products}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+              />
+            </Stack>
+          </Box>
 
           <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
             {loading

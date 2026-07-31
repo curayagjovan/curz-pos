@@ -1,14 +1,15 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
-import { alpha } from "@mui/material/styles";
-import ButtonBase from "@mui/material/ButtonBase";
+import Badge from "@mui/material/Badge";
 import CheckRounded from "@mui/icons-material/CheckRounded";
-import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import FilterListRounded from "@mui/icons-material/FilterListRounded";
+import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import MenuList from "@mui/material/MenuList";
+import Popover from "@mui/material/Popover";
 import {
   getCategoryColor,
   PRODUCT_CATEGORY_OPTIONS,
@@ -22,15 +23,13 @@ type CategoryFilterChipsProps = {
   onChange: (value: ProductCategoryValue | null) => void;
 };
 
-const easeIOS = "cubic-bezier(0.32, 0.72, 0, 1)";
-
 const CategoryFilterChips = memo(function CategoryFilterChips({
   products,
   value,
   onChange,
 }: CategoryFilterChipsProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const closeMenu = () => setAnchorEl(null);
+  const closePopover = () => setAnchorEl(null);
 
   const availableOptions = useMemo(() => {
     const present = new Set(products.map((product) => product.category));
@@ -48,87 +47,89 @@ const CategoryFilterChips = memo(function CategoryFilterChips({
     return null;
   }
 
-  const SelectedIcon = selectedOption?.Icon;
   const selectedColor = selectedOption
     ? getCategoryColor(selectedOption.value)
     : null;
+  const SelectedIcon = selectedOption?.Icon;
 
   return (
     <>
-      <ButtonBase
-        onClick={(event) => setAnchorEl(event.currentTarget)}
-        aria-haspopup="menu"
-        aria-label="filter by category"
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 0.75,
-          minHeight: 36,
-          px: 1.25,
-          borderRadius: "10px",
-          fontFamily: "inherit",
-          fontSize: 13,
-          fontWeight: 600,
-          bgcolor: selectedColor
-            ? alpha(selectedColor, 0.14)
-            : "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
-          color: selectedColor ?? "text.secondary",
-          transition: `background-color 200ms ${easeIOS}, color 200ms ${easeIOS}`,
-          "&:active": { opacity: 0.7 },
-        }}
+      <Badge
+        color="primary"
+        variant="dot"
+        overlap="circular"
+        invisible={!selectedOption}
       >
-        {SelectedIcon ? (
-          <SelectedIcon sx={{ fontSize: 17, color: "inherit" }} />
-        ) : null}
-        {selectedOption?.label ?? "All Categories"}
-        <ExpandMoreRounded sx={{ fontSize: 18, color: "inherit", opacity: 0.6 }} />
-      </ButtonBase>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={closeMenu}
-        slotProps={{ paper: { sx: { minWidth: 220, maxHeight: 380 } } }}
-      >
-        <MenuItem
-          selected={value === null}
-          onClick={() => {
-            onChange(null);
-            closeMenu();
+        <IconButton
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          aria-label="filter by category"
+          aria-haspopup="true"
+          sx={{
+            borderRadius: 1,
+            bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
+            color: selectedColor ?? "text.secondary",
           }}
         >
-          <ListItemText>All Categories</ListItemText>
-          {value === null ? (
-            <CheckRounded fontSize="small" sx={{ ml: 1, color: "primary.main" }} />
-          ) : null}
-        </MenuItem>
-        {availableOptions.map(({ value: optionValue, label, Icon }) => {
-          const selected = value === optionValue;
-          const categoryColor = getCategoryColor(optionValue);
+          {SelectedIcon ? (
+            <SelectedIcon fontSize="small" />
+          ) : (
+            <FilterListRounded fontSize="small" />
+          )}
+        </IconButton>
+      </Badge>
 
-          return (
-            <MenuItem
-              key={optionValue}
-              selected={selected}
-              onClick={() => {
-                onChange(optionValue);
-                closeMenu();
-              }}
-            >
-              <ListItemIcon>
-                <Icon fontSize="small" sx={{ color: categoryColor }} />
-              </ListItemIcon>
-              <ListItemText>{label}</ListItemText>
-              {selected ? (
-                <CheckRounded
-                  fontSize="small"
-                  sx={{ ml: 1, color: categoryColor }}
-                />
-              ) : null}
-            </MenuItem>
-          );
-        })}
-      </Menu>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={closePopover}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{ paper: { sx: { minWidth: 220, maxHeight: 380 } } }}
+      >
+        <MenuList>
+          <MenuItem
+            selected={value === null}
+            onClick={() => {
+              onChange(null);
+              closePopover();
+            }}
+          >
+            <ListItemText>All Categories</ListItemText>
+            {value === null ? (
+              <CheckRounded
+                fontSize="small"
+                sx={{ ml: 1, color: "primary.main" }}
+              />
+            ) : null}
+          </MenuItem>
+          {availableOptions.map(({ value: optionValue, label, Icon }) => {
+            const selected = value === optionValue;
+            const categoryColor = getCategoryColor(optionValue);
+
+            return (
+              <MenuItem
+                key={optionValue}
+                selected={selected}
+                onClick={() => {
+                  onChange(optionValue);
+                  closePopover();
+                }}
+              >
+                <ListItemIcon>
+                  <Icon fontSize="small" sx={{ color: categoryColor }} />
+                </ListItemIcon>
+                <ListItemText>{label}</ListItemText>
+                {selected ? (
+                  <CheckRounded
+                    fontSize="small"
+                    sx={{ ml: 1, color: categoryColor }}
+                  />
+                ) : null}
+              </MenuItem>
+            );
+          })}
+        </MenuList>
+      </Popover>
     </>
   );
 });

@@ -80,9 +80,15 @@ export default function WeekStripFilter({
 }: WeekStripFilterProps) {
   const today = startOfDay(new Date());
   const weekStart = startOfWeek(selectedDate);
-  const currentWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index));
-  const prevWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index - 7));
-  const nextWeekDays = DAY_LABELS.map((_, index) => addDays(weekStart, index + 7));
+  const currentWeekDays = DAY_LABELS.map((_, index) =>
+    addDays(weekStart, index),
+  );
+  const prevWeekDays = DAY_LABELS.map((_, index) =>
+    addDays(weekStart, index - 7),
+  );
+  const nextWeekDays = DAY_LABELS.map((_, index) =>
+    addDays(weekStart, index + 7),
+  );
   const weekTotal = dayTotals.reduce(
     (sum, value) => sum + (Number.isFinite(value) ? value : 0),
     0,
@@ -98,7 +104,8 @@ export default function WeekStripFilter({
   const [stage, setStage] = useState<SwipeStage>("idle");
   const transitionEnabled = stage === "settling";
 
-  const getTrackWidth = () => trackRef.current?.getBoundingClientRect().width || 0;
+  const getTrackWidth = () =>
+    trackRef.current?.getBoundingClientRect().width || 0;
 
   const goToWeek = (direction: 1 | -1) => {
     if (stage !== "idle") {
@@ -163,7 +170,9 @@ export default function WeekStripFilter({
     }
   };
 
-  const handleTransitionEnd = (event: React.TransitionEvent<HTMLDivElement>) => {
+  const handleTransitionEnd = (
+    event: React.TransitionEvent<HTMLDivElement>,
+  ) => {
     if (
       stage !== "settling" ||
       event.target !== trackRef.current ||
@@ -249,7 +258,9 @@ export default function WeekStripFilter({
                   : "text.disabled",
             }}
           >
-            {total === null ? "···" : `₱${compactAmountFormatter.format(total)}`}
+            {total === null
+              ? "···"
+              : `₱${compactAmountFormatter.format(total)}`}
           </Typography>
         </>
       );
@@ -271,7 +282,11 @@ export default function WeekStripFilter({
           {content}
         </ButtonBase>
       ) : (
-        <Box key={day.toISOString()} aria-hidden sx={{ display: "flex", ...cellSx }}>
+        <Box
+          key={day.toISOString()}
+          aria-hidden
+          sx={{ display: "flex", ...cellSx }}
+        >
           {content}
         </Box>
       );
@@ -296,159 +311,161 @@ export default function WeekStripFilter({
         position: "sticky",
         top: 0,
         zIndex: 5,
-        pt: 0.5,
-        pb: 0.75,
+        pb: 1,
         bgcolor: "background.default",
       }}
     >
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        spacing={1}
-      >
-        {/* The invisible date input sits on top of the pill so tapping it
-            opens the platform's native calendar picker. */}
-        <Box
-          component="label"
-          sx={{
-            position: "relative",
-            display: "inline-flex",
-            alignItems: "center",
-            px: 1.5,
-            py: 0.7,
-            borderRadius: "10px",
-            border: "1px solid",
-            borderColor: "divider",
-            cursor: "pointer",
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
-            {pillFormatter.format(selectedDate)}
-          </Typography>
-          <Box
-            component="input"
-            type="date"
-            value={toDateInputValue(selectedDate)}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-              handleDatePicked(event.target.value)
-            }
-            aria-label="pick a date"
-            sx={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              opacity: 0,
-              border: 0,
-              p: 0,
-              cursor: "pointer",
-              "&::-webkit-calendar-picker-indicator": {
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                cursor: "pointer",
-              },
-            }}
-          />
-        </Box>
-
-        <Stack direction="row" alignItems="center" spacing={0}>
-          <IconButton
-            aria-label="back to today"
-            onClick={() => onSelectDate(startOfDay(new Date()))}
-          >
-            <EventRepeatRounded fontSize="small" />
-          </IconButton>
-          <IconButton
-            aria-label="previous week"
-            onClick={() => goToWeek(-1)}
-          >
-            <ChevronLeftRounded />
-          </IconButton>
-          <IconButton
-            aria-label="next week"
-            onClick={() => goToWeek(1)}
-          >
-            <ChevronRightRounded />
-          </IconButton>
-        </Stack>
-      </Stack>
-
       <Box
         sx={{
-          mt: 1,
-          position: "relative",
-          overflow: "hidden",
+          pt: 0.5,
+          pb: 0.75,
           borderRadius: "10px",
           bgcolor: "rgba(var(--mui-palette-text-primaryChannel) / 0.06)",
         }}
       >
-        {/* Previous week — tiled immediately to the left, revealed as the
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          spacing={1}
+          sx={{ px: 2 }}
+        >
+          {/* The invisible date input sits on top of the pill so tapping it
+            opens the platform's native calendar picker. */}
+          <Box
+            component="label"
+            sx={{
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              px: 1.5,
+              py: 0.7,
+              borderRadius: "10px",
+              border: "1px solid",
+              borderColor: "divider",
+              cursor: "pointer",
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+              {pillFormatter.format(selectedDate)}
+            </Typography>
+            <Box
+              component="input"
+              type="date"
+              value={toDateInputValue(selectedDate)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                handleDatePicked(event.target.value)
+              }
+              aria-label="pick a date"
+              sx={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 0,
+                border: 0,
+                p: 0,
+                cursor: "pointer",
+                "&::-webkit-calendar-picker-indicator": {
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  cursor: "pointer",
+                },
+              }}
+            />
+          </Box>
+
+          <Stack direction="row" alignItems="center" spacing={0}>
+            <IconButton
+              aria-label="back to today"
+              onClick={() => onSelectDate(startOfDay(new Date()))}
+            >
+              <EventRepeatRounded fontSize="small" />
+            </IconButton>
+            <IconButton aria-label="previous week" onClick={() => goToWeek(-1)}>
+              <ChevronLeftRounded />
+            </IconButton>
+            <IconButton aria-label="next week" onClick={() => goToWeek(1)}>
+              <ChevronRightRounded />
+            </IconButton>
+          </Stack>
+        </Stack>
+
+        <Box
+          sx={{
+            mt: 1,
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: "10px",
+          }}
+        >
+          {/* Previous week — tiled immediately to the left, revealed as the
             current pane is dragged rightward. */}
-        <Box
-          aria-hidden
-          sx={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            pointerEvents: "none",
-            transform: `translateX(calc(-100% + ${dragPx}px))`,
-            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
-          }}
-        >
-          {renderWeekPane(prevWeekDays, false)}
-        </Box>
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              pointerEvents: "none",
+              transform: `translateX(calc(-100% + ${dragPx}px))`,
+              transition: transitionEnabled ? SLIDE_TRANSITION : "none",
+            }}
+          >
+            {renderWeekPane(prevWeekDays, false)}
+          </Box>
 
-        {/* Current week — the only interactive pane; also owns the drag
+          {/* Current week — the only interactive pane; also owns the drag
             gesture and defines the strip's height. */}
-        <Box
-          ref={trackRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onTransitionEnd={handleTransitionEnd}
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            touchAction: "pan-y",
-            cursor: stage === "dragging" ? "grabbing" : "grab",
-            userSelect: stage === "idle" ? "auto" : "none",
-            transform: `translateX(${dragPx}px)`,
-            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
-          }}
-        >
-          {renderWeekPane(currentWeekDays, true)}
-        </Box>
+          <Box
+            ref={trackRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onTransitionEnd={handleTransitionEnd}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              touchAction: "pan-y",
+              cursor: stage === "dragging" ? "grabbing" : "grab",
+              userSelect: stage === "idle" ? "auto" : "none",
+              transform: `translateX(${dragPx}px)`,
+              transition: transitionEnabled ? SLIDE_TRANSITION : "none",
+            }}
+          >
+            {renderWeekPane(currentWeekDays, true)}
+          </Box>
 
-        {/* Next week — tiled immediately to the right, revealed as the
+          {/* Next week — tiled immediately to the right, revealed as the
             current pane is dragged leftward. */}
-        <Box
-          aria-hidden
-          sx={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            pointerEvents: "none",
-            transform: `translateX(calc(100% + ${dragPx}px))`,
-            transition: transitionEnabled ? SLIDE_TRANSITION : "none",
-          }}
-        >
-          {renderWeekPane(nextWeekDays, false)}
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              pointerEvents: "none",
+              transform: `translateX(calc(100% + ${dragPx}px))`,
+              transition: transitionEnabled ? SLIDE_TRANSITION : "none",
+            }}
+          >
+            {renderWeekPane(nextWeekDays, false)}
+          </Box>
         </Box>
-      </Box>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ display: "block", mt: 0.5, px: 0.5 }}
-      >
-        Week total: {weekTotalFormatter.format(weekTotal)}
-      </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", mt: 0.5, px: 3 }}
+        >
+          Week total: {weekTotalFormatter.format(weekTotal)}
+        </Typography>
+      </Box>
     </Box>
   );
 }

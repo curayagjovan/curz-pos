@@ -35,6 +35,7 @@ import { usePageContext } from "@/app/context/page-context";
 import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
 import type { Transaction } from "@/types/transaction";
+import Divider from "@mui/material/Divider";
 
 type CartFlight = {
   id: number;
@@ -654,14 +655,16 @@ export default function ProductsPage() {
               bgcolor: "background.default",
             }}
           >
-            <Stack spacing={0.5}>
-              <ProductsSearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                icon="search"
-                sticky={false}
-              />
-
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <ProductsSearchBar
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  icon="search"
+                  sticky={false}
+                />
+              </Box>
+              <Divider orientation="vertical" sx={{ height: 35 }} />
               <CategoryFilterChips
                 products={products}
                 value={categoryFilter}

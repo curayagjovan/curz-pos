@@ -38,6 +38,7 @@ import { buildLoadMessage } from "@/lib/load-message";
 import { buildSmsHref } from "@/lib/sms-link";
 import { detectNetworkGroup, normalizeMobileNumber } from "@/lib/ph-network";
 import type { Transaction } from "@/types/transaction";
+import Divider from "@mui/material/Divider";
 
 function brandLabel(brand: LoadBrand) {
   return LOAD_BRANDS.find((entry) => entry.brand === brand)?.label ?? brand;
@@ -360,7 +361,6 @@ export default function LoadPage() {
                 sticky={false}
                 inputMode="tel"
               />
-
               <ProductsSearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
