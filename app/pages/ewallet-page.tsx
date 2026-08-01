@@ -166,9 +166,11 @@ export default function EWalletPage() {
     setLoading(true);
 
     try {
-      // Only the service fee is income — the amount itself is a pass-through
-      // exchange of cash and e-money, so it must not inflate sales.
-      const unitPrice = fee;
+      // The recorded sale is the transacted amount plus the service fee —
+      // the amount still moves through the till as real cash (in on a
+      // cash-in, out on a cash-out), so it belongs in the sale total
+      // alongside the fee that's the actual profit.
+      const unitPrice = amount + fee;
       const requestId = crypto.randomUUID();
       const refText = referenceNumber.trim();
       const identifierText =
@@ -619,7 +621,7 @@ export default function EWalletPage() {
                       Recorded as sale
                     </Typography>
                     <Typography color="text.secondary">
-                      ₱{fee.toFixed(2)}
+                      ₱{(amount + fee).toFixed(2)}
                     </Typography>
                   </Stack>
                 </Stack>

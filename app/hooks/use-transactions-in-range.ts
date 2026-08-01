@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 import type { Transaction } from "@/types/transaction";
 
 function normalizeTransaction(transaction: Transaction): Transaction {
@@ -38,21 +39,24 @@ export function useTransactionsInRange(startIso: string, endIso: string) {
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const runFetch = async () => {
+  // Silent background refreshes (realtime/poll/focus) swap in fresh data
+  // without flipping the loading flag — the range is already on screen, so
+  // a spinner would just be noise.
+  const runFetch = useCallback(
+    async (silent: boolean) => {
       const requestId = (requestIdRef.current += 1);
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
         const items = await fetchOrdersInRange(startIso, endIso);
-        if (!cancelled && requestIdRef.current === requestId) {
+        if (requestIdRef.current === requestId) {
           setTransactions(items);
         }
       } catch (err) {
-        if (!cancelled && requestIdRef.current === requestId) {
+        if (requestIdRef.current === requestId) {
           setError(
             err instanceof Error
               ? err.message
@@ -60,43 +64,98 @@ export function useTransactionsInRange(startIso: string, endIso: string) {
           );
         }
       } finally {
-        if (!cancelled && requestIdRef.current === requestId) {
+        if (requestIdRef.current === requestId && !silent) {
           setLoading(false);
         }
       }
-    };
+    },
+    [startIso, endIso],
+  );
 
-    runFetch();
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!cancelled) {
+        await runFetch(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [startIso, endIso]);
+  }, [runFetch]);
 
-  const refetch = useCallback(async () => {
-    const requestId = (requestIdRef.current += 1);
-    setLoading(true);
-    setError(null);
+  // This range fetch used to only refresh on date-change or an explicit
+  // refetch() from this device's own status updates — anything that changed
+  // an order elsewhere (another cashier's phone, a direct database fix)
+  // left it stale until one of those happened to fire, at which point the
+  // page's merge logic would keep trusting the stale locally-cached copy
+  // over this fetch. Mirror the transactions context's realtime/poll/focus
+  // wiring so this range is never the stale side of that merge.
+  useEffect(() => {
+    let refreshTimeoutId: number | null = null;
 
-    try {
-      const items = await fetchOrdersInRange(startIso, endIso);
-      if (requestIdRef.current === requestId) {
-        setTransactions(items);
+    const scheduleRefresh = () => {
+      if (refreshTimeoutId !== null) {
+        return;
       }
-    } catch (err) {
-      if (requestIdRef.current === requestId) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load sales for this range",
-        );
+
+      refreshTimeoutId = window.setTimeout(() => {
+        refreshTimeoutId = null;
+        void runFetch(true);
+      }, 400);
+    };
+
+    const channel = supabase
+      .channel("orders-range-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Order" },
+        scheduleRefresh,
+      )
+      .subscribe();
+
+    return () => {
+      if (refreshTimeoutId !== null) {
+        window.clearTimeout(refreshTimeoutId);
       }
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setLoading(false);
+      void supabase.removeChannel(channel);
+    };
+  }, [runFetch]);
+
+  useEffect(() => {
+    const POLL_MS = 15000;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
       }
-    }
-  }, [startIso, endIso]);
+      void runFetch(true);
+    };
+
+    const intervalId = window.setInterval(refreshIfVisible, POLL_MS);
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [runFetch]);
+
+  useEffect(() => {
+    const handlePullToRefresh = () => {
+      void runFetch(false);
+    };
+
+    window.addEventListener("app:pull-to-refresh", handlePullToRefresh);
+    return () => {
+      window.removeEventListener("app:pull-to-refresh", handlePullToRefresh);
+    };
+  }, [runFetch]);
+
+  const refetch = useCallback(() => runFetch(false), [runFetch]);
 
   return { transactions, loading, error, refetch };
 }

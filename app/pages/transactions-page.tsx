@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
+import FilterPopoverButton from "@/app/components/filter-popover-button";
+import type { FilterPopoverOption } from "@/app/components/filter-popover-button";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
 import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import TransactionsTotalsBar from "@/app/components/transactions-totals-bar";
@@ -17,6 +19,14 @@ import { useSalesSummary } from "@/app/hooks/use-sales-summary";
 import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
+
+const STATUS_OPTIONS: FilterPopoverOption[] = [
+  { key: "all", label: "All Status" },
+  { key: "PENDING", label: "Pending", color: "#32ade6" },
+  { key: "PAID", label: "Paid", color: "#34c759" },
+  { key: "REFUNDED", label: "Refunded", color: "#ff9500" },
+  { key: "VOIDED", label: "Voided" },
+];
 
 // Sales for the mini per-day figures, matching how the sales report counts
 // sales: PAID/REFUNDED contribute their full total, and PENDING contributes
@@ -40,6 +50,7 @@ export default function TransactionsPage() {
   const [selectedDate, setSelectedDate] = useState(() =>
     startOfDay(new Date()),
   );
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showTotals, setShowTotals] = useState(false);
   const {
     transactions: liveTransactions,
@@ -78,13 +89,19 @@ export default function TransactionsPage() {
   } = useSalesSummary(selectedDateIso);
 
   const transactions = useMemo(() => {
-    // Context entries win on id conflicts — they're kept fresh by realtime
-    // updates and local status-change edits, while the range fetch only
-    // needs to fill in whatever the context doesn't have cached.
+    // The range fetch wins on id conflicts — it's a targeted, always-fresh
+    // (no-store) fetch for exactly this week, now kept live by its own
+    // realtime/poll wiring, so it's authoritative for anything it returns.
+    // The shared context only fills in whatever the range fetch is missing
+    // (e.g. a same-session sale that hasn't round-tripped yet) — its local
+    // cache can otherwise hold stale copies of orders that changed outside
+    // this device's own update flow (another cashier's phone, a direct
+    // database fix) indefinitely, since it only ever refreshes its "latest
+    // ~100" window, not this specific date range.
     const merged = new Map(
-      rangeTransactions.map((transaction) => [transaction.id, transaction]),
+      liveTransactions.map((transaction) => [transaction.id, transaction]),
     );
-    for (const transaction of liveTransactions) {
+    for (const transaction of rangeTransactions) {
       merged.set(transaction.id, transaction);
     }
     return Array.from(merged.values());
@@ -119,7 +136,8 @@ export default function TransactionsPage() {
         return (
           !Number.isNaN(transactionTime) &&
           transactionTime >= dayStartTime &&
-          transactionTime < dayEndTime
+          transactionTime < dayEndTime &&
+          (statusFilter === "all" || transaction.status === statusFilter)
         );
       })
       .sort(
@@ -127,7 +145,7 @@ export default function TransactionsPage() {
           new Date(right.createdAt).getTime() -
           new Date(left.createdAt).getTime(),
       );
-  }, [transactions, selectedDate]);
+  }, [transactions, selectedDate, statusFilter]);
 
   const dayTotals = useMemo(() => {
     const weekStartTime = weekStart.getTime();
@@ -202,11 +220,24 @@ export default function TransactionsPage() {
             onSelectDate={setSelectedDate}
           />
 
-          <Box sx={{ px: 0.5, color: "text.secondary", typography: "caption" }}>
-            {loading
-              ? "Loading sales..."
-              : `${filteredTransactions.length.toLocaleString()} sales`}
-          </Box>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 0.5 }}
+          >
+            <Box sx={{ color: "text.secondary", typography: "caption" }}>
+              {loading
+                ? "Loading sales..."
+                : `${filteredTransactions.length.toLocaleString()} sales`}
+            </Box>
+            <FilterPopoverButton
+              ariaLabel="filter by status"
+              options={STATUS_OPTIONS}
+              selectedKeys={[statusFilter]}
+              onSelect={setStatusFilter}
+            />
+          </Stack>
 
           <TransactionsCatalog
             transactions={filteredTransactions}

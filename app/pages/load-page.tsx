@@ -167,14 +167,15 @@ export default function LoadPage() {
     setLoading(true);
 
     try {
+      // The recorded sale is the load's face value plus the markup — the
+      // face value still passes through the till as real cash collected, so
+      // it belongs in the sale total alongside the markup that's the actual
+      // profit.
       const sellPrice = getSellPrice(selectedItem.amount, markupSettings);
-      // Only the markup is income — the load's face value is money passed
-      // straight through to the telco, so it must not inflate sales.
-      const markup = getMarkupForAmount(selectedItem.amount, markupSettings);
       const requestId = crypto.randomUUID();
-      // The line item only carries the markup as its price, so the face
-      // value is folded into the name itself (unless the catalog label
-      // already states it, e.g. "Regular Load ₱50").
+      // The line item's price already covers the face value, so it's folded
+      // into the name itself (unless the catalog label already states it,
+      // e.g. "Regular Load ₱50").
       const productName = selectedItem.label.includes("₱")
         ? selectedItem.label
         : `${selectedItem.label} ₱${selectedItem.amount.toFixed(2)}`;
@@ -185,14 +186,14 @@ export default function LoadPage() {
           requestId,
           status,
           senderPushEndpoint: senderPushEndpointRef.current,
-          ...(status === "PAID" ? { amountPaid: markup } : {}),
+          ...(status === "PAID" ? { amountPaid: sellPrice } : {}),
           note: `Mobile Load ${brandLabel(selectedItem.brand)} ₱${sellPrice} -> ${confirmNumber}`,
           items: [
             {
               productId: selectedItem.id,
               productName,
               quantity: 1,
-              unitPrice: markup,
+              unitPrice: sellPrice,
             },
           ],
         }),
