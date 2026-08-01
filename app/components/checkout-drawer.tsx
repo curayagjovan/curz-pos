@@ -278,14 +278,19 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
           </Typography>
         </Stack>
 
-        <Stack direction="row" spacing={1}>
+        <Stack spacing={1}>
           <Button
-            variant="outlined"
-            color="inherit"
-            disabled={cartItems.length === 0 || anyCheckoutLoading}
-            onClick={onClearCart}
+            fullWidth
+            variant="contained"
+            disabled={
+              cartItems.length === 0 ||
+              anyCheckoutLoading ||
+              checkoutDisabled ||
+              amountDue > 0
+            }
+            onClick={onCheckout}
           >
-            Clear
+            {checkoutLoading ? "Processing..." : "Checkout"}
           </Button>
           <Button
             fullWidth
@@ -302,16 +307,12 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
           </Button>
           <Button
             fullWidth
-            variant="contained"
-            disabled={
-              cartItems.length === 0 ||
-              anyCheckoutLoading ||
-              checkoutDisabled ||
-              amountDue > 0
-            }
-            onClick={onCheckout}
+            variant="outlined"
+            color="inherit"
+            disabled={cartItems.length === 0 || anyCheckoutLoading}
+            onClick={onClearCart}
           >
-            {checkoutLoading ? "Processing..." : "Checkout"}
+            Clear
           </Button>
         </Stack>
       </Box>

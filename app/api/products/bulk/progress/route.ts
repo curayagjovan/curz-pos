@@ -3,7 +3,7 @@ import {
   subscribeImportProgress,
   type ImportJobProgress,
 } from "@/lib/import-progress-store";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ function encodeSseData(
 }
 
 export async function GET(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

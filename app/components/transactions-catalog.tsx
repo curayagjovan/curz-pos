@@ -34,6 +34,9 @@ type TransactionsCatalogProps = {
     name: string;
     phone?: string;
   }) => Promise<Customer | null>;
+  onQuickAssignCustomer?: (id: string) => Promise<void>;
+  quickAssignLabel?: string;
+  limitedActions?: boolean;
   groups?: TransactionGroup[];
 };
 
@@ -46,6 +49,9 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
   customers,
   onAssignCustomer,
   onCreateCustomer,
+  onQuickAssignCustomer,
+  quickAssignLabel,
+  limitedActions,
   groups,
 }: TransactionsCatalogProps) {
   if (error) {
@@ -85,6 +91,9 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
                   customers={customers}
                   onAssignCustomer={onAssignCustomer}
                   onCreateCustomer={onCreateCustomer}
+                  onQuickAssignCustomer={onQuickAssignCustomer}
+                  quickAssignLabel={quickAssignLabel}
+                  limitedActions={limitedActions}
                 />
               ))}
             </List>
@@ -105,6 +114,9 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
           customers={customers}
           onAssignCustomer={onAssignCustomer}
           onCreateCustomer={onCreateCustomer}
+          onQuickAssignCustomer={onQuickAssignCustomer}
+          quickAssignLabel={quickAssignLabel}
+          limitedActions={limitedActions}
         />
       ))}
     </List>

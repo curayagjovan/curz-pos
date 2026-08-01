@@ -24,6 +24,7 @@ import TransactionsCatalog from "@/app/components/transactions-catalog";
 import { useTransactions } from "@/app/context/transactions-context";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useTransactionsForCustomer } from "@/app/hooks/use-transactions-for-customer";
+import { useUnassignedPendingOrders } from "@/app/hooks/use-unassigned-pending-orders";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import AppSnackbar from "@/app/components/app-snackbar";
@@ -98,6 +99,13 @@ export default function CustomersPage() {
     refetch: refetchCustomerOrders,
   } = useTransactionsForCustomer(selectedCustomerId);
 
+  const {
+    transactions: unassignedOrders,
+    loading: unassignedLoading,
+    error: unassignedError,
+    refetch: refetchUnassignedOrders,
+  } = useUnassignedPendingOrders();
+
   const sortedCustomerOrders = useMemo(
     () =>
       [...customerOrders].sort(
@@ -171,6 +179,65 @@ export default function CustomersPage() {
       await loadCustomers();
     },
     [customerOrders, refetchCustomerOrders, loadCustomers],
+  );
+
+  // Attaches a pending sale that has no customer at all onto the one
+  // currently being viewed — the other half of removeFromCustomer, for
+  // picking a misattributed (or never-attributed) sale back up. Throws on
+  // failure so the TransactionCard's own inline error display shows it.
+  const handleAssignUnassignedOrder = useCallback(
+    async (orderId: string) => {
+      if (!selectedCustomer) {
+        return;
+      }
+
+      const response = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: orderId,
+          status: "PENDING",
+          customerId: selectedCustomer.id,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to assign this sale");
+      }
+
+      await Promise.all([
+        refetchUnassignedOrders(),
+        refetchCustomerOrders(),
+        loadCustomers(),
+      ]);
+    },
+    [selectedCustomer, refetchUnassignedOrders, refetchCustomerOrders, loadCustomers],
+  );
+
+  // These orphaned pending sales have no customer yet, so there's nothing
+  // to reconcile against — status changes just need to refresh this list.
+  const handleUpdateUnassignedOrderStatus = useCallback(
+    async (
+      id: string,
+      status: Transaction["status"],
+      items?: Array<{ id: string; returnedQuantity: number }>,
+      amountPaid?: number,
+    ) => {
+      const response = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status, items, amountPaid }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to update sale status");
+      }
+
+      await refetchUnassignedOrders();
+    },
+    [refetchUnassignedOrders],
   );
 
   const handleOpenAdd = () => {
@@ -314,7 +381,29 @@ export default function CustomersPage() {
               error={ordersError}
               onUpdateStatus={handleUpdateStatus}
               onRemoveFromCustomer={handleRemoveFromCustomer}
+              limitedActions
             />
+
+            {unassignedOrders.length > 0 ? (
+              <Stack spacing={0.75}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Unassigned Pending Sales
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Pending sales with no customer yet — assign one here if it
+                  belongs to {selectedCustomer.name}.
+                </Typography>
+                <TransactionsCatalog
+                  transactions={unassignedOrders}
+                  loading={unassignedLoading}
+                  error={unassignedError}
+                  onUpdateStatus={handleUpdateUnassignedOrderStatus}
+                  onQuickAssignCustomer={handleAssignUnassignedOrder}
+                  quickAssignLabel="Assign"
+                  limitedActions
+                />
+              </Stack>
+            ) : null}
           </Stack>
         </Container>
 

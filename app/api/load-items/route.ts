@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { LOAD_BRANDS, type LoadBrand, type LoadCategory } from "@/lib/mobile-load-catalog";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 
 function resolveGroup(brand: LoadBrand) {
   return LOAD_BRANDS.find((entry) => entry.brand === brand)?.group ?? null;
@@ -34,7 +34,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_LOAD_ITEMS");
   if (!auth.ok) {
     return auth.response;
   }

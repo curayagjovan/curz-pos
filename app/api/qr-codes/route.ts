@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 
 const BUCKET = "qr-codes";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -55,7 +55,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_SETTINGS");
   if (!auth.ok) {
     return auth.response;
   }

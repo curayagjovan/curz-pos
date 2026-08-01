@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, auditLogCreateArgs, recordAudit } from "@/lib/audit";
 
 type OrderItemInput = {
@@ -290,7 +290,12 @@ export async function GET(request: Request) {
     const statusParam = url.searchParams.get("status");
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
-    const customerId = url.searchParams.get("customerId")?.trim() || null;
+    const customerIdParam = url.searchParams.get("customerId")?.trim() || null;
+    // "none" is a reserved sentinel (not a real cuid) meaning "orders with
+    // no customer at all" — used by the Utang page to surface pending sales
+    // that still need to be attributed to someone.
+    const unassignedOnly = customerIdParam === "none";
+    const customerId = unassignedOnly ? null : customerIdParam;
     const hasPaginationParams =
       url.searchParams.has("page") ||
       url.searchParams.has("limit") ||
@@ -317,10 +322,11 @@ export async function GET(request: Request) {
     const hasValidTo = toDate !== null && !Number.isNaN(toDate.getTime());
 
     const where: Prisma.OrderWhereInput | undefined =
-      status || hasValidFrom || hasValidTo || customerId
+      status || hasValidFrom || hasValidTo || customerId || unassignedOnly
         ? {
             ...(status ? { status } : {}),
             ...(customerId ? { customerId } : {}),
+            ...(unassignedOnly ? { customerId: null } : {}),
             ...(hasValidFrom || hasValidTo
               ? {
                   createdAt: {
@@ -332,13 +338,15 @@ export async function GET(request: Request) {
           }
         : undefined;
 
-    // A date range (or a single customer's history) is inherently bounded (a
-    // week of real-world sales volume, or one customer's utang history,
-    // never approaches this), so it always returns every matching order
-    // rather than being capped like the latest-100 "recent activity" fetch
-    // below — callers navigating to older periods, or a customer's older
-    // unpaid orders, need the real data, not a sample of it.
-    if (hasValidFrom || hasValidTo || customerId) {
+    // A date range (or a single customer's history, or the unassigned-orders
+    // lookup) is inherently bounded (a week of real-world sales volume, one
+    // customer's utang history, or the store's outstanding unattributed
+    // pending sales, never approaches this), so it always returns every
+    // matching order rather than being capped like the latest-100
+    // "recent activity" fetch below — callers navigating to older periods,
+    // a customer's older unpaid orders, or hunting for a misattributed sale,
+    // need the real data, not a sample of it.
+    if (hasValidFrom || hasValidTo || customerId || unassignedOnly) {
       let orders: unknown[];
       try {
         orders = await prisma.order.findMany({
@@ -960,7 +968,7 @@ export async function PATCH(request: Request) {
     // paid (or back) is fine for any authenticated cashier.
     const auth =
       status === "REFUNDED" || status === "VOIDED"
-        ? await requireOwner()
+        ? await requirePermission("VOID_REFUND")
         : await requireUser();
     if (!auth.ok) {
       return auth.response;

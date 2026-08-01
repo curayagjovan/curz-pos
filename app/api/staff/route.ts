@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireOwner } from "@/lib/auth/require-user";
+import type { AppPermission } from "@prisma/client";
+import { requirePermission } from "@/lib/auth/require-user";
+import { ALL_PERMISSIONS } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 
 export async function GET() {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_STAFF");
   if (!auth.ok) {
     return auth.response;
   }
@@ -18,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_STAFF");
   if (!auth.ok) {
     return auth.response;
   }
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_STAFF");
   if (!auth.ok) {
     return auth.response;
   }
@@ -99,6 +101,7 @@ export async function PATCH(request: Request) {
     role?: string;
     isActive?: boolean;
     displayName?: string;
+    permissions?: string[];
   };
 
   const id = body.id?.trim();
@@ -109,50 +112,75 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const nextValues = {
+    ...(body.role === "OWNER" || body.role === "CASHIER"
+      ? { role: body.role as "OWNER" | "CASHIER" }
+      : {}),
+    ...(typeof body.isActive === "boolean"
+      ? { isActive: body.isActive }
+      : {}),
+    ...(body.displayName !== undefined
+      ? { displayName: body.displayName?.trim() || null }
+      : {}),
+    ...(Array.isArray(body.permissions)
+      ? {
+          permissions: Array.from(
+            new Set(
+              body.permissions.filter((permission): permission is AppPermission =>
+                (ALL_PERMISSIONS as string[]).includes(permission),
+              ),
+            ),
+          ),
+        }
+      : {}),
+  };
+
   try {
     const existingStaffMember = await prisma.appUser.findUnique({
       where: { id },
-      select: { role: true, isActive: true, displayName: true },
+      select: { role: true, isActive: true, displayName: true, permissions: true },
     });
+
+    if (!existingStaffMember) {
+      return NextResponse.json(
+        { message: "Staff member not found" },
+        { status: 404 },
+      );
+    }
+
+    // Demoting the sole remaining Owner would lock everyone out of every
+    // Owner-only action, so it's blocked here as well as in the UI.
+    if (
+      nextValues.role === "CASHIER" &&
+      existingStaffMember.role === "OWNER"
+    ) {
+      const otherActiveOwners = await prisma.appUser.count({
+        where: { role: "OWNER", isActive: true, id: { not: id } },
+      });
+      if (otherActiveOwners === 0) {
+        return NextResponse.json(
+          { message: "At least one Owner is required" },
+          { status: 400 },
+        );
+      }
+    }
 
     const staffMember = await prisma.appUser.update({
       where: { id },
-      data: {
-        ...(body.role === "OWNER" || body.role === "CASHIER"
-          ? { role: body.role }
-          : {}),
-        ...(typeof body.isActive === "boolean"
-          ? { isActive: body.isActive }
-          : {}),
-        ...(body.displayName !== undefined
-          ? { displayName: body.displayName?.trim() || null }
-          : {}),
-      },
+      data: nextValues,
     });
 
-    if (existingStaffMember) {
-      const changes = diffFields(existingStaffMember, {
-        ...(body.role === "OWNER" || body.role === "CASHIER"
-          ? { role: body.role }
-          : {}),
-        ...(typeof body.isActive === "boolean"
-          ? { isActive: body.isActive }
-          : {}),
-        ...(body.displayName !== undefined
-          ? { displayName: body.displayName?.trim() || null }
-          : {}),
-      });
+    const changes = diffFields(existingStaffMember, nextValues);
 
-      if (Object.keys(changes).length > 0) {
-        await recordAudit({
-          actor: auth.appUser,
-          action: AUDIT_ACTIONS.STAFF_UPDATE,
-          entityType: "AppUser",
-          entityId: staffMember.id,
-          summary: `Updated staff member ${staffMember.email}`,
-          changes,
-        });
-      }
+    if (Object.keys(changes).length > 0) {
+      await recordAudit({
+        actor: auth.appUser,
+        action: AUDIT_ACTIONS.STAFF_UPDATE,
+        entityType: "AppUser",
+        entityId: staffMember.id,
+        summary: `Updated staff member ${staffMember.email}`,
+        changes,
+      });
     }
 
     return NextResponse.json(staffMember);

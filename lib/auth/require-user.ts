@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import type { AppUser } from "@prisma/client";
+import type { AppPermission, AppUser } from "@prisma/client";
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server-auth";
 import { getAppUserForAuthUser } from "@/lib/auth/app-user";
+import { hasPermission } from "@/lib/auth/permissions";
 
 type AuthSuccess = { ok: true; authUser: User; appUser: AppUser };
 type AuthFailure = { ok: false; response: NextResponse };
@@ -50,6 +51,29 @@ export async function requireOwner(): Promise<AuthResult> {
       ok: false,
       response: NextResponse.json(
         { message: "Only the Owner can do this" },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return auth;
+}
+
+// Same as requireUser(), but also requires the given permission (which
+// Owner always implicitly has — see hasPermission()).
+export async function requirePermission(
+  permission: AppPermission,
+): Promise<AuthResult> {
+  const auth = await requireUser();
+  if (!auth.ok) {
+    return auth;
+  }
+
+  if (!hasPermission(auth.appUser, permission)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { message: "You don't have permission to do this" },
         { status: 403 },
       ),
     };

@@ -245,14 +245,24 @@ enum AppRole {
   CASHIER
 }
 
+enum AppPermission {
+  VOID_REFUND
+  MANAGE_PRODUCTS
+  MANAGE_LOAD_ITEMS
+  MANAGE_SETTINGS
+  MANAGE_STAFF
+  VIEW_AUDIT_LOG
+}
+
 model AppUser {
-  id          String    @id @default(cuid())
-  authUserId  String?   @unique
-  email       String    @unique
+  id          String          @id @default(cuid())
+  authUserId  String?         @unique
+  email       String          @unique
   displayName String?
-  role        AppRole   @default(CASHIER)
-  isActive    Boolean   @default(true)
+  role        AppRole         @default(CASHIER)
+  permissions AppPermission[] @default([])
+  isActive    Boolean         @default(true)
   lastLoginAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }

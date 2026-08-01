@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LOAD_MARKUP_SETTINGS } from "@/lib/load-markup";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 
 const SETTINGS_ID = "load-markup";
@@ -40,7 +40,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_LOAD_ITEMS");
   if (!auth.ok) {
     return auth.response;
   }

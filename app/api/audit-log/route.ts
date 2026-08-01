@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 
 export async function GET(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("VIEW_AUDIT_LOG");
   if (!auth.ok) {
     return auth.response;
   }

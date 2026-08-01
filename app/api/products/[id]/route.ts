@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, diffFields, recordAudit } from "@/lib/audit";
 import {
   DEFAULT_PRODUCT_CATEGORY,
@@ -45,7 +45,7 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }
@@ -235,7 +235,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { requireOwner, requireUser } from "@/lib/auth/require-user";
+import { requirePermission, requireUser } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import {
   DEFAULT_PRODUCT_CATEGORY,
@@ -281,7 +281,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

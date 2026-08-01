@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateSmartSku } from "@/lib/sku-generator";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

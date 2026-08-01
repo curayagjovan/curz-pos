@@ -30,6 +30,7 @@ import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import AccountBalanceWalletRounded from "@mui/icons-material/AccountBalanceWalletRounded";
 import { useAuth } from "@/app/context/auth-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import { usePageContext } from "@/app/context/page-context";
 
 type MobilePageWrapperProps = {
@@ -277,7 +278,7 @@ export default function MobilePageWrapper({
               </ListItemIcon>
               <ListItemText>Utang</ListItemText>
             </MenuItem>
-            {appUser?.role === "OWNER" ? (
+            {hasPermission(appUser, "MANAGE_STAFF") ? (
               <MenuItem
                 onClick={() => {
                   closeAccountMenu();
@@ -290,7 +291,7 @@ export default function MobilePageWrapper({
                 <ListItemText>Manage Staff</ListItemText>
               </MenuItem>
             ) : null}
-            {appUser?.role === "OWNER" ? (
+            {hasPermission(appUser, "VIEW_AUDIT_LOG") ? (
               <MenuItem
                 onClick={() => {
                   closeAccountMenu();

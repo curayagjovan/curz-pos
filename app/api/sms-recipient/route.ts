@@ -5,13 +5,13 @@ import {
   isValidSmsRecipient,
   normalizeSmsRecipient,
 } from "@/lib/sms-link";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 
 const SETTINGS_ID = "sms-recipient";
 
 export async function GET() {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_SETTINGS");
   if (!auth.ok) {
     return auth.response;
   }
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_SETTINGS");
   if (!auth.ok) {
     return auth.response;
   }

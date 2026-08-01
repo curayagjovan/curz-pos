@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

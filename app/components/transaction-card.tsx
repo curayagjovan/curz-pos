@@ -18,6 +18,7 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import CustomerPicker from "@/app/components/customer-picker";
 import { useAuth } from "@/app/context/auth-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import type { Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
 
@@ -43,6 +44,16 @@ type TransactionCardProps = {
     name: string;
     phone?: string;
   }) => Promise<Customer | null>;
+  // Only passed by the Utang customer detail view's "Unassigned Pending
+  // Sales" list — when set, this replaces the header's "Pay" button with an
+  // "Assign" button (there's no one to collect payment from yet, so paying
+  // isn't the relevant action for an orphaned sale).
+  onQuickAssignCustomer?: (id: string) => Promise<void>;
+  quickAssignLabel?: string;
+  // Only passed by the Utang page — cashiers there only get Pay, Assign,
+  // and Remove from Customer; arbitrary status jumps and item returns are
+  // full sale edits that stay confined to the Sales page.
+  limitedActions?: boolean;
 };
 
 const ALL_STATUSES: Transaction["status"][] = [
@@ -115,6 +126,9 @@ const TransactionCard = memo(function TransactionCard({
   customers,
   onAssignCustomer,
   onCreateCustomer,
+  onQuickAssignCustomer,
+  quickAssignLabel,
+  limitedActions = false,
 }: TransactionCardProps) {
   const transactionItems = useMemo(
     () => (Array.isArray(transaction.items) ? transaction.items : []),
@@ -144,8 +158,9 @@ const TransactionCard = memo(function TransactionCard({
     0,
   );
   const { appUser } = useAuth();
-  const isOwner = appUser?.role === "OWNER";
-  const canReturnItems = transaction.status === "PAID" && isOwner;
+  const canVoidOrRefund = hasPermission(appUser, "VOID_REFUND");
+  const canReturnItems =
+    transaction.status === "PAID" && canVoidOrRefund && !limitedActions;
 
   const payPopoverOpen = Boolean(payAnchorEl);
   const numericPayAmount = Number(payAmountInput);
@@ -200,9 +215,17 @@ const TransactionCard = memo(function TransactionCard({
 
   // Everything BUT the current status — the header chip already shows what
   // this sale currently is, so repeating it here would just be noise. Only
-  // the statuses it could actually move to are worth showing.
+  // the statuses it could actually move to are worth showing. PAID is also
+  // dropped while PENDING — settling a balance always goes through the Pay
+  // popover, which reconciles the actual amount collected, rather than this
+  // chip jumping straight to PAID without collecting anything.
   const otherStatuses = useMemo(
-    () => ALL_STATUSES.filter((status) => status !== transaction.status),
+    () =>
+      ALL_STATUSES.filter(
+        (status) =>
+          status !== transaction.status &&
+          !(transaction.status === "PENDING" && status === "PAID"),
+      ),
     [transaction.status],
   );
 
@@ -324,6 +347,25 @@ const TransactionCard = memo(function TransactionCard({
 
     try {
       await onAssignCustomer(transaction.id, customerId);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : "Unable to assign customer",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleQuickAssignCustomer = async () => {
+    if (!onQuickAssignCustomer || statusUpdating) {
+      return;
+    }
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      await onQuickAssignCustomer(transaction.id);
     } catch (error) {
       setStatusError(
         error instanceof Error ? error.message : "Unable to assign customer",
@@ -496,7 +538,20 @@ const TransactionCard = memo(function TransactionCard({
                 {itemPreview}
               </Typography>
 
-              {isPending ? (
+              {isPending && onQuickAssignCustomer ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  disabled={statusUpdating}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleQuickAssignCustomer();
+                  }}
+                >
+                  {quickAssignLabel ?? "Assign"}
+                </Button>
+              ) : isPending ? (
                 <Button
                   size="small"
                   variant="contained"
@@ -588,60 +643,82 @@ const TransactionCard = memo(function TransactionCard({
         <Collapse in={expanded} timeout="auto" unmountOnExit>
           <Divider />
 
-          <Box sx={{ px: 1.25, py: 1.1 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ mb: 0.75 }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ letterSpacing: 0.3 }}
+          {!limitedActions ? (
+            <Box sx={{ px: 1.25, py: 1.1 }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ mb: 0.75 }}
               >
-                Change Status To
-              </Typography>
-
-              {onRemoveFromCustomer && transaction.customerId ? (
-                <Button
-                  size="small"
-                  color="error"
-                  disabled={statusUpdating}
-                  onClick={() => void handleRemoveFromCustomer()}
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ letterSpacing: 0.3 }}
                 >
-                  Remove from Customer
-                </Button>
-              ) : null}
-            </Stack>
+                  Change Status To
+                </Typography>
 
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-              {otherStatuses.map((status) => {
-                const restricted =
-                  (status === "REFUNDED" || status === "VOIDED") && !isOwner;
-
-                return (
-                  <Chip
-                    key={status}
+                {onRemoveFromCustomer && transaction.customerId ? (
+                  <Button
                     size="small"
-                    variant="outlined"
-                    color={getStatusColor(status)}
-                    label={status}
-                    clickable={!statusUpdating && !restricted}
-                    disabled={statusUpdating || restricted}
-                    onClick={() => void handleStatusChange(status)}
-                    sx={{ fontWeight: 700 }}
-                  />
-                );
-              })}
-            </Stack>
+                    color="error"
+                    disabled={statusUpdating}
+                    onClick={() => void handleRemoveFromCustomer()}
+                  >
+                    Remove from Customer
+                  </Button>
+                ) : null}
+              </Stack>
 
-            {statusError ? (
-              <Alert severity="error" sx={{ mt: 1, py: 0 }}>
-                {statusError}
-              </Alert>
-            ) : null}
-          </Box>
+              <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                {otherStatuses.map((status) => {
+                  const restricted =
+                    (status === "REFUNDED" || status === "VOIDED") &&
+                    !canVoidOrRefund;
+
+                  return (
+                    <Chip
+                      key={status}
+                      size="small"
+                      variant="outlined"
+                      color={getStatusColor(status)}
+                      label={status}
+                      clickable={!statusUpdating && !restricted}
+                      disabled={statusUpdating || restricted}
+                      onClick={() => void handleStatusChange(status)}
+                      sx={{ fontWeight: 700 }}
+                    />
+                  );
+                })}
+              </Stack>
+
+              {statusError ? (
+                <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                  {statusError}
+                </Alert>
+              ) : null}
+            </Box>
+          ) : onRemoveFromCustomer && transaction.customerId ? (
+            <Box sx={{ px: 1.25, py: 1.1 }}>
+              <Button
+                fullWidth
+                size="small"
+                variant="outlined"
+                color="error"
+                disabled={statusUpdating}
+                onClick={() => void handleRemoveFromCustomer()}
+              >
+                Remove from Customer
+              </Button>
+
+              {statusError ? (
+                <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                  {statusError}
+                </Alert>
+              ) : null}
+            </Box>
+          ) : null}
 
           {isPending && customers && onAssignCustomer ? (
             <>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
+import EditRounded from "@mui/icons-material/EditRounded";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -10,7 +11,9 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
@@ -21,6 +24,8 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
+import { ALL_PERMISSIONS, PERMISSION_LABELS } from "@/lib/auth/permissions";
+import type { AppPermission } from "@prisma/client";
 
 type StaffMember = {
   id: string;
@@ -28,6 +33,7 @@ type StaffMember = {
   displayName: string | null;
   role: "OWNER" | "CASHIER";
   isActive: boolean;
+  permissions: AppPermission[];
 };
 
 export default function ManageStaffPage() {
@@ -40,6 +46,13 @@ export default function ManageStaffPage() {
   const [role, setRole] = useState<"OWNER" | "CASHIER">("CASHIER");
   const [sendInvite, setSendInvite] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [editTarget, setEditTarget] = useState<StaffMember | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editRole, setEditRole] = useState<"OWNER" | "CASHIER">("CASHIER");
+  const [editPermissions, setEditPermissions] = useState<AppPermission[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const loadStaff = async () => {
     setLoading(true);
@@ -109,6 +122,61 @@ export default function ManageStaffPage() {
     }
   };
 
+  const activeOwnerCount = staff.filter(
+    (member) => member.role === "OWNER" && member.isActive,
+  ).length;
+
+  const handleOpenEdit = (member: StaffMember) => {
+    setEditTarget(member);
+    setEditDisplayName(member.displayName ?? "");
+    setEditRole(member.role);
+    setEditPermissions(member.permissions ?? []);
+    setEditError(null);
+  };
+
+  const handleTogglePermission = (permission: AppPermission) => {
+    setEditPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((entry) => entry !== permission)
+        : [...current, permission],
+    );
+  };
+
+  const isSoleActiveOwner =
+    editTarget?.role === "OWNER" && activeOwnerCount <= 1;
+
+  const handleSaveEdit = async () => {
+    if (!editTarget) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const response = await fetch("/api/staff", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editTarget.id,
+          role: editRole,
+          displayName: editDisplayName.trim(),
+          // Owner already has full access unconditionally, so the stored
+          // permission set is only meaningful (and only touched) for Cashiers.
+          ...(editRole === "CASHIER" ? { permissions: editPermissions } : {}),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to update staff member");
+      }
+      setEditTarget(null);
+      await loadStaff();
+    } catch (err) {
+      setEditError(
+        err instanceof Error ? err.message : "Unable to update staff member",
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <MobilePageWrapper
       title="Manage Staff"
@@ -130,11 +198,19 @@ export default function ManageStaffPage() {
                   key={member.id}
                   divider
                   secondaryAction={
-                    <Switch
-                      checked={member.isActive}
-                      onChange={() => void handleToggleActive(member)}
-                      disabled={member.role === "OWNER"}
-                    />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <IconButton
+                        onClick={() => handleOpenEdit(member)}
+                        aria-label={`edit ${member.email}`}
+                      >
+                        <EditRounded fontSize="small" />
+                      </IconButton>
+                      <Switch
+                        checked={member.isActive}
+                        onChange={() => void handleToggleActive(member)}
+                        disabled={member.role === "OWNER"}
+                      />
+                    </Stack>
                   }
                 >
                   <ListItemText
@@ -212,6 +288,90 @@ export default function ManageStaffPage() {
             disabled={saving || !email.trim()}
           >
             {saving ? "Adding..." : "Add"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editTarget)}
+        onClose={() => setEditTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Edit Staff</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            {editError ? <Alert severity="error">{editError}</Alert> : null}
+
+            <Typography variant="body2" color="text.secondary">
+              {editTarget?.email}
+            </Typography>
+
+            <TextField
+              label="Display name"
+              value={editDisplayName}
+              onChange={(event) => setEditDisplayName(event.target.value)}
+              fullWidth
+            />
+
+            <TextField
+              select
+              label="Role"
+              value={editRole}
+              onChange={(event) =>
+                setEditRole(event.target.value as "OWNER" | "CASHIER")
+              }
+              disabled={isSoleActiveOwner}
+              helperText={
+                isSoleActiveOwner
+                  ? "At least one Owner is required"
+                  : undefined
+              }
+              fullWidth
+            >
+              <MenuItem value="CASHIER">Cashier</MenuItem>
+              <MenuItem value="OWNER">Owner</MenuItem>
+            </TextField>
+
+            <Divider />
+
+            <Typography variant="subtitle2">Permissions</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {editRole === "OWNER"
+                ? "Owner always has full access."
+                : "Grant this Cashier extra access beyond the basics."}
+            </Typography>
+
+            <Stack spacing={0.5}>
+              {ALL_PERMISSIONS.map((permission) => (
+                <FormControlLabel
+                  key={permission}
+                  control={
+                    <Switch
+                      checked={
+                        editRole === "OWNER" ||
+                        editPermissions.includes(permission)
+                      }
+                      disabled={editRole === "OWNER"}
+                      onChange={() => handleTogglePermission(permission)}
+                    />
+                  }
+                  label={PERMISSION_LABELS[permission]}
+                />
+              ))}
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setEditTarget(null)} disabled={editSaving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void handleSaveEdit()}
+            disabled={editSaving}
+          >
+            {editSaving ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

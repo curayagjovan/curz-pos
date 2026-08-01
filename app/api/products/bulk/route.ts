@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { setImportProgress } from "@/lib/import-progress-store";
 import { normalizeUnit } from "@/lib/units";
-import { requireOwner } from "@/lib/auth/require-user";
+import { requirePermission } from "@/lib/auth/require-user";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -77,7 +77,7 @@ function findAvailableSkuFromSet(
 }
 
 export async function POST(request: Request) {
-  const auth = await requireOwner();
+  const auth = await requirePermission("MANAGE_PRODUCTS");
   if (!auth.ok) {
     return auth.response;
   }

@@ -629,14 +629,14 @@ export default function EWalletPage() {
             </Card>
           ) : null}
 
-          <Stack direction="row" spacing={1}>
+          <Stack spacing={1}>
             <Button
-              variant="outlined"
-              color="inherit"
-              disabled={busy}
-              onClick={handleCancel}
+              fullWidth
+              variant="contained"
+              disabled={amount <= 0 || busy}
+              onClick={() => void handleComplete()}
             >
-              Cancel
+              {completing ? "Saving..." : "Completed"}
             </Button>
             <Button
               fullWidth
@@ -649,11 +649,12 @@ export default function EWalletPage() {
             </Button>
             <Button
               fullWidth
-              variant="contained"
-              disabled={amount <= 0 || busy}
-              onClick={() => void handleComplete()}
+              variant="outlined"
+              color="inherit"
+              disabled={busy}
+              onClick={handleCancel}
             >
-              {completing ? "Saving..." : "Completed"}
+              Cancel
             </Button>
           </Stack>
         </Stack>
