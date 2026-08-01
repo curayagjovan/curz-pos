@@ -114,8 +114,9 @@ export default function TransactionsPage() {
     id: string,
     status: Transaction["status"],
     items?: Array<{ id: string; returnedQuantity: number }>,
+    amountPaid?: number,
   ) => {
-    await updateTransactionStatus(id, status, items);
+    await updateTransactionStatus(id, status, items, amountPaid);
     // The order being updated may only exist in the range fetch (an older
     // order the shared context has never cached) — refetch so the change is
     // reflected regardless of which source originally supplied it.

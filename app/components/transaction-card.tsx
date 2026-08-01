@@ -10,9 +10,9 @@ import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
-import MenuItem from "@mui/material/MenuItem";
-import Select from "@mui/material/Select";
+import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
@@ -25,8 +25,16 @@ type TransactionCardProps = {
     id: string,
     status: Transaction["status"],
     items?: Array<{ id: string; returnedQuantity: number }>,
+    amountPaid?: number,
   ) => Promise<void>;
 };
+
+const ALL_STATUSES: Transaction["status"][] = [
+  "PENDING",
+  "PAID",
+  "REFUNDED",
+  "VOIDED",
+];
 
 function getStatusColor(status: Transaction["status"]) {
   switch (status) {
@@ -99,6 +107,8 @@ const TransactionCard = memo(function TransactionCard({
   const [returnQuantities, setReturnQuantities] = useState<
     Record<string, number>
   >({});
+  const [payAnchorEl, setPayAnchorEl] = useState<HTMLElement | null>(null);
+  const [payAmountInput, setPayAmountInput] = useState("");
   const paidAmount = transaction.amountPaid ?? transaction.total;
   const change = Math.max(0, Number(paidAmount) - Number(transaction.total));
   const isPending = transaction.status === "PENDING";
@@ -116,6 +126,16 @@ const TransactionCard = memo(function TransactionCard({
   const { appUser } = useAuth();
   const isOwner = appUser?.role === "OWNER";
   const canReturnItems = transaction.status === "PAID" && isOwner;
+
+  const payPopoverOpen = Boolean(payAnchorEl);
+  const numericPayAmount = Number(payAmountInput);
+  // Anything tendered beyond the balance is change handed back to the
+  // customer — shown for reference only, never sent to the server or
+  // credited toward the order.
+  const payChange =
+    Number.isFinite(numericPayAmount) && numericPayAmount > balanceDue
+      ? numericPayAmount - balanceDue
+      : 0;
 
   const itemPreview = useMemo(() => {
     const visibleItems = transactionItems.filter(
@@ -158,6 +178,14 @@ const TransactionCard = memo(function TransactionCard({
     ? Math.max(0, Number(paidAmount) - Number(transaction.refundAmount))
     : 0;
 
+  // Everything BUT the current status — the header chip already shows what
+  // this sale currently is, so repeating it here would just be noise. Only
+  // the statuses it could actually move to are worth showing.
+  const otherStatuses = useMemo(
+    () => ALL_STATUSES.filter((status) => status !== transaction.status),
+    [transaction.status],
+  );
+
   const handleStatusChange = async (nextStatus: Transaction["status"]) => {
     if (nextStatus === transaction.status || statusUpdating) {
       return;
@@ -176,6 +204,59 @@ const TransactionCard = memo(function TransactionCard({
     } catch (error) {
       setStatusError(
         error instanceof Error ? error.message : "Unable to update sale status",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleOpenPay = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setStatusError(null);
+    setPayAmountInput(balanceDue.toFixed(2));
+    setPayAnchorEl(event.currentTarget);
+  };
+
+  const handleClosePay = () => {
+    if (statusUpdating) {
+      return;
+    }
+    setPayAnchorEl(null);
+  };
+
+  const handleConfirmPay = async () => {
+    if (statusUpdating) {
+      return;
+    }
+
+    if (!Number.isFinite(numericPayAmount) || numericPayAmount <= 0) {
+      setStatusError("Enter a valid amount");
+      return;
+    }
+
+    // Anything over the balance is change — only what actually settles the
+    // balance gets credited to the order.
+    const creditedAmount = Math.min(numericPayAmount, balanceDue);
+    const nextAmountPaid = Number(
+      (Number(paidAmount) + creditedAmount).toFixed(2),
+    );
+    const nextStatus: Transaction["status"] =
+      nextAmountPaid >= Number(transaction.total) ? "PAID" : "PENDING";
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      await onUpdateStatus(
+        transaction.id,
+        nextStatus,
+        undefined,
+        nextAmountPaid,
+      );
+      setPayAnchorEl(null);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : "Unable to record payment",
       );
     } finally {
       setStatusUpdating(false);
@@ -351,12 +432,9 @@ const TransactionCard = memo(function TransactionCard({
                   variant="contained"
                   color="primary"
                   disabled={statusUpdating}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void handleStatusChange("PAID");
-                  }}
+                  onClick={handleOpenPay}
                 >
-                  Mark Paid
+                  Pay
                 </Button>
               ) : null}
 
@@ -371,38 +449,103 @@ const TransactionCard = memo(function TransactionCard({
           </Stack>
         </Box>
 
+        <Popover
+          open={payPopoverOpen}
+          anchorEl={payAnchorEl}
+          onClose={handleClosePay}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          slotProps={{ paper: { sx: { p: 2, width: 260 } } }}
+        >
+          <Stack spacing={1.25}>
+            <Box>
+              <Typography variant="subtitle2">Collect Payment</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Balance due {formatCurrency(balanceDue)}
+              </Typography>
+            </Box>
+
+            <TextField
+              autoFocus
+              label="Amount received"
+              value={payAmountInput}
+              onChange={(event) => setPayAmountInput(event.target.value)}
+              type="number"
+              size="small"
+              fullWidth
+              slotProps={{
+                htmlInput: { min: 0, step: "0.01", inputMode: "decimal" },
+              }}
+            />
+
+            {payChange > 0 ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="caption" color="text.secondary">
+                  Change (for reference only)
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {formatCurrency(payChange)}
+                </Typography>
+              </Stack>
+            ) : null}
+
+            {statusError ? (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {statusError}
+              </Alert>
+            ) : null}
+
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Button
+                size="small"
+                onClick={handleClosePay}
+                disabled={statusUpdating}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => void handleConfirmPay()}
+                disabled={statusUpdating}
+              >
+                {statusUpdating ? "Saving..." : "Confirm"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Popover>
+
         <Collapse in={expanded} timeout="auto" unmountOnExit>
           <Divider />
 
           <Box sx={{ px: 1.25, py: 1.1 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ minWidth: 72 }}
-              >
-                Sale Status
-              </Typography>
-              <Select
-                size="small"
-                value={transaction.status}
-                disabled={statusUpdating}
-                onChange={(event) =>
-                  void handleStatusChange(
-                    event.target.value as Transaction["status"],
-                  )
-                }
-                sx={{ minWidth: 140 }}
-              >
-                <MenuItem value="PENDING">PENDING</MenuItem>
-                <MenuItem value="PAID">PAID</MenuItem>
-                <MenuItem value="REFUNDED" disabled={!isOwner}>
-                  REFUNDED
-                </MenuItem>
-                <MenuItem value="VOIDED" disabled={!isOwner}>
-                  VOIDED
-                </MenuItem>
-              </Select>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+            >
+              Change Status To
+            </Typography>
+
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+              {otherStatuses.map((status) => {
+                const restricted =
+                  (status === "REFUNDED" || status === "VOIDED") && !isOwner;
+
+                return (
+                  <Chip
+                    key={status}
+                    size="small"
+                    variant="outlined"
+                    color={getStatusColor(status)}
+                    label={status}
+                    clickable={!statusUpdating && !restricted}
+                    disabled={statusUpdating || restricted}
+                    onClick={() => void handleStatusChange(status)}
+                    sx={{ fontWeight: 700 }}
+                  />
+                );
+              })}
             </Stack>
 
             {statusError ? (
@@ -411,103 +554,6 @@ const TransactionCard = memo(function TransactionCard({
               </Alert>
             ) : null}
           </Box>
-
-          <Divider />
-
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ px: 1.25, py: 1.1 }}
-            divider={<Divider orientation="vertical" flexItem />}
-          >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary">
-                Total
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.15 }}>
-                {formatCurrency(transaction.total)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary">
-                Paid
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.15 }}>
-                {formatCurrency(paidAmount)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="caption" color="text.secondary">
-                {isPending ? "Balance Due" : "Change"}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{ fontWeight: 800, mt: 0.15 }}
-                color={isPending && balanceDue > 0 ? "error.main" : undefined}
-              >
-                {formatCurrency(isPending ? balanceDue : change)}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {hasRefundDetails ? (
-            <>
-              <Divider />
-              <Box sx={{ px: 1.25, py: 1 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
-                >
-                  Refund Details
-                </Typography>
-
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  divider={<Divider orientation="vertical" flexItem />}
-                >
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Items Returned
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15 }}
-                    >
-                      {returnedUnitCount}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Refund Amount
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15, color: "warning.main" }}
-                    >
-                      {formatCurrency(transaction.refundAmount)}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Remaining Amount
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15 }}
-                    >
-                      {formatCurrency(remainingAmount)}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            </>
-          ) : null}
 
           <Divider />
 
@@ -689,6 +735,103 @@ const TransactionCard = memo(function TransactionCard({
               </Box>
             ) : null}
           </Box>
+
+          <Divider />
+
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ px: 1.25, py: 1.1 }}
+            divider={<Divider orientation="vertical" flexItem />}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.15 }}>
+                {formatCurrency(transaction.total)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary">
+                Paid
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 800, mt: 0.15 }}>
+                {formatCurrency(paidAmount)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary">
+                {isPending ? "Balance Due" : "Change"}
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 800, mt: 0.15 }}
+                color={isPending && balanceDue > 0 ? "error.main" : undefined}
+              >
+                {formatCurrency(isPending ? balanceDue : change)}
+              </Typography>
+            </Box>
+          </Stack>
+
+          {hasRefundDetails ? (
+            <>
+              <Divider />
+              <Box sx={{ px: 1.25, py: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+                >
+                  Refund Details
+                </Typography>
+
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  divider={<Divider orientation="vertical" flexItem />}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Items Returned
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15 }}
+                    >
+                      {returnedUnitCount}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Refund Amount
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15, color: "warning.main" }}
+                    >
+                      {formatCurrency(transaction.refundAmount)}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Remaining Amount
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 800, mt: 0.15 }}
+                    >
+                      {formatCurrency(remainingAmount)}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            </>
+          ) : null}
 
           {hasNote ? (
             <>

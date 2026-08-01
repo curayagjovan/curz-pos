@@ -27,6 +27,7 @@ type TransactionsContextType = {
     id: string,
     status: Transaction["status"],
     items?: Array<{ id: string; returnedQuantity: number }>,
+    amountPaid?: number,
   ) => Promise<void>;
 };
 
@@ -235,13 +236,14 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
       id: string,
       status: Transaction["status"],
       items?: Array<{ id: string; returnedQuantity: number }>,
+      amountPaid?: number,
     ) => {
       const response = await fetch("/api/orders", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, status, items }),
+        body: JSON.stringify({ id, status, items, amountPaid }),
       });
 
       const data = await response.json();

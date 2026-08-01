@@ -24,6 +24,7 @@ type TransactionsCatalogProps = {
     id: string,
     status: Transaction["status"],
     items?: Array<{ id: string; returnedQuantity: number }>,
+    amountPaid?: number,
   ) => Promise<void>;
   groups?: TransactionGroup[];
 };

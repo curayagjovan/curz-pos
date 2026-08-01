@@ -33,6 +33,7 @@ type OrderStatusUpdatePayload = {
   id?: string;
   status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
   items?: OrderItemReturnInput[];
+  amountPaid?: number;
 };
 
 const orderItemSelect = {
@@ -869,6 +870,25 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // An explicit amountPaid (from the Sales page's Pay popover) overrides
+    // the default full-settle-to-total behavior below — it lets a partial
+    // or custom payment amount get recorded even when the order stays
+    // PENDING, without every other status-change caller needing to pass it.
+    const hasAmountPaidOverride =
+      body.amountPaid !== undefined && body.amountPaid !== null;
+    if (
+      hasAmountPaidOverride &&
+      (!Number.isFinite(Number(body.amountPaid)) || Number(body.amountPaid) < 0)
+    ) {
+      return NextResponse.json(
+        { message: "Invalid amount paid" },
+        { status: 400 },
+      );
+    }
+    const requestedAmountPaid = hasAmountPaidOverride
+      ? Number(Number(body.amountPaid).toFixed(2))
+      : null;
+
     // Voiding/refunding is an Owner-only action; settling a pending sale to
     // paid (or back) is fine for any authenticated cashier.
     const auth =
@@ -962,9 +982,10 @@ export async function PATCH(request: Request) {
       // still outstanding) settles it to PAID — backfill amountPaid to the
       // full total here so the sale no longer shows an outstanding balance,
       // without requiring every caller of this generic status PATCH to pass
-      // the amount explicitly.
+      // the amount explicitly. Skipped entirely when the caller already
+      // provided an explicit amountPaid (a partial or custom payment).
       const existingOrder =
-        status === "PAID"
+        status === "PAID" && requestedAmountPaid === null
           ? await prisma.order.findUnique({
               where: { id },
               select: { status: true, total: true },
@@ -974,12 +995,19 @@ export async function PATCH(request: Request) {
       const shouldSettleFullPayment =
         existingOrder !== null && existingOrder.status !== "PAID";
 
+      const amountPaidToPersist =
+        requestedAmountPaid !== null
+          ? requestedAmountPaid
+          : shouldSettleFullPayment
+            ? existingOrder!.total
+            : null;
+
       updatedOrder = await prisma.order.update({
         where: { id },
         data: {
           status,
-          ...(shouldSettleFullPayment
-            ? { amountPaid: existingOrder!.total }
+          ...(amountPaidToPersist !== null
+            ? { amountPaid: amountPaidToPersist }
             : {}),
         },
         select: orderCreateSelectWithAmountPaid,
