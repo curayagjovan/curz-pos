@@ -24,6 +24,7 @@ import CategoryFilterChips from "@/app/components/category-filter-chips";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
+import { useCustomers } from "@/app/context/customers-context";
 import { useProducts } from "@/app/context/products-context";
 import { useTransactions } from "@/app/context/transactions-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
@@ -62,6 +63,7 @@ export default function ProductsPage() {
   const { products, loading, error } = useProducts();
   const { transactions, addTransaction, refreshTransactions } =
     useTransactions();
+  const { customers, createCustomer } = useCustomers();
   const {
     snackbarOpen,
     snackbarMessage,
@@ -119,6 +121,21 @@ export default function ProductsPage() {
       }
     };
   }, []);
+
+  const handleCreateCustomer = useCallback(
+    async (input: { name: string; phone?: string }) => {
+      try {
+        return await createCustomer(input);
+      } catch (err) {
+        showSnackbar({
+          message: err instanceof Error ? err.message : "Unable to add customer",
+          severity: "error",
+        });
+        return null;
+      }
+    },
+    [createCustomer, showSnackbar],
+  );
 
   const categoryFilteredProducts = useMemo(() => {
     if (!categoryFilter) {
@@ -471,7 +488,10 @@ export default function ProductsPage() {
   // customer walks off with the item before payment is settled). Only the
   // validation and the resulting order status differ between the two.
   const submitCheckout = useCallback(
-    async (status: "PAID" | "PENDING") => {
+    async (
+      status: "PAID" | "PENDING",
+      pendingDetails?: { customerId: string; amountPaid: number },
+    ) => {
       if (checkoutCooldown) {
         showSnackbar({
           message: "Please wait a moment before checking out again",
@@ -493,6 +513,14 @@ export default function ProductsPage() {
         return;
       }
 
+      if (status === "PENDING" && !pendingDetails?.customerId) {
+        showSnackbar({
+          message: "Select a customer for unpaid sales",
+          severity: "error",
+        });
+        return;
+      }
+
       const setLoading =
         status === "PAID" ? setCheckoutLoading : setPendingCheckoutLoading;
 
@@ -509,7 +537,10 @@ export default function ProductsPage() {
         const payload = {
           requestId,
           status,
-          amountPaid: parsedPaidAmount,
+          amountPaid:
+            status === "PENDING" ? pendingDetails!.amountPaid : parsedPaidAmount,
+          customerId:
+            status === "PENDING" ? pendingDetails!.customerId : undefined,
           senderPushEndpoint: senderPushEndpointRef.current,
           items: cartItems.map((item) => ({
             productId: item.id,
@@ -612,7 +643,8 @@ export default function ProductsPage() {
     [submitCheckout],
   );
   const handleCheckoutPending = useCallback(
-    () => submitCheckout("PENDING"),
+    (details: { customerId: string; amountPaid: number }) =>
+      submitCheckout("PENDING", details),
     [submitCheckout],
   );
 
@@ -629,8 +661,9 @@ export default function ProductsPage() {
   return (
     <MobilePageWrapper
       title="Products"
-      pageMenuItems={(closeMenu) => (
+      pageMenuItems={(closeMenu) => [
         <MenuItem
+          key="inventory"
           onClick={() => {
             closeMenu();
             setCurrentPage("inventory");
@@ -640,8 +673,8 @@ export default function ProductsPage() {
             <Inventory2Rounded fontSize="small" />
           </ListItemIcon>
           <ListItemText>Inventory</ListItemText>
-        </MenuItem>
-      )}
+        </MenuItem>,
+      ]}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1}>
@@ -813,6 +846,8 @@ export default function ProductsPage() {
         checkoutLoading={checkoutLoading}
         pendingCheckoutLoading={pendingCheckoutLoading}
         checkoutDisabled={checkoutCooldown}
+        customers={customers}
+        onCreateCustomer={handleCreateCustomer}
         onClose={handleCloseCart}
         onPaidAmountChange={handlePaidAmountChange}
         onRemoveFromCart={removeFromCart}

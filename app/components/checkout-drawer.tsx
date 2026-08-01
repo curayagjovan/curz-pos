@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -10,6 +10,7 @@ import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -17,7 +18,9 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
+import CustomerPicker from "@/app/components/customer-picker";
 import type { CartItem } from "@/app/context/cart-context";
+import type { Customer } from "@/types/customer";
 
 type CheckoutDrawerProps = {
   open: boolean;
@@ -31,13 +34,18 @@ type CheckoutDrawerProps = {
   checkoutLoading: boolean;
   pendingCheckoutLoading?: boolean;
   checkoutDisabled?: boolean;
+  customers: Customer[];
+  onCreateCustomer: (input: {
+    name: string;
+    phone?: string;
+  }) => Promise<Customer | null>;
   onClose: () => void;
   onPaidAmountChange: (value: string) => void;
   onRemoveFromCart: (id: string) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onClearCart: () => void;
   onCheckout: () => void;
-  onCheckoutPending: () => void;
+  onCheckoutPending: (details: { customerId: string; amountPaid: number }) => void;
 };
 
 type CartItemRowProps = {
@@ -103,6 +111,8 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
   checkoutLoading,
   pendingCheckoutLoading = false,
   checkoutDisabled = false,
+  customers,
+  onCreateCustomer,
   onClose,
   onPaidAmountChange,
   onRemoveFromCart,
@@ -112,6 +122,48 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
   onCheckoutPending,
 }: CheckoutDrawerProps) {
   const anyCheckoutLoading = checkoutLoading || pendingCheckoutLoading;
+
+  const [pendingAnchorEl, setPendingAnchorEl] = useState<HTMLElement | null>(
+    null,
+  );
+  const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(
+    null,
+  );
+  const [pendingAmountInput, setPendingAmountInput] = useState("0");
+  const pendingPopoverOpen = Boolean(pendingAnchorEl);
+
+  const handleOpenPending = (event: React.MouseEvent<HTMLElement>) => {
+    setPendingCustomerId(null);
+    setPendingAmountInput("0");
+    setPendingAnchorEl(event.currentTarget);
+  };
+
+  const handleClosePending = () => {
+    if (pendingCheckoutLoading) {
+      return;
+    }
+    setPendingAnchorEl(null);
+  };
+
+  const numericPendingAmount = Number(pendingAmountInput);
+
+  const handleConfirmPending = () => {
+    if (!pendingCustomerId) {
+      return;
+    }
+
+    // The total charged to the customer is always the full cart total —
+    // this field only controls how much of it is collected up front. The
+    // rest becomes the utang balance, tracked via the order's amountPaid.
+    const amountPaid =
+      Number.isFinite(numericPendingAmount) && numericPendingAmount > 0
+        ? Math.min(numericPendingAmount, cartTotal)
+        : 0;
+
+    onCheckoutPending({ customerId: pendingCustomerId, amountPaid });
+    setPendingAnchorEl(null);
+  };
+
   return (
     <SwipeableDrawer
       anchor="bottom"
@@ -244,7 +296,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
               anyCheckoutLoading ||
               checkoutDisabled
             }
-            onClick={onCheckoutPending}
+            onClick={handleOpenPending}
           >
             {pendingCheckoutLoading ? "Saving..." : "Pending"}
           </Button>
@@ -263,6 +315,66 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
           </Button>
         </Stack>
       </Box>
+
+      <Popover
+        open={pendingPopoverOpen}
+        anchorEl={pendingAnchorEl}
+        onClose={handleClosePending}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Stack spacing={1.5} sx={{ p: 2, minWidth: 280 }}>
+          <Typography variant="subtitle2">Unpaid Sale (Utang)</Typography>
+
+          <Stack direction="row" justifyContent="space-between">
+            <Typography variant="body2" color="text.secondary">
+              Total
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              ₱{cartTotal.toFixed(2)}
+            </Typography>
+          </Stack>
+
+          <CustomerPicker
+            customers={customers}
+            value={pendingCustomerId}
+            onChange={setPendingCustomerId}
+            onCreateCustomer={onCreateCustomer}
+            label="Customer"
+            required
+          />
+
+          <TextField
+            fullWidth
+            size="small"
+            type="number"
+            label="Amount received now (optional)"
+            value={pendingAmountInput}
+            onChange={(event) => setPendingAmountInput(event.target.value)}
+            slotProps={{
+              htmlInput: {
+                min: 0,
+                step: "0.01",
+                inputMode: "decimal",
+              },
+            }}
+          />
+
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button onClick={handleClosePending} disabled={pendingCheckoutLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              disabled={!pendingCustomerId || pendingCheckoutLoading}
+              onClick={handleConfirmPending}
+            >
+              {pendingCheckoutLoading ? "Saving..." : "Confirm"}
+            </Button>
+          </Stack>
+        </Stack>
+      </Popover>
     </SwipeableDrawer>
   );
 });

@@ -47,9 +47,27 @@ model Order {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
+  customerId String?
+  customer   Customer?   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
   items OrderItem[]
 
   @@index([createdAt])
+  @@index([customerId, status])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive, name])
 }
 
 model OrderItem {

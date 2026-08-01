@@ -13,6 +13,7 @@ import ManageLoadPage from "./pages/manage-load-page";
 import EWalletPage from "./pages/ewallet-page";
 import ManageStaffPage from "./pages/manage-staff-page";
 import AuditLogPage from "./pages/audit-log-page";
+import CustomersPage from "./pages/customers-page";
 
 export default function Page() {
   const { currentPage } = usePageContext();
@@ -46,6 +47,7 @@ export default function Page() {
     ewallet: <EWalletPage />,
     manageStaff: <ManageStaffPage />,
     auditLog: <AuditLogPage />,
+    customers: <CustomersPage />,
   };
 
   return (

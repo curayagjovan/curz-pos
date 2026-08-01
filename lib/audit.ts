@@ -12,6 +12,8 @@ export const AUDIT_ACTIONS = {
   STAFF_CREATE: "staff.create",
   STAFF_UPDATE: "staff.update",
   SETTINGS_UPDATE: "settings.update",
+  CUSTOMER_CREATE: "customer.create",
+  CUSTOMER_UPDATE: "customer.update",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

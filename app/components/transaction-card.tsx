@@ -16,8 +16,10 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import AddRounded from "@mui/icons-material/AddRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
+import CustomerPicker from "@/app/components/customer-picker";
 import { useAuth } from "@/app/context/auth-context";
 import type { Transaction } from "@/types/transaction";
+import type { Customer } from "@/types/customer";
 
 type TransactionCardProps = {
   transaction: Transaction;
@@ -27,6 +29,20 @@ type TransactionCardProps = {
     items?: Array<{ id: string; returnedQuantity: number }>,
     amountPaid?: number,
   ) => Promise<void>;
+  // Only passed by the Utang customer detail view — lets a sale that was
+  // accidentally attributed to the wrong customer be detached from them
+  // without touching the sale itself. Omitted (and hidden) everywhere else,
+  // e.g. the general Sales page, where there's no "this customer" context.
+  onRemoveFromCustomer?: (id: string) => Promise<void>;
+  // Only passed by the Sales page — lets a pending sale that has no
+  // customer (or the wrong one) get assigned/reassigned directly, without
+  // needing to go through the Utang page.
+  customers?: Customer[];
+  onAssignCustomer?: (id: string, customerId: string) => Promise<void>;
+  onCreateCustomer?: (input: {
+    name: string;
+    phone?: string;
+  }) => Promise<Customer | null>;
 };
 
 const ALL_STATUSES: Transaction["status"][] = [
@@ -95,6 +111,10 @@ function getStatusConfirmationMessage(status: Transaction["status"]) {
 const TransactionCard = memo(function TransactionCard({
   transaction,
   onUpdateStatus,
+  onRemoveFromCustomer,
+  customers,
+  onAssignCustomer,
+  onCreateCustomer,
 }: TransactionCardProps) {
   const transactionItems = useMemo(
     () => (Array.isArray(transaction.items) ? transaction.items : []),
@@ -257,6 +277,56 @@ const TransactionCard = memo(function TransactionCard({
     } catch (error) {
       setStatusError(
         error instanceof Error ? error.message : "Unable to record payment",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleRemoveFromCustomer = async () => {
+    if (!onRemoveFromCustomer || statusUpdating) {
+      return;
+    }
+
+    const confirmationMessage = `Remove this sale from ${
+      transaction.customer?.name ?? "this customer"
+    }? It will no longer count toward their balance.`;
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      await onRemoveFromCustomer(transaction.id);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove this sale from the customer",
+      );
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleAssignCustomer = async (customerId: string | null) => {
+    // Clearing the picker (selecting nothing) is treated as a no-op here —
+    // unlinking a customer is a deliberate action that lives on the Utang
+    // page's "Remove from Customer" button, not a side effect of this field.
+    if (!onAssignCustomer || !customerId || statusUpdating) {
+      return;
+    }
+
+    setStatusError(null);
+    setStatusUpdating(true);
+
+    try {
+      await onAssignCustomer(transaction.id, customerId);
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : "Unable to assign customer",
       );
     } finally {
       setStatusUpdating(false);
@@ -519,13 +589,31 @@ const TransactionCard = memo(function TransactionCard({
           <Divider />
 
           <Box sx={{ px: 1.25, py: 1.1 }}>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.75 }}
             >
-              Change Status To
-            </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ letterSpacing: 0.3 }}
+              >
+                Change Status To
+              </Typography>
+
+              {onRemoveFromCustomer && transaction.customerId ? (
+                <Button
+                  size="small"
+                  color="error"
+                  disabled={statusUpdating}
+                  onClick={() => void handleRemoveFromCustomer()}
+                >
+                  Remove from Customer
+                </Button>
+              ) : null}
+            </Stack>
 
             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
               {otherStatuses.map((status) => {
@@ -554,6 +642,32 @@ const TransactionCard = memo(function TransactionCard({
               </Alert>
             ) : null}
           </Box>
+
+          {isPending && customers && onAssignCustomer ? (
+            <>
+              <Divider />
+              <Box sx={{ px: 1.25, py: 1.1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
+                >
+                  Customer
+                </Typography>
+
+                <CustomerPicker
+                  customers={customers}
+                  value={transaction.customerId}
+                  onChange={(customerId) =>
+                    void handleAssignCustomer(customerId)
+                  }
+                  onCreateCustomer={onCreateCustomer ?? (async () => null)}
+                  placeholder="Assign a customer"
+                  disabled={statusUpdating}
+                />
+              </Box>
+            </>
+          ) : null}
 
           <Divider />
 

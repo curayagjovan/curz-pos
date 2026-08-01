@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
+import AppSnackbar from "@/app/components/app-snackbar";
 import FilterPopoverButton from "@/app/components/filter-popover-button";
 import type { FilterPopoverOption } from "@/app/components/filter-popover-button";
 import TransactionsCatalog from "@/app/components/transactions-catalog";
@@ -14,11 +15,14 @@ import WeekStripFilter, {
   startOfDay,
   startOfWeek,
 } from "@/app/components/week-strip-filter";
+import { useCustomers } from "@/app/context/customers-context";
 import { useTransactions } from "@/app/context/transactions-context";
+import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useSalesSummary } from "@/app/hooks/use-sales-summary";
 import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
+import type { Customer } from "@/types/customer";
 
 const STATUS_OPTIONS: FilterPopoverOption[] = [
   { key: "all", label: "All Status" },
@@ -58,6 +62,14 @@ export default function TransactionsPage() {
     error: liveError,
     updateTransactionStatus,
   } = useTransactions();
+  const { customers, createCustomer } = useCustomers();
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    showSnackbar,
+    closeSnackbar,
+  } = useAppSnackbar();
 
   // The shared context only ever holds the latest ~100 orders (plus
   // whatever this specific device happened to cache before) — it silently
@@ -125,6 +137,45 @@ export default function TransactionsPage() {
     // month, and year all overlap it), so the report needs its own refetch
     // rather than being derived from the transactions already in memory.
     await refetchSalesSummary();
+  };
+
+  // Assigns (or reassigns) a pending sale to a customer directly from the
+  // Sales page — covers sales that were never attributed to anyone, or that
+  // need fixing after being detached via the Utang page's "Remove from
+  // Customer" action.
+  const handleAssignCustomer = async (id: string, customerId: string) => {
+    const transaction = transactions.find((item) => item.id === id);
+    if (!transaction) {
+      return;
+    }
+
+    const response = await fetch("/api/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: transaction.status, customerId }),
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(data?.message || "Unable to assign customer");
+    }
+
+    await refetchRange();
+  };
+
+  const handleCreateCustomer = async (input: {
+    name: string;
+    phone?: string;
+  }): Promise<Customer | null> => {
+    try {
+      return await createCustomer(input);
+    } catch (err) {
+      showSnackbar({
+        message: err instanceof Error ? err.message : "Unable to add customer",
+        severity: "error",
+      });
+      return null;
+    }
   };
 
   const filteredTransactions = useMemo(() => {
@@ -245,6 +296,9 @@ export default function TransactionsPage() {
             loading={loading}
             error={error}
             onUpdateStatus={handleUpdateStatus}
+            customers={customers}
+            onAssignCustomer={handleAssignCustomer}
+            onCreateCustomer={handleCreateCustomer}
             groups={groupedTransactions}
           />
         </Stack>
@@ -257,6 +311,13 @@ export default function TransactionsPage() {
         summary={salesSummary}
         loading={salesSummaryLoading}
         error={salesSummaryError}
+      />
+
+      <AppSnackbar
+        open={snackbarOpen}
+        message={snackbarMessage}
+        severity={snackbarSeverity}
+        onClose={closeSnackbar}
       />
     </MobilePageWrapper>
   );

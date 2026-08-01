@@ -8,6 +8,7 @@ import NotificationPermissionManager from "@/app/components/notification-permiss
 import { AuthProvider } from "@/app/context/auth-context";
 import { PageProvider } from "@/app/context/page-context";
 import { CartProvider } from "@/app/context/cart-context";
+import { CustomersProvider } from "@/app/context/customers-context";
 import { LoadItemsProvider } from "@/app/context/load-items-context";
 import { ProductsProvider } from "@/app/context/products-context";
 import { TransactionsProvider } from "@/app/context/transactions-context";
@@ -27,9 +28,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <PageProvider>
             <ProductsProvider>
               <TransactionsProvider>
-                <LoadItemsProvider>
-                  <CartProvider>{children}</CartProvider>
-                </LoadItemsProvider>
+                <CustomersProvider>
+                  <LoadItemsProvider>
+                    <CartProvider>{children}</CartProvider>
+                  </LoadItemsProvider>
+                </CustomersProvider>
               </TransactionsProvider>
             </ProductsProvider>
           </PageProvider>

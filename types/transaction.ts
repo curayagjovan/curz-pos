@@ -19,5 +19,7 @@ export type Transaction = {
   refundedAt: string | null;
   note: string | null;
   createdAt: string;
+  customerId: string | null;
+  customer: { id: string; name: string; phone: string | null } | null;
   items: TransactionItem[];
 };

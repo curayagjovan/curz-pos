@@ -20,6 +20,7 @@ type OrderPayload = {
   total?: number;
   amountPaid?: number;
   note?: string;
+  customerId?: string;
   senderPushEndpoint?: string;
   items?: OrderItemInput[];
 };
@@ -34,6 +35,7 @@ type OrderStatusUpdatePayload = {
   status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
   items?: OrderItemReturnInput[];
   amountPaid?: number;
+  customerId?: string | null;
 };
 
 const orderItemSelect = {
@@ -54,6 +56,10 @@ const orderListSelectBase = {
   refundedAt: true,
   note: true,
   createdAt: true,
+  customerId: true,
+  customer: {
+    select: { id: true, name: true, phone: true },
+  },
   items: {
     select: orderItemSelect,
   },
@@ -74,6 +80,10 @@ const orderCreateSelectBase = {
   refundedAt: true,
   note: true,
   createdAt: true,
+  customerId: true,
+  customer: {
+    select: { id: true, name: true, phone: true },
+  },
   items: {
     select: orderItemSelect,
   },
@@ -280,6 +290,7 @@ export async function GET(request: Request) {
     const statusParam = url.searchParams.get("status");
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
+    const customerId = url.searchParams.get("customerId")?.trim() || null;
     const hasPaginationParams =
       url.searchParams.has("page") ||
       url.searchParams.has("limit") ||
@@ -306,9 +317,10 @@ export async function GET(request: Request) {
     const hasValidTo = toDate !== null && !Number.isNaN(toDate.getTime());
 
     const where: Prisma.OrderWhereInput | undefined =
-      status || hasValidFrom || hasValidTo
+      status || hasValidFrom || hasValidTo || customerId
         ? {
             ...(status ? { status } : {}),
+            ...(customerId ? { customerId } : {}),
             ...(hasValidFrom || hasValidTo
               ? {
                   createdAt: {
@@ -320,12 +332,13 @@ export async function GET(request: Request) {
           }
         : undefined;
 
-    // A date range is inherently bounded (a week of real-world sales volume
+    // A date range (or a single customer's history) is inherently bounded (a
+    // week of real-world sales volume, or one customer's utang history,
     // never approaches this), so it always returns every matching order
     // rather than being capped like the latest-100 "recent activity" fetch
-    // below — callers navigating to older periods need the real data, not a
-    // sample of it.
-    if (hasValidFrom || hasValidTo) {
+    // below — callers navigating to older periods, or a customer's older
+    // unpaid orders, need the real data, not a sample of it.
+    if (hasValidFrom || hasValidTo || customerId) {
       let orders: unknown[];
       try {
         orders = await prisma.order.findMany({
@@ -449,6 +462,10 @@ export async function POST(request: Request) {
         ? null
         : Number(body.amountPaid);
     const note = body.note?.trim() || null;
+    const customerId =
+      typeof body.customerId === "string" && body.customerId.trim().length > 0
+        ? body.customerId.trim()
+        : null;
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (
@@ -457,6 +474,15 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { message: "Invalid order payload" },
+        { status: 400 },
+      );
+    }
+
+    // Utang tracking only works if an unpaid sale is attributed to someone —
+    // an anonymous PENDING order can't be collected on later.
+    if (status === "PENDING" && !customerId) {
+      return NextResponse.json(
+        { message: "A customer is required for unpaid sales" },
         { status: 400 },
       );
     }
@@ -509,26 +535,42 @@ export async function POST(request: Request) {
       new Set(items.map((item) => item.productId as string)),
     );
 
-    // Run the idempotency lookup concurrently with the product snapshot
-    // fetch instead of after it — they don't depend on each other, and each
-    // round trip to the database costs real latency.
-    const [productSnapshot, existingByRequestId] = await Promise.all([
-      prisma.product.findMany({
-        where: { id: { in: productIds } },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          bundleQty: true,
-          bundlePrice: true,
-          allowCustomPrice: true,
-        },
-      }),
-      normalizedRequestId ? getExistingOrderByIdentifier() : Promise.resolve(null),
-    ]);
+    // Run the idempotency lookup and customer validation concurrently with
+    // the product snapshot fetch instead of after it — none of them depend
+    // on each other, and each round trip to the database costs real latency.
+    const [productSnapshot, existingByRequestId, customerRecord] =
+      await Promise.all([
+        prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            bundleQty: true,
+            bundlePrice: true,
+            allowCustomPrice: true,
+          },
+        }),
+        normalizedRequestId
+          ? getExistingOrderByIdentifier()
+          : Promise.resolve(null),
+        customerId
+          ? prisma.customer.findUnique({
+              where: { id: customerId },
+              select: { id: true, name: true, isActive: true },
+            })
+          : Promise.resolve(null),
+      ]);
 
     if (existingByRequestId) {
       return NextResponse.json(existingByRequestId, { status: 200 });
+    }
+
+    if (customerId && (!customerRecord || !customerRecord.isActive)) {
+      return NextResponse.json(
+        { message: "Customer not found" },
+        { status: 400 },
+      );
     }
 
     const productById = new Map(productSnapshot.map((p) => [p.id, p]));
@@ -717,6 +759,7 @@ export async function POST(request: Request) {
           total: computedTotal,
           ...(includeAmountPaid ? { amountPaid } : {}),
           note,
+          customerId,
           items: {
             create: orderItems,
           },
@@ -737,7 +780,9 @@ export async function POST(request: Request) {
             action: AUDIT_ACTIONS.ORDER_CREATE,
             entityType: "Order",
             entityId: orderIdentifier.id,
-            summary: `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)}`,
+            summary: customerRecord
+              ? `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)} — utang for ${customerRecord.name}`
+              : `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)}`,
           }),
         ),
       ] as Prisma.PrismaPromise<unknown>[];
@@ -889,6 +934,28 @@ export async function PATCH(request: Request) {
       ? Number(Number(body.amountPaid).toFixed(2))
       : null;
 
+    // customerId is tri-state: absent (key not sent at all) means "leave it
+    // alone" — the common case for every other status-change caller. Present
+    // with null means unlink (a misattributed sale, e.g. from the Utang
+    // page). Present with a string means assign/reassign (e.g. from the
+    // Sales page attaching a customer to a pending sale that never had one,
+    // or fixing one that had the wrong person).
+    const customerIdProvided = Object.prototype.hasOwnProperty.call(
+      body,
+      "customerId",
+    );
+
+    if (
+      customerIdProvided &&
+      body.customerId !== null &&
+      (typeof body.customerId !== "string" || body.customerId.trim().length === 0)
+    ) {
+      return NextResponse.json(
+        { message: "Invalid customer" },
+        { status: 400 },
+      );
+    }
+
     // Voiding/refunding is an Owner-only action; settling a pending sale to
     // paid (or back) is fine for any authenticated cashier.
     const auth =
@@ -897,6 +964,32 @@ export async function PATCH(request: Request) {
         : await requireUser();
     if (!auth.ok) {
       return auth.response;
+    }
+
+    // Resolved once auth has passed — a non-null customerId must reference
+    // a real, active customer before it's allowed onto the order.
+    let nextCustomerId: string | null | undefined;
+    let assignedCustomerName: string | null = null;
+    if (customerIdProvided) {
+      if (body.customerId === null) {
+        nextCustomerId = null;
+      } else {
+        const customerId = (body.customerId as string).trim();
+        const customer = await prisma.customer.findUnique({
+          where: { id: customerId },
+          select: { id: true, name: true, isActive: true },
+        });
+
+        if (!customer || !customer.isActive) {
+          return NextResponse.json(
+            { message: "Customer not found" },
+            { status: 400 },
+          );
+        }
+
+        nextCustomerId = customerId;
+        assignedCustomerName = customer.name;
+      }
     }
 
     if (status === "REFUNDED" && itemsInput.length > 0) {
@@ -1009,6 +1102,7 @@ export async function PATCH(request: Request) {
           ...(amountPaidToPersist !== null
             ? { amountPaid: amountPaidToPersist }
             : {}),
+          ...(nextCustomerId !== undefined ? { customerId: nextCustomerId } : {}),
         },
         select: orderCreateSelectWithAmountPaid,
       });
@@ -1016,7 +1110,12 @@ export async function PATCH(request: Request) {
       if (isMissingAmountPaidColumnError(error)) {
         const fallback = await prisma.order.update({
           where: { id },
-          data: { status },
+          data: {
+            status,
+            ...(nextCustomerId !== undefined
+              ? { customerId: nextCustomerId }
+              : {}),
+          },
           select: orderCreateSelectBase,
         });
         updatedOrder = withNullAmountPaid(fallback as Record<string, unknown>);
@@ -1036,6 +1135,13 @@ export async function PATCH(request: Request) {
     const updatedOrderNo =
       (updatedOrder as { orderNo?: string } | null)?.orderNo ?? id;
 
+    const customerAuditSummary =
+      nextCustomerId === null
+        ? `Removed sale ${updatedOrderNo} from its customer (misattributed)`
+        : nextCustomerId !== undefined
+          ? `Assigned sale ${updatedOrderNo} to ${assignedCustomerName ?? "a customer"}`
+          : null;
+
     await recordAudit(
       status === "VOIDED"
         ? {
@@ -1045,13 +1151,21 @@ export async function PATCH(request: Request) {
             entityId: id,
             summary: `Voided sale ${updatedOrderNo}`,
           }
-        : {
-            actor: auth.appUser,
-            action: AUDIT_ACTIONS.ORDER_STATUS_CHANGE,
-            entityType: "Order",
-            entityId: id,
-            summary: `Changed sale ${updatedOrderNo} status to ${status}`,
-          },
+        : customerAuditSummary
+          ? {
+              actor: auth.appUser,
+              action: AUDIT_ACTIONS.ORDER_STATUS_CHANGE,
+              entityType: "Order",
+              entityId: id,
+              summary: customerAuditSummary,
+            }
+          : {
+              actor: auth.appUser,
+              action: AUDIT_ACTIONS.ORDER_STATUS_CHANGE,
+              entityType: "Order",
+              entityId: id,
+              summary: `Changed sale ${updatedOrderNo} status to ${status}`,
+            },
     );
 
     return NextResponse.json(updatedOrder, { status: 200 });

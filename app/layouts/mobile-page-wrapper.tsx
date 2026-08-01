@@ -24,6 +24,7 @@ import GroupRounded from "@mui/icons-material/GroupRounded";
 import HistoryRounded from "@mui/icons-material/HistoryRounded";
 import LightModeRounded from "@mui/icons-material/LightModeRounded";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
+import ReceiptLongRounded from "@mui/icons-material/ReceiptLongRounded";
 import StorefrontRounded from "@mui/icons-material/StorefrontRounded";
 import PointOfSaleRounded from "@mui/icons-material/PointOfSaleRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
@@ -265,6 +266,17 @@ export default function MobilePageWrapper({
             </MenuItem>
             {pageMenuItems ? pageMenuItems(closeAccountMenu) : null}
             {pageMenuItems ? <Divider key="page-menu-divider" /> : null}
+            <MenuItem
+              onClick={() => {
+                closeAccountMenu();
+                setCurrentPage("customers");
+              }}
+            >
+              <ListItemIcon>
+                <ReceiptLongRounded fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Utang</ListItemText>
+            </MenuItem>
             {appUser?.role === "OWNER" ? (
               <MenuItem
                 onClick={() => {

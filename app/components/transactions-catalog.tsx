@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import ListEmptyState from "@/app/components/list-empty-state";
 import TransactionCard from "@/app/components/transaction-card";
 import type { Transaction } from "@/types/transaction";
+import type { Customer } from "@/types/customer";
 
 export type TransactionGroup = {
   key: string;
@@ -26,6 +27,13 @@ type TransactionsCatalogProps = {
     items?: Array<{ id: string; returnedQuantity: number }>,
     amountPaid?: number,
   ) => Promise<void>;
+  onRemoveFromCustomer?: (id: string) => Promise<void>;
+  customers?: Customer[];
+  onAssignCustomer?: (id: string, customerId: string) => Promise<void>;
+  onCreateCustomer?: (input: {
+    name: string;
+    phone?: string;
+  }) => Promise<Customer | null>;
   groups?: TransactionGroup[];
 };
 
@@ -34,6 +42,10 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
   loading,
   error,
   onUpdateStatus,
+  onRemoveFromCustomer,
+  customers,
+  onAssignCustomer,
+  onCreateCustomer,
   groups,
 }: TransactionsCatalogProps) {
   if (error) {
@@ -69,6 +81,10 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
                   key={transaction.id}
                   transaction={transaction}
                   onUpdateStatus={onUpdateStatus}
+                  onRemoveFromCustomer={onRemoveFromCustomer}
+                  customers={customers}
+                  onAssignCustomer={onAssignCustomer}
+                  onCreateCustomer={onCreateCustomer}
                 />
               ))}
             </List>
@@ -85,6 +101,10 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
           key={transaction.id}
           transaction={transaction}
           onUpdateStatus={onUpdateStatus}
+          onRemoveFromCustomer={onRemoveFromCustomer}
+          customers={customers}
+          onAssignCustomer={onAssignCustomer}
+          onCreateCustomer={onCreateCustomer}
         />
       ))}
     </List>
