@@ -344,6 +344,8 @@ export default function InventoryPage() {
             deletingProductId={deletingProductId}
             variant="inventory"
           />
+
+          <Box sx={{ height: 64 }} aria-hidden />
         </Stack>
       </Container>
 
@@ -354,7 +356,7 @@ export default function InventoryPage() {
         sx={{
           position: "fixed",
           right: "calc(env(safe-area-inset-right) + 16px)",
-          bottom: "calc(env(safe-area-inset-bottom) + 88px)",
+          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
           zIndex: (theme) => theme.zIndex.drawer - 1,
         }}
       >

@@ -311,6 +311,8 @@ export default function ManageLoadPage() {
               ))}
             </List>
           )}
+
+          <Box sx={{ height: 64 }} aria-hidden />
         </Stack>
       </Container>
 

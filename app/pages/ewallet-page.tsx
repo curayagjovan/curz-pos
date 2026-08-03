@@ -151,8 +151,8 @@ export default function EWalletPage() {
   };
 
   // Shared by "Send Request" (records the sale as PENDING — the request is
-  // sent via SMS but not yet paid for) and "Completed" (records it as PAID
-  // immediately). Only the resulting order status differs.
+  // sent via SMS but not yet paid for) and "Mark Completed" (records it as
+  // PAID immediately). Only the resulting order status differs.
   const submitEwalletSale = async (
     status: "PENDING" | "PAID",
   ): Promise<Transaction | null> => {
@@ -647,7 +647,7 @@ export default function EWalletPage() {
               disabled={amount <= 0 || busy}
               onClick={() => void handleComplete()}
             >
-              {completing ? "Saving..." : "Completed"}
+              {completing ? "Saving..." : "Mark Completed"}
             </Button>
             <Button
               fullWidth

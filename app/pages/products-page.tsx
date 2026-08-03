@@ -745,6 +745,8 @@ export default function ProductsPage() {
               onAddToCart={handleAddToCart}
             />
           </Stack>
+
+          <Box sx={{ height: 72 }} aria-hidden />
         </Stack>
       </Container>
 
