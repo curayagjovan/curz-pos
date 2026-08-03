@@ -10,11 +10,8 @@ import type { FilterPopoverOption } from "@/app/components/filter-popover-button
 import TransactionsCatalog from "@/app/components/transactions-catalog";
 import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import TransactionsTotalsBar from "@/app/components/transactions-totals-bar";
-import WeekStripFilter, {
-  addDays,
-  startOfDay,
-  startOfWeek,
-} from "@/app/components/week-strip-filter";
+import WeekStripFilter from "@/app/components/week-strip-filter";
+import { addDays, startOfDay, startOfWeek } from "@/lib/week-dates";
 import { useCustomers } from "@/app/context/customers-context";
 import { useTransactions } from "@/app/context/transactions-context";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";

@@ -3,279 +3,26 @@ import { Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendCheckoutSuccessPush } from "@/lib/push-notifications";
 import { requirePermission, requireUser } from "@/lib/auth/require-user";
-import { AUDIT_ACTIONS, auditLogCreateArgs, recordAudit } from "@/lib/audit";
-
-type OrderItemInput = {
-  productId?: string;
-  productName?: string;
-  quantity?: number;
-  unitPrice?: number;
-  bundleQty?: number | null;
-  bundlePrice?: number | null;
-};
-
-type OrderPayload = {
-  requestId?: string;
-  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
-  total?: number;
-  amountPaid?: number;
-  note?: string;
-  customerId?: string;
-  senderPushEndpoint?: string;
-  items?: OrderItemInput[];
-};
-
-type OrderItemReturnInput = {
-  id?: string;
-  returnedQuantity?: number;
-};
-
-type OrderStatusUpdatePayload = {
-  id?: string;
-  status?: "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
-  items?: OrderItemReturnInput[];
-  amountPaid?: number;
-  customerId?: string | null;
-};
-
-const orderItemSelect = {
-  id: true,
-  productName: true,
-  quantity: true,
-  unitPrice: true,
-  lineTotal: true,
-  returnedQuantity: true,
-} as const;
-
-const orderListSelectBase = {
-  id: true,
-  orderNo: true,
-  status: true,
-  total: true,
-  refundAmount: true,
-  refundedAt: true,
-  note: true,
-  createdAt: true,
-  customerId: true,
-  customer: {
-    select: { id: true, name: true, phone: true },
-  },
-  items: {
-    select: orderItemSelect,
-  },
-} as const;
-
-const orderListSelectWithAmountPaid = {
-  ...orderListSelectBase,
-  amountPaid: true,
-} as const;
-
-const orderCreateSelectBase = {
-  id: true,
-  orderNo: true,
-  status: true,
-  total: true,
-  amountPaid: true,
-  refundAmount: true,
-  refundedAt: true,
-  note: true,
-  createdAt: true,
-  customerId: true,
-  customer: {
-    select: { id: true, name: true, phone: true },
-  },
-  items: {
-    select: orderItemSelect,
-  },
-} as const;
-
-const orderCreateSelectWithAmountPaid = {
-  ...orderCreateSelectBase,
-} as const;
-
-const duplicateGuardOrderSelectBase = {
-  id: true,
-  orderNo: true,
-  status: true,
-  total: true,
-  note: true,
-  createdAt: true,
-  items: {
-    select: {
-      productId: true,
-      quantity: true,
-      unitPrice: true,
-      lineTotal: true,
-    },
-  },
-} as const;
-
-const duplicateGuardOrderSelectWithAmountPaid = {
-  ...duplicateGuardOrderSelectBase,
-  amountPaid: true,
-} as const;
-
-const ACCIDENTAL_DUPLICATE_WINDOW_MS = 25_000;
-
-function isMissingAmountPaidColumnError(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2022" &&
-    String(error.meta?.column ?? "").includes("Order.amountPaid")
-  );
-}
-
-function toMoneyNumber(value: unknown) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? Number(numeric.toFixed(2)) : 0;
-}
-
-function toOrderItemsSignature(
-  items: Array<{
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-    lineTotal: number;
-  }>,
-) {
-  return items
-    .map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      unitPrice: Number(item.unitPrice.toFixed(2)),
-      lineTotal: Number(item.lineTotal.toFixed(2)),
-    }))
-    .sort((left, right) => {
-      if (left.productId !== right.productId) {
-        return left.productId.localeCompare(right.productId);
-      }
-
-      if (left.quantity !== right.quantity) {
-        return left.quantity - right.quantity;
-      }
-
-      if (left.unitPrice !== right.unitPrice) {
-        return left.unitPrice - right.unitPrice;
-      }
-
-      return left.lineTotal - right.lineTotal;
-    })
-    .map(
-      (item) =>
-        `${item.productId}:${item.quantity}:${item.unitPrice.toFixed(2)}:${item.lineTotal.toFixed(2)}`,
-    )
-    .join("|");
-}
-
-function withNullAmountPaid<T extends Record<string, unknown>>(order: T) {
-  return {
-    ...order,
-    amountPaid: null,
-  };
-}
-
-function isConnectionClosedError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("postgresql connection") && message.includes("closed")
-  );
-}
-
-function isAnyUniqueConstraintError(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  );
-}
-
-function isRetryableCreateOrderError(error: unknown) {
-  if (isConnectionClosedError(error)) {
-    return true;
-  }
-
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    return ["P1001", "P1002", "P1008", "P1017", "P2024", "P2028"].includes(
-      error.code,
-    );
-  }
-
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    return (
-      message.includes("timeout") ||
-      message.includes("timed out") ||
-      message.includes("connection")
-    );
-  }
-
-  return false;
-}
-
-function getUniqueConstraintTarget(error: unknown) {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return [] as string[];
-  }
-
-  if (error.code !== "P2002") {
-    return [] as string[];
-  }
-
-  const target = error.meta?.target;
-  if (Array.isArray(target)) {
-    return target.map((value) => String(value));
-  }
-
-  if (typeof target === "string") {
-    return [target];
-  }
-
-  return [] as string[];
-}
-
-function isUniqueOrderIdOrNoError(error: unknown) {
-  const target = getUniqueConstraintTarget(error);
-  return target.some(
-    (value) => value.includes("id") || value.includes("orderNo"),
-  );
-}
-
-function isUniqueOrderNoError(error: unknown) {
-  const target = getUniqueConstraintTarget(error);
-  return target.some((value) => value.includes("orderNo"));
-}
-
-function createOrderNo() {
-  const now = new Date();
-  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-  const suffix = Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, "0");
-  return `ORD-${stamp}-${suffix}`;
-}
-
-function computeLineTotal(
-  quantity: number,
-  unitPrice: number,
-  bundleQty: number | null,
-  bundlePrice: number | null,
-) {
-  if (
-    bundleQty !== null &&
-    bundleQty >= 2 &&
-    bundlePrice !== null &&
-    bundlePrice >= 0
-  ) {
-    const bundles = Math.floor(quantity / bundleQty);
-    const remainder = quantity % bundleQty;
-    return Number((bundles * bundlePrice + remainder * unitPrice).toFixed(2));
-  }
-
-  return Number((quantity * unitPrice).toFixed(2));
-}
+import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
+import type {
+  OrderPayload,
+  OrderStatusUpdatePayload,
+} from "@/lib/orders/types";
+import {
+  orderCreateSelectBase,
+  orderCreateSelectWithAmountPaid,
+  orderListSelectBase,
+  orderListSelectWithAmountPaid,
+} from "@/lib/orders/select";
+import {
+  computeLineTotal,
+  createOrderNo,
+  isMissingAmountPaidColumnError,
+  withNullAmountPaid,
+} from "@/lib/orders/helpers";
+import { findAccidentalDuplicateOrder } from "@/lib/orders/duplicate-guard";
+import { createOrderWithRetry } from "@/lib/orders/create-with-retry";
+import { processOrderRefund } from "@/lib/orders/refund";
 
 export async function GET(request: Request) {
   const auth = await requireUser();
@@ -514,7 +261,7 @@ export async function POST(request: Request) {
     }
 
     const orderId = normalizedRequestId ?? crypto.randomUUID();
-    let orderNo = createOrderNo();
+    const orderNo = createOrderNo();
 
     const getExistingOrderByIdentifier = async () => {
       try {
@@ -681,73 +428,11 @@ export async function POST(request: Request) {
     }
 
     if (status === "PAID") {
-      const cutoffDate = new Date(Date.now() - ACCIDENTAL_DUPLICATE_WINDOW_MS);
-      const currentSignature = toOrderItemsSignature(orderItems);
-
-      let recentOrders: Array<Record<string, unknown>>;
-      try {
-        recentOrders = (await prisma.order.findMany({
-          where: {
-            status: "PAID",
-            createdAt: { gte: cutoffDate },
-            total: computedTotal,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 12,
-          select: duplicateGuardOrderSelectWithAmountPaid,
-        })) as Array<Record<string, unknown>>;
-      } catch (error) {
-        if (!isMissingAmountPaidColumnError(error)) {
-          throw error;
-        }
-
-        const fallbackRecentOrders = await prisma.order.findMany({
-          where: {
-            status: "PAID",
-            createdAt: { gte: cutoffDate },
-            total: computedTotal,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 12,
-          select: duplicateGuardOrderSelectBase,
-        });
-
-        recentOrders = fallbackRecentOrders.map((order) =>
-          withNullAmountPaid(order as Record<string, unknown>),
-        );
-      }
-
-      const duplicateMatch = recentOrders.find((order) => {
-        const total = toMoneyNumber(order.total);
-        const paid = toMoneyNumber(order.amountPaid);
-        const expectedPaid = toMoneyNumber(amountPaid ?? computedTotal);
-        const notesMatch = (order.note ?? null) === note;
-        const items = Array.isArray(order.items)
-          ? (order.items as Array<Record<string, unknown>>)
-          : [];
-
-        const existingSignature = toOrderItemsSignature(
-          items
-            .map((item) => ({
-              productId: String(item.productId ?? ""),
-              quantity: Number(item.quantity ?? 0),
-              unitPrice: toMoneyNumber(item.unitPrice),
-              lineTotal: toMoneyNumber(item.lineTotal),
-            }))
-            .filter(
-              (item) =>
-                item.productId !== "" &&
-                Number.isFinite(item.quantity) &&
-                item.quantity > 0,
-            ),
-        );
-
-        return (
-          total === computedTotal &&
-          paid === expectedPaid &&
-          notesMatch &&
-          existingSignature === currentSignature
-        );
+      const duplicateMatch = await findAccidentalDuplicateOrder({
+        computedTotal,
+        amountPaid,
+        note,
+        orderItems,
       });
 
       if (duplicateMatch) {
@@ -755,124 +440,19 @@ export async function POST(request: Request) {
       }
     }
 
-    const createOrderOperation = (
-      includeAmountPaid: boolean,
-      orderIdentifier: { id: string; orderNo: string },
-    ) =>
-      prisma.order.create({
-        data: {
-          id: orderIdentifier.id,
-          orderNo: orderIdentifier.orderNo,
-          status,
-          total: computedTotal,
-          ...(includeAmountPaid ? { amountPaid } : {}),
-          note,
-          customerId,
-          items: {
-            create: orderItems,
-          },
-        },
-        select: includeAmountPaid
-          ? orderCreateSelectWithAmountPaid
-          : orderCreateSelectBase,
-      });
-
-    const createSideEffects = (orderIdentifier: {
-      id: string;
-      orderNo: string;
-    }) => {
-      return [
-        prisma.auditLog.create(
-          auditLogCreateArgs({
-            actor: auth.appUser,
-            action: AUDIT_ACTIONS.ORDER_CREATE,
-            entityType: "Order",
-            entityId: orderIdentifier.id,
-            summary: customerRecord
-              ? `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)} — utang for ${customerRecord.name}`
-              : `Created sale ${orderIdentifier.orderNo} (${status}) for ₱${computedTotal.toFixed(2)}`,
-          }),
-        ),
-      ] as Prisma.PrismaPromise<unknown>[];
-    };
-
-    const runCreateOrder = async () => {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
-        const orderIdentifier = { id: orderId, orderNo };
-
-        try {
-          const operations: Prisma.PrismaPromise<unknown>[] = [
-            createOrderOperation(true, orderIdentifier),
-            ...createSideEffects(orderIdentifier),
-          ];
-          const [result] = await prisma.$transaction(operations);
-          return result;
-        } catch (error) {
-          if (isMissingAmountPaidColumnError(error)) {
-            try {
-              const fallbackOperations: Prisma.PrismaPromise<unknown>[] = [
-                createOrderOperation(false, orderIdentifier),
-                ...createSideEffects(orderIdentifier),
-              ];
-              const [fallbackResult] =
-                await prisma.$transaction(fallbackOperations);
-              return withNullAmountPaid(
-                fallbackResult as Record<string, unknown>,
-              );
-            } catch (fallbackError) {
-              if (isUniqueOrderNoError(fallbackError) && attempt < 3) {
-                orderNo = createOrderNo();
-                continue;
-              }
-              throw fallbackError;
-            }
-          }
-
-          if (isUniqueOrderNoError(error) && attempt < 3) {
-            orderNo = createOrderNo();
-            continue;
-          }
-
-          throw error;
-        }
-      }
-
-      throw new Error("Unable to allocate a unique order number");
-    };
-
-    let result: unknown;
-    let createdNewOrder = false;
-    let lastError: unknown = null;
-
-    for (let retryAttempt = 0; retryAttempt < 3; retryAttempt += 1) {
-      try {
-        result = await runCreateOrder();
-        createdNewOrder = true;
-        break;
-      } catch (error) {
-        lastError = error;
-
-        if (
-          isUniqueOrderIdOrNoError(error) ||
-          isAnyUniqueConstraintError(error)
-        ) {
-          const existingOrder = await getExistingOrderByIdentifier();
-          if (existingOrder) {
-            result = existingOrder;
-            createdNewOrder = false;
-            break;
-          }
-        }
-
-        if (!isRetryableCreateOrderError(error) || retryAttempt >= 2) {
-          throw error;
-        }
-      }
-    }
-
-    if (result === undefined) {
-      throw lastError ?? new Error("Unable to create order");
-    }
+    const { result, createdNewOrder } = await createOrderWithRetry({
+      orderId,
+      initialOrderNo: orderNo,
+      status,
+      computedTotal,
+      amountPaid,
+      note,
+      customerId,
+      customerName: customerRecord?.name ?? null,
+      actor: auth.appUser,
+      orderItems,
+      getExistingOrderByIdentifier,
+    });
 
     if (createdNewOrder && status === "PAID") {
       const change = Math.max(0, (amountPaid ?? computedTotal) - computedTotal);
@@ -883,7 +463,7 @@ export async function POST(request: Request) {
       after(async () => {
         try {
           await sendCheckoutSuccessPush({
-            orderNo,
+            orderNo: (result as { orderNo?: string })?.orderNo ?? orderNo,
             total: computedTotal,
             change,
             excludeEndpoint: senderPushEndpoint,
@@ -1001,79 +581,20 @@ export async function PATCH(request: Request) {
     }
 
     if (status === "REFUNDED" && itemsInput.length > 0) {
-      const order = await prisma.order.findUnique({
-        where: { id },
-        select: {
-          orderNo: true,
-          items: { select: { id: true, quantity: true, unitPrice: true } },
-        },
+      const refundResult = await processOrderRefund({
+        orderId: id,
+        itemsInput,
+        actor: auth.appUser,
       });
 
-      if (!order) {
+      if (!refundResult.ok) {
         return NextResponse.json(
-          { message: "Order not found" },
-          { status: 404 },
+          { message: refundResult.message },
+          { status: refundResult.status },
         );
       }
 
-      const orderItemById = new Map(order.items.map((item) => [item.id, item]));
-      const returnedQuantityByItemId = new Map<string, number>();
-
-      for (const entry of itemsInput) {
-        const itemId = entry.id?.trim();
-        const returnedQuantity = Number(entry.returnedQuantity);
-        const orderItem = itemId ? orderItemById.get(itemId) : undefined;
-
-        if (
-          !orderItem ||
-          !Number.isInteger(returnedQuantity) ||
-          returnedQuantity < 0 ||
-          returnedQuantity > orderItem.quantity
-        ) {
-          return NextResponse.json(
-            { message: "Invalid return quantities" },
-            { status: 400 },
-          );
-        }
-
-        returnedQuantityByItemId.set(orderItem.id, returnedQuantity);
-      }
-
-      const refundAmount = Number(
-        order.items
-          .reduce((sum, item) => {
-            const returnedQuantity = returnedQuantityByItemId.get(item.id) ?? 0;
-            return sum + returnedQuantity * Number(item.unitPrice);
-          }, 0)
-          .toFixed(2),
-      );
-
-      const [refundedOrder] = await prisma.$transaction([
-        prisma.order.update({
-          where: { id },
-          data: { status, refundAmount, refundedAt: new Date() },
-          select: orderCreateSelectWithAmountPaid,
-        }),
-        ...Array.from(returnedQuantityByItemId.entries())
-          .filter(([, returnedQuantity]) => returnedQuantity > 0)
-          .map(([itemId, returnedQuantity]) =>
-            prisma.orderItem.update({
-              where: { id: itemId },
-              data: { returnedQuantity },
-            }),
-          ),
-        prisma.auditLog.create(
-          auditLogCreateArgs({
-            actor: auth.appUser,
-            action: AUDIT_ACTIONS.ORDER_REFUND,
-            entityType: "Order",
-            entityId: id,
-            summary: `Refunded sale ${order.orderNo} for ₱${refundAmount.toFixed(2)}`,
-          }),
-        ),
-      ]);
-
-      return NextResponse.json(refundedOrder, { status: 200 });
+      return NextResponse.json(refundResult.order, { status: 200 });
     }
 
     let updatedOrder: unknown;

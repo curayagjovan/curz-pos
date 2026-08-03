@@ -1,27 +1,28 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
-import Chip from "@mui/material/Chip";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
-import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import AddRounded from "@mui/icons-material/AddRounded";
-import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import CustomerPicker from "@/app/components/customer-picker";
+import TransactionCardHeader from "@/app/components/transaction-card-header";
+import TransactionPayPopover from "@/app/components/transaction-card-pay-popover";
+import TransactionStatusActions from "@/app/components/transaction-card-status-actions";
+import TransactionItemsSection from "@/app/components/transaction-card-items-section";
+import TransactionRefundDetails from "@/app/components/transaction-card-refund-details";
 import { useAuth } from "@/app/context/auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { formatCurrency } from "@/lib/currency";
 import type { Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
+import {
+  ALL_STATUSES,
+  getStatusConfirmationMessage,
+} from "@/app/components/transaction-card-status-utils";
 
 type TransactionCardProps = {
   transaction: Transaction;
@@ -56,55 +57,6 @@ type TransactionCardProps = {
   // full sale edits that stay confined to the Sales page.
   limitedActions?: boolean;
 };
-
-const ALL_STATUSES: Transaction["status"][] = [
-  "PENDING",
-  "PAID",
-  "REFUNDED",
-  "VOIDED",
-];
-
-function getStatusColor(status: Transaction["status"]) {
-  switch (status) {
-    case "PAID":
-      return "success" as const;
-    case "PENDING":
-      return "info" as const;
-    case "REFUNDED":
-      return "warning" as const;
-    case "VOIDED":
-      return "default" as const;
-    default:
-      return "default" as const;
-  }
-}
-
-function formatTransactionDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
-  }
-
-  return new Intl.DateTimeFormat("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function getStatusConfirmationMessage(status: Transaction["status"]) {
-  switch (status) {
-    case "REFUNDED":
-      return "Mark this sale as REFUNDED?";
-    case "VOIDED":
-      return "Mark this sale as VOIDED?";
-    default:
-      return null;
-  }
-}
 
 const TransactionCard = memo(function TransactionCard({
   transaction,
@@ -431,281 +383,51 @@ const TransactionCard = memo(function TransactionCard({
           overflow: "hidden",
         }}
       >
-        <Box
-          role="button"
-          tabIndex={0}
-          aria-expanded={expanded}
-          aria-label={
-            expanded
-              ? "collapse transaction details"
-              : "expand transaction details"
+        <TransactionCardHeader
+          transaction={transaction}
+          expanded={expanded}
+          onToggle={() => setExpanded((current) => !current)}
+          itemCount={itemCount}
+          itemPreview={itemPreview}
+          balanceDue={balanceDue}
+          paidAmount={Number(paidAmount)}
+          isPending={isPending}
+          statusUpdating={statusUpdating}
+          onQuickAssignCustomer={
+            onQuickAssignCustomer ? handleQuickAssignCustomer : undefined
           }
-          onClick={() => setExpanded((current) => !current)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              setExpanded((current) => !current);
-            }
-          }}
-          sx={{
-            px: 1.25,
-            py: 1.1,
-            cursor: "pointer",
-          }}
-        >
-          <Stack spacing={1}>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                sx={{ minWidth: 0, flex: 1 }}
-              >
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", letterSpacing: 0.4 }}
-                  >
-                    {formatTransactionDate(transaction.createdAt)}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: 800, lineHeight: 1.2, mt: 0.15 }}
-                  >
-                    {transaction.orderNo}
-                  </Typography>
-                </Box>
-              </Stack>
+          quickAssignLabel={quickAssignLabel}
+          onOpenPay={handleOpenPay}
+        />
 
-              <Stack alignItems="flex-end" spacing={0}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ whiteSpace: "nowrap" }}
-                >
-                  {itemCount} {itemCount === 1 ? "item" : "items"}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ fontWeight: 800, whiteSpace: "nowrap" }}
-                >
-                  {formatCurrency(balanceDue > 0 ? paidAmount : transaction.total)}
-                </Typography>
-                {balanceDue > 0 ? (
-                  <Typography
-                    variant="caption"
-                    color="warning.main"
-                    sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
-                  >
-                    Balance {formatCurrency(balanceDue)}
-                  </Typography>
-                ) : null}
-              </Stack>
-            </Stack>
-
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                noWrap
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-                title={itemPreview}
-              >
-                {itemPreview}
-              </Typography>
-
-              {isPending && onQuickAssignCustomer ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="primary"
-                  disabled={statusUpdating}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void handleQuickAssignCustomer();
-                  }}
-                >
-                  {quickAssignLabel ?? "Assign"}
-                </Button>
-              ) : isPending ? (
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="primary"
-                  disabled={statusUpdating}
-                  onClick={handleOpenPay}
-                >
-                  Pay
-                </Button>
-              ) : null}
-
-              <Chip
-                size="small"
-                variant="filled"
-                color={getStatusColor(transaction.status)}
-                label={transaction.status}
-                sx={{ fontWeight: 700 }}
-              />
-            </Stack>
-          </Stack>
-        </Box>
-
-        <Popover
+        <TransactionPayPopover
           open={payPopoverOpen}
           anchorEl={payAnchorEl}
           onClose={handleClosePay}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-          slotProps={{ paper: { sx: { p: 2, width: 260 } } }}
-        >
-          <Stack spacing={1.25}>
-            <Box>
-              <Typography variant="subtitle2">Collect Payment</Typography>
-              <Typography variant="caption" color="text.secondary">
-                Balance due {formatCurrency(balanceDue)}
-              </Typography>
-            </Box>
-
-            <TextField
-              autoFocus
-              label="Amount received"
-              value={payAmountInput}
-              onChange={(event) => setPayAmountInput(event.target.value)}
-              type="number"
-              size="small"
-              fullWidth
-              slotProps={{
-                htmlInput: { min: 0, step: "0.01", inputMode: "decimal" },
-              }}
-            />
-
-            {payChange > 0 ? (
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="caption" color="text.secondary">
-                  Change (for reference only)
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  {formatCurrency(payChange)}
-                </Typography>
-              </Stack>
-            ) : null}
-
-            {statusError ? (
-              <Alert severity="error" sx={{ py: 0 }}>
-                {statusError}
-              </Alert>
-            ) : null}
-
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button
-                size="small"
-                onClick={handleClosePay}
-                disabled={statusUpdating}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => void handleConfirmPay()}
-                disabled={statusUpdating}
-              >
-                {statusUpdating ? "Saving..." : "Confirm"}
-              </Button>
-            </Stack>
-          </Stack>
-        </Popover>
+          balanceDue={balanceDue}
+          payAmountInput={payAmountInput}
+          onPayAmountChange={setPayAmountInput}
+          payChange={payChange}
+          statusError={statusError}
+          statusUpdating={statusUpdating}
+          onConfirm={() => void handleConfirmPay()}
+        />
 
         <Collapse in={expanded} timeout="auto" unmountOnExit>
           <Divider />
 
-          {!limitedActions ? (
-            <Box sx={{ px: 1.25, py: 1.1 }}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ mb: 0.75 }}
-              >
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ letterSpacing: 0.3 }}
-                >
-                  Change Status To
-                </Typography>
-
-                {onRemoveFromCustomer && transaction.customerId ? (
-                  <Button
-                    size="small"
-                    color="error"
-                    disabled={statusUpdating}
-                    onClick={() => void handleRemoveFromCustomer()}
-                  >
-                    Remove from Customer
-                  </Button>
-                ) : null}
-              </Stack>
-
-              <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                {otherStatuses.map((status) => {
-                  const restricted =
-                    (status === "REFUNDED" || status === "VOIDED") &&
-                    !canVoidOrRefund;
-
-                  return (
-                    <Chip
-                      key={status}
-                      size="small"
-                      variant="outlined"
-                      color={getStatusColor(status)}
-                      label={status}
-                      clickable={!statusUpdating && !restricted}
-                      disabled={statusUpdating || restricted}
-                      onClick={() => void handleStatusChange(status)}
-                      sx={{ fontWeight: 700 }}
-                    />
-                  );
-                })}
-              </Stack>
-
-              {statusError ? (
-                <Alert severity="error" sx={{ mt: 1, py: 0 }}>
-                  {statusError}
-                </Alert>
-              ) : null}
-            </Box>
-          ) : onRemoveFromCustomer && transaction.customerId ? (
-            <Box sx={{ px: 1.25, py: 1.1 }}>
-              <Button
-                fullWidth
-                size="small"
-                variant="outlined"
-                color="error"
-                disabled={statusUpdating}
-                onClick={() => void handleRemoveFromCustomer()}
-              >
-                Remove from Customer
-              </Button>
-
-              {statusError ? (
-                <Alert severity="error" sx={{ mt: 1, py: 0 }}>
-                  {statusError}
-                </Alert>
-              ) : null}
-            </Box>
-          ) : null}
+          <TransactionStatusActions
+            limitedActions={limitedActions}
+            otherStatuses={otherStatuses}
+            canVoidOrRefund={canVoidOrRefund}
+            statusUpdating={statusUpdating}
+            statusError={statusError}
+            onStatusChange={(status) => void handleStatusChange(status)}
+            canRemoveFromCustomer={Boolean(
+              onRemoveFromCustomer && transaction.customerId,
+            )}
+            onRemoveFromCustomer={() => void handleRemoveFromCustomer()}
+          />
 
           {isPending && customers && onAssignCustomer ? (
             <>
@@ -735,184 +457,20 @@ const TransactionCard = memo(function TransactionCard({
 
           <Divider />
 
-          <Box sx={{ px: 1.25, py: 1 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ mb: 0.75 }}
-            >
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ letterSpacing: 0.3 }}
-              >
-                Items Bought
-              </Typography>
-
-              {canReturnItems && !returnMode && transactionItems.length > 0 ? (
-                <Button size="small" onClick={handleStartReturn}>
-                  Return Items
-                </Button>
-              ) : null}
-            </Stack>
-
-            <Stack spacing={0.9}>
-              {transactionItems.map((item) => {
-                const originalQty = Number(item.quantity);
-                const remainingQty = Math.max(
-                  0,
-                  originalQty - Number(item.returnedQuantity ?? 0),
-                );
-                const remainingLineTotal =
-                  originalQty > 0
-                    ? (Number(item.lineTotal) / originalQty) * remainingQty
-                    : 0;
-
-                return (
-                  <Stack
-                    key={item.id}
-                    direction="row"
-                    spacing={1}
-                    alignItems="flex-start"
-                    justifyContent="space-between"
-                  >
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          textDecoration:
-                            item.returnedQuantity >= item.quantity &&
-                            item.returnedQuantity > 0
-                              ? "line-through"
-                              : "none",
-                        }}
-                      >
-                        {item.productName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Qty {remainingQty} x {formatCurrency(item.unitPrice)}
-                      </Typography>
-                      {item.returnedQuantity > 0 ? (
-                        <Typography
-                          variant="caption"
-                          color="warning.main"
-                          sx={{ display: "block" }}
-                        >
-                          Returned {item.returnedQuantity}
-                        </Typography>
-                      ) : null}
-
-                      {returnMode ? (
-                        <Stack
-                          direction="row"
-                          spacing={0.5}
-                          alignItems="center"
-                          sx={{ mt: 0.5 }}
-                        >
-                          <Typography variant="caption" color="text.secondary">
-                            Return qty:
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            disabled={(returnQuantities[item.id] ?? 0) <= 0}
-                            onClick={() => handleReturnQuantityChange(item, -1)}
-                            aria-label={`decrease return quantity for ${item.productName}`}
-                          >
-                            <RemoveRounded fontSize="small" />
-                          </IconButton>
-                          <Typography
-                            variant="body2"
-                            sx={{ minWidth: 20, textAlign: "center" }}
-                          >
-                            {returnQuantities[item.id] ?? 0}
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            disabled={
-                              (returnQuantities[item.id] ?? 0) >=
-                              Number(item.quantity)
-                            }
-                            onClick={() => handleReturnQuantityChange(item, 1)}
-                            aria-label={`increase return quantity for ${item.productName}`}
-                          >
-                            <AddRounded fontSize="small" />
-                          </IconButton>
-                          <Typography variant="caption" color="text.secondary">
-                            of {item.quantity}
-                          </Typography>
-                        </Stack>
-                      ) : null}
-                    </Box>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 700,
-                        textDecoration:
-                          item.returnedQuantity >= item.quantity &&
-                          item.returnedQuantity > 0
-                            ? "line-through"
-                            : "none",
-                      }}
-                    >
-                      {formatCurrency(remainingLineTotal)}
-                    </Typography>
-                  </Stack>
-                );
-              })}
-
-              {transactionItems.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No item details available.
-                </Typography>
-              ) : null}
-            </Stack>
-
-            {returnMode ? (
-              <Box sx={{ mt: 1.25 }}>
-                <Divider sx={{ mb: 1 }} />
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  sx={{ mb: 1 }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    Refund total
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 800 }}>
-                    {formatCurrency(returnTotal)}
-                  </Typography>
-                </Stack>
-
-                <Stack direction="row" spacing={1} justifyContent="flex-end">
-                  <Button
-                    size="small"
-                    disabled={statusUpdating}
-                    onClick={handleCancelReturn}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="warning"
-                    disabled={statusUpdating || returnUnitCount <= 0}
-                    onClick={handleProcessRefund}
-                  >
-                    Process Refund
-                  </Button>
-                </Stack>
-
-                {statusError ? (
-                  <Alert severity="error" sx={{ mt: 1, py: 0 }}>
-                    {statusError}
-                  </Alert>
-                ) : null}
-              </Box>
-            ) : null}
-          </Box>
+          <TransactionItemsSection
+            transactionItems={transactionItems}
+            canReturnItems={canReturnItems}
+            returnMode={returnMode}
+            returnQuantities={returnQuantities}
+            returnTotal={returnTotal}
+            returnUnitCount={returnUnitCount}
+            statusUpdating={statusUpdating}
+            statusError={statusError}
+            onStartReturn={handleStartReturn}
+            onCancelReturn={handleCancelReturn}
+            onReturnQuantityChange={handleReturnQuantityChange}
+            onProcessRefund={() => void handleProcessRefund()}
+          />
 
           <Divider />
 
@@ -955,60 +513,11 @@ const TransactionCard = memo(function TransactionCard({
           </Stack>
 
           {hasRefundDetails ? (
-            <>
-              <Divider />
-              <Box sx={{ px: 1.25, py: 1 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: "block", mb: 0.75, letterSpacing: 0.3 }}
-                >
-                  Refund Details
-                </Typography>
-
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  divider={<Divider orientation="vertical" flexItem />}
-                >
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Items Returned
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15 }}
-                    >
-                      {returnedUnitCount}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Refund Amount
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15, color: "warning.main" }}
-                    >
-                      {formatCurrency(transaction.refundAmount)}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Remaining Amount
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 800, mt: 0.15 }}
-                    >
-                      {formatCurrency(remainingAmount)}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            </>
+            <TransactionRefundDetails
+              returnedUnitCount={returnedUnitCount}
+              refundAmount={transaction.refundAmount}
+              remainingAmount={remainingAmount}
+            />
           ) : null}
 
           {hasNote ? (

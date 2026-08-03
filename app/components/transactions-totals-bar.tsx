@@ -15,12 +15,7 @@ import DateRangeRounded from "@mui/icons-material/DateRangeRounded";
 import EventRounded from "@mui/icons-material/EventRounded";
 import ReceiptLongRounded from "@mui/icons-material/ReceiptLongRounded";
 import TodayRounded from "@mui/icons-material/TodayRounded";
-import {
-  addDays,
-  isSameDay,
-  startOfDay,
-  startOfWeek,
-} from "@/app/components/week-strip-filter";
+import { addDays, isSameDay, startOfDay, startOfWeek } from "@/lib/week-dates";
 import type { SalesPeriodSummary, SalesSummary } from "@/app/hooks/use-sales-summary";
 import { formatCurrency as toCurrency } from "@/lib/currency";
 
