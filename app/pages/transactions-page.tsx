@@ -24,11 +24,14 @@ import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import type { Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
 
+// Palette path strings (not hex) so these track the theme's info/success/
+// warning tokens per color scheme — hardcoding the hex would freeze these
+// at the light-mode values and look wrong in dark mode.
 const STATUS_OPTIONS: FilterPopoverOption[] = [
   { key: "all", label: "All Status" },
-  { key: "PENDING", label: "Pending", color: "#32ade6" },
-  { key: "PAID", label: "Paid", color: "#34c759" },
-  { key: "REFUNDED", label: "Refunded", color: "#ff9500" },
+  { key: "PENDING", label: "Pending", color: "info.main" },
+  { key: "PAID", label: "Paid", color: "success.main" },
+  { key: "REFUNDED", label: "Refunded", color: "warning.main" },
   { key: "VOIDED", label: "Voided" },
 ];
 

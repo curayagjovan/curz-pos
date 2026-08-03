@@ -6,6 +6,7 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
 import Collapse from "@mui/material/Collapse";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
@@ -14,6 +15,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import ListEmptyState from "@/app/components/list-empty-state";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 
@@ -125,13 +127,11 @@ export default function AuditLogPage() {
           {error ? <Alert severity="error">{error}</Alert> : null}
 
           {loading ? (
-            <Typography variant="body2" color="text.secondary">
-              Loading audit trail...
-            </Typography>
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+              <CircularProgress size={28} />
+            </Stack>
           ) : entries.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No activity recorded yet.
-            </Typography>
+            <ListEmptyState description="No activity recorded yet." />
           ) : (
             <List sx={{ px: 0 }}>
               {entries.map((entry) => {
@@ -151,6 +151,10 @@ export default function AuditLogPage() {
                           onClick={() =>
                             setExpandedId(isExpanded ? null : entry.id)
                           }
+                          aria-label={
+                            isExpanded ? "hide changes" : "show changes"
+                          }
+                          aria-expanded={isExpanded}
                           sx={{
                             transform: isExpanded
                               ? "rotate(180deg)"

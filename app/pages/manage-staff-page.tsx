@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -43,6 +46,7 @@ export default function ManageStaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [role, setRole] = useState<"OWNER" | "CASHIER">("CASHIER");
   const [sendInvite, setSendInvite] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +57,11 @@ export default function ManageStaffPage() {
   const [editPermissions, setEditPermissions] = useState<AppPermission[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [deactivateTarget, setDeactivateTarget] = useState<StaffMember | null>(
+    null,
+  );
+  const [deactivating, setDeactivating] = useState(false);
 
   const loadStaff = async () => {
     setLoading(true);
@@ -79,13 +88,20 @@ export default function ManageStaffPage() {
   }, []);
 
   const handleAdd = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+      setEmailError("A valid email is required");
+      return;
+    }
+    setEmailError(null);
+
     setSaving(true);
     setError(null);
     try {
       const response = await fetch("/api/staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), role, sendInvite }),
+        body: JSON.stringify({ email: trimmedEmail, role, sendInvite }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -103,7 +119,7 @@ export default function ManageStaffPage() {
     }
   };
 
-  const handleToggleActive = async (member: StaffMember) => {
+  const handleToggleActive = async (member: StaffMember): Promise<boolean> => {
     try {
       const response = await fetch("/api/staff", {
         method: "PATCH",
@@ -115,10 +131,33 @@ export default function ManageStaffPage() {
         throw new Error(data?.message || "Unable to update staff member");
       }
       await loadStaff();
+      return true;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to update staff member",
       );
+      return false;
+    }
+  };
+
+  // Reactivating isn't destructive (no confirmation needed), but turning a
+  // staff member off cuts their access immediately — worth a confirmation
+  // step, same rigor as deleting a product (see DeleteProductDialog).
+  const handleSwitchActive = (member: StaffMember) => {
+    if (member.isActive) {
+      setDeactivateTarget(member);
+    } else {
+      void handleToggleActive(member);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    const succeeded = await handleToggleActive(deactivateTarget);
+    setDeactivating(false);
+    if (succeeded) {
+      setDeactivateTarget(null);
     }
   };
 
@@ -188,9 +227,9 @@ export default function ManageStaffPage() {
           {error ? <Alert severity="error">{error}</Alert> : null}
 
           {loading ? (
-            <Typography variant="body2" color="text.secondary">
-              Loading staff...
-            </Typography>
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+              <CircularProgress size={28} />
+            </Stack>
           ) : (
             <List sx={{ px: 0 }}>
               {staff.map((member) => (
@@ -207,22 +246,26 @@ export default function ManageStaffPage() {
                       </IconButton>
                       <Switch
                         checked={member.isActive}
-                        onChange={() => void handleToggleActive(member)}
+                        onChange={() => handleSwitchActive(member)}
                         disabled={member.role === "OWNER"}
                       />
                     </Stack>
                   }
                 >
                   <ListItemText
+                    sx={{ minWidth: 0 }}
                     primary={
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body1">
-                          {member.displayName || member.email}
-                        </Typography>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="body1" noWrap>
+                            {member.displayName || member.email}
+                          </Typography>
+                        </Box>
                         <Chip
                           size="small"
                           label={member.role === "OWNER" ? "Owner" : "Cashier"}
                           color={member.role === "OWNER" ? "primary" : "default"}
+                          sx={{ flexShrink: 0 }}
                         />
                       </Stack>
                     }
@@ -251,7 +294,12 @@ export default function ManageStaffPage() {
               label="Email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setEmailError(null);
+              }}
+              error={Boolean(emailError)}
+              helperText={emailError}
               fullWidth
               autoFocus
             />
@@ -279,13 +327,19 @@ export default function ManageStaffPage() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setAddOpen(false)} disabled={saving}>
+          <Button
+            onClick={() => {
+              setAddOpen(false);
+              setEmailError(null);
+            }}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={() => void handleAdd()}
-            disabled={saving || !email.trim()}
+            disabled={saving}
           >
             {saving ? "Adding..." : "Add"}
           </Button>
@@ -312,6 +366,7 @@ export default function ManageStaffPage() {
               value={editDisplayName}
               onChange={(event) => setEditDisplayName(event.target.value)}
               fullWidth
+              autoFocus
             />
 
             <TextField
@@ -372,6 +427,39 @@ export default function ManageStaffPage() {
             disabled={editSaving}
           >
             {editSaving ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deactivateTarget)}
+        onClose={() => setDeactivateTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Deactivate Staff?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deactivateTarget
+              ? `Deactivate ${deactivateTarget.displayName || deactivateTarget.email}? They will lose access immediately.`
+              : "Deactivate this staff member?"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            onClick={() => setDeactivateTarget(null)}
+            color="inherit"
+            disabled={deactivating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void handleConfirmDeactivate()}
+            color="error"
+            variant="contained"
+            disabled={deactivating}
+          >
+            {deactivating ? "Deactivating..." : "Deactivate"}
           </Button>
         </DialogActions>
       </Dialog>

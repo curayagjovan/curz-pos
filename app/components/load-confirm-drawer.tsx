@@ -9,6 +9,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import { formatCurrency } from "@/lib/currency";
 import TextField from "@mui/material/TextField";
 
 type LoadConfirmDrawerProps = {
@@ -75,7 +76,7 @@ export default function LoadConfirmDrawer({
         >
           <Typography color="text.secondary">Network: {brandLabel}</Typography>
           <Typography color="text.secondary">
-            Price: ₱{price.toFixed(2)}
+            Price: {formatCurrency(price)}
           </Typography>
         </Stack>
         <Stack
@@ -84,7 +85,7 @@ export default function LoadConfirmDrawer({
           justifyContent="flex-end"
         >
           <Typography variant="caption" color="text.secondary">
-            Recorded as sale: ₱{markup.toFixed(2)}
+            Recorded as sale: {formatCurrency(markup)}
           </Typography>
         </Stack>
       </Box>

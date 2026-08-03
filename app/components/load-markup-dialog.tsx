@@ -91,6 +91,7 @@ export default function LoadMarkupDialog({
                 value={form.tier1Max}
                 onChange={handleChange("tier1Max")}
                 fullWidth
+                autoFocus
               />
               <TextField
                 label="Markup ₱"

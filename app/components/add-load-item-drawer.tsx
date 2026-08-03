@@ -75,7 +75,7 @@ export default function AddLoadItemDrawer({
           sx={{ mb: 1.5 }}
         >
           <Typography variant="h6">{isEditing ? "Edit Load" : "Add Load"}</Typography>
-          <IconButton onClick={onClose} disabled={saving}>
+          <IconButton onClick={onClose} disabled={saving} aria-label="close">
             <CloseRounded fontSize="small" />
           </IconButton>
         </Stack>
@@ -104,6 +104,7 @@ export default function AddLoadItemDrawer({
             }
             fullWidth
             required
+            autoFocus
             error={Boolean(formErrors.brand)}
             helperText={formErrors.brand}
           >

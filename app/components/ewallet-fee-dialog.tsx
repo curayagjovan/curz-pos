@@ -88,7 +88,7 @@ export default function EWalletFeeDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           <Stack spacing={1}>
-            {BRACKET_FIELDS.map(({ field, label }) => (
+            {BRACKET_FIELDS.map(({ field, label }, index) => (
               <Stack
                 key={field}
                 direction="row"
@@ -104,6 +104,7 @@ export default function EWalletFeeDialog({
                   size="small"
                   value={form[field]}
                   onChange={handleChange(field)}
+                  autoFocus={index === 0}
                   sx={{ width: 110 }}
                 />
               </Stack>

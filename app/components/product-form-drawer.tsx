@@ -72,7 +72,7 @@ export default function ProductFormDrawer({
           <Typography variant="h6">
             {form.id ? "Edit Product" : "Add Product"}
           </Typography>
-          <IconButton onClick={onClose} disabled={saving}>
+          <IconButton onClick={onClose} disabled={saving} aria-label="close">
             <CloseRounded fontSize="small" />
           </IconButton>
         </Stack>
@@ -112,6 +112,7 @@ export default function ProductFormDrawer({
             onChange={(event) => onFieldChange("name", event.target.value)}
             fullWidth
             required
+            autoFocus
             error={Boolean(formErrors.name)}
             helperText={formErrors.name}
           />

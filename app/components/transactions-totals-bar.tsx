@@ -22,13 +22,7 @@ import {
   startOfWeek,
 } from "@/app/components/week-strip-filter";
 import type { SalesPeriodSummary, SalesSummary } from "@/app/hooks/use-sales-summary";
-
-function toCurrency(value: number) {
-  return `₱${value.toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+import { formatCurrency as toCurrency } from "@/lib/currency";
 
 const dayLabelFormatter = new Intl.DateTimeFormat("en-PH", {
   weekday: "long",

@@ -19,6 +19,7 @@ import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import CustomerPicker from "@/app/components/customer-picker";
 import { useAuth } from "@/app/context/auth-context";
 import { hasPermission } from "@/lib/auth/permissions";
+import { formatCurrency } from "@/lib/currency";
 import type { Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
 
@@ -92,20 +93,6 @@ function formatTransactionDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
-}
-
-function formatCurrency(value: number | string | null | undefined) {
-  if (value === null || value === undefined) {
-    return "--";
-  }
-
-  const amount = Number(value);
-
-  if (!Number.isFinite(amount)) {
-    return "--";
-  }
-
-  return `₱${amount.toFixed(2)}`;
 }
 
 function getStatusConfirmationMessage(status: Transaction["status"]) {

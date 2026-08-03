@@ -21,6 +21,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
 import type { Product } from "@/types/product";
+import { formatCurrency } from "@/lib/currency";
 import CardActionArea from "@mui/material/CardActionArea";
 import {
   DEFAULT_PRODUCT_CATEGORY,
@@ -61,7 +62,7 @@ function getBundleMeta(product: Product) {
   return {
     hasBundle,
     label: hasBundle
-      ? `Bundle ${bundleQty} for ₱${bundlePrice.toFixed(2)}`
+      ? `Bundle ${bundleQty} for ${formatCurrency(bundlePrice)}`
       : "",
   };
 }
@@ -362,7 +363,7 @@ const ProductCard = memo(function ProductCard({
                       variant="subtitle2"
                       sx={{ fontWeight: 800, whiteSpace: "nowrap", pl: 1 }}
                     >
-                      ₱{Number(product.price).toFixed(2)}
+                      {formatCurrency(product.price)}
                     </Typography>
                   </Box>
                 </Stack>
@@ -538,7 +539,7 @@ const ProductCard = memo(function ProductCard({
 
             <Chip
               size="small"
-              label={`₱${Number(product.price).toFixed(2)}`}
+              label={formatCurrency(product.price)}
               sx={{ fontWeight: 700 }}
             />
           </Stack>

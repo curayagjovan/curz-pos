@@ -11,6 +11,7 @@ import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import { formatCurrency } from "@/lib/currency";
 
 type ManageLoadItemCardProps = {
   item: LoadCatalogItem;
@@ -182,7 +183,7 @@ const ManageLoadItemCard = memo(function ManageLoadItemCard({
               </Box>
               <Chip
                 size="small"
-                label={`₱${item.amount.toFixed(2)}`}
+                label={formatCurrency(item.amount)}
                 sx={{ fontWeight: 700 }}
               />
             </Stack>

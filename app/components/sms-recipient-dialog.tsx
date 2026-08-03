@@ -68,6 +68,7 @@ export default function SmsRecipientDialog({
         <Stack spacing={1.5} sx={{ mt: 0.5 }}>
           <TextField
             fullWidth
+            autoFocus
             label="Mobile or access number"
             value={form}
             placeholder="09XXXXXXXXX"

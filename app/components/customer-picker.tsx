@@ -43,12 +43,14 @@ export default function CustomerPicker({
 }: CustomerPickerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const selected = customers.find((customer) => customer.id === value) ?? null;
 
   const handleOpenDialog = () => {
     setName("");
+    setNameError(null);
     setPhone("");
     setDialogOpen(true);
   };
@@ -63,8 +65,10 @@ export default function CustomerPicker({
   const handleConfirm = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
+      setNameError("A name is required");
       return;
     }
+    setNameError(null);
 
     setCreating(true);
     const created = await onCreateCustomer({
@@ -121,7 +125,12 @@ export default function CustomerPicker({
               fullWidth
               label="Name"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setNameError(null);
+              }}
+              error={Boolean(nameError)}
+              helperText={nameError}
             />
             <TextField
               fullWidth
@@ -137,7 +146,7 @@ export default function CustomerPicker({
           </Button>
           <Button
             variant="contained"
-            disabled={!name.trim() || creating}
+            disabled={creating}
             onClick={() => void handleConfirm()}
           >
             {creating ? "Adding..." : "Add"}

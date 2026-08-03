@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
@@ -288,9 +289,13 @@ export default function ManageLoadPage() {
               : `${filteredItems.length.toLocaleString()} loads`}
           </Box>
 
-          {error ? (
+          {loading ? (
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+              <CircularProgress size={28} />
+            </Stack>
+          ) : error ? (
             <ListEmptyState title="Unable to load" description={error} />
-          ) : filteredItems.length === 0 && !loading ? (
+          ) : filteredItems.length === 0 ? (
             <ListEmptyState description="No loads found." />
           ) : (
             <List disablePadding>

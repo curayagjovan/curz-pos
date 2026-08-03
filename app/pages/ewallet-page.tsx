@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";
@@ -45,6 +46,7 @@ import {
   type EWalletIdMode,
   type EWalletProvider,
 } from "@/lib/ewallet-catalog";
+import { formatCurrency } from "@/lib/currency";
 import { getFeeForAmount } from "@/lib/ewallet-fee";
 import { buildEwalletMessage } from "@/lib/ewallet-message";
 import { buildSmsHref } from "@/lib/sms-link";
@@ -90,6 +92,7 @@ export default function EWalletPage() {
   const [referenceNumber, setReferenceNumber] = useState("");
   const [completing, setCompleting] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -164,6 +167,7 @@ export default function EWalletPage() {
 
     const setLoading = status === "PAID" ? setCompleting : setSendingRequest;
     setLoading(true);
+    setSubmitError(null);
 
     try {
       // The recorded sale is the transacted amount plus the service fee —
@@ -233,15 +237,16 @@ export default function EWalletPage() {
       addTransaction(savedTransaction as Transaction);
       return savedTransaction as Transaction;
     } catch (error) {
-      showSnackbar({
-        message:
-          error instanceof Error
-            ? error.message
-            : status === "PAID"
-              ? "Unable to record e-wallet transaction"
-              : "Unable to record pending e-wallet transaction",
-        severity: "error",
-      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : status === "PAID"
+            ? "Unable to record e-wallet transaction"
+            : "Unable to record pending e-wallet transaction";
+      // The toast alone is easy to miss if you looked away right as it
+      // submitted — persisted here too so the failure stays visible.
+      setSubmitError(message);
+      showSnackbar({ message, severity: "error" });
       return null;
     } finally {
       setLoading(false);
@@ -347,6 +352,12 @@ export default function EWalletPage() {
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1}>
+          {submitError ? (
+            <Alert severity="error" onClose={() => setSubmitError(null)}>
+              {submitError}
+            </Alert>
+          ) : null}
+
           <Stack spacing={1}>
             <Typography variant="subtitle2" color="text.secondary">
               Provider
@@ -584,7 +595,7 @@ export default function EWalletPage() {
                   key={quickAmount}
                   size="small"
                   clickable
-                  label={`₱${quickAmount.toLocaleString()}`}
+                  label={formatCurrency(quickAmount)}
                   onClick={() => setAmountInput(String(quickAmount))}
                 />
               ))}
@@ -599,11 +610,11 @@ export default function EWalletPage() {
                     <Typography color="text.secondary">
                       {isCashIn ? "Amount to send" : "Amount to hand customer"}
                     </Typography>
-                    <Typography>₱{amount.toFixed(2)}</Typography>
+                    <Typography>{formatCurrency(amount)}</Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between">
                     <Typography color="text.secondary">Service fee</Typography>
-                    <Typography>₱{fee.toFixed(2)}</Typography>
+                    <Typography>{formatCurrency(fee)}</Typography>
                   </Stack>
                   <Divider sx={{ my: 0.5 }} />
                   {isCashIn ? (
@@ -612,7 +623,7 @@ export default function EWalletPage() {
                         Customer pays
                       </Typography>
                       <Typography sx={{ fontWeight: 700 }}>
-                        ₱{(amount + fee).toFixed(2)}
+                        {formatCurrency(amount + fee)}
                       </Typography>
                     </Stack>
                   ) : null}
@@ -621,7 +632,7 @@ export default function EWalletPage() {
                       Recorded as sale
                     </Typography>
                     <Typography color="text.secondary">
-                      ₱{(amount + fee).toFixed(2)}
+                      {formatCurrency(amount + fee)}
                     </Typography>
                   </Stack>
                 </Stack>

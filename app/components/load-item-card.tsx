@@ -14,6 +14,7 @@ import {
   LOAD_BRAND_LOGOS,
   type LoadCatalogItem,
 } from "@/lib/mobile-load-catalog";
+import { formatCurrency } from "@/lib/currency";
 
 type LoadItemCardProps = {
   item: LoadCatalogItem;
@@ -90,7 +91,7 @@ const LoadItemCard = memo(function LoadItemCard({
 
             <Chip
               size="small"
-              label={`₱${price.toFixed(2)}`}
+              label={formatCurrency(price)}
               sx={{ fontWeight: 700 }}
             />
           </Stack>

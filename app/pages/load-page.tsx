@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import List from "@mui/material/List";
 import MenuItem from "@mui/material/MenuItem";
@@ -91,6 +93,7 @@ export default function LoadPage() {
   const [confirmNumber, setConfirmNumber] = useState("");
   const [completing, setCompleting] = useState(false);
   const [sendingRequest, setSendingRequest] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [markupDialogOpen, setMarkupDialogOpen] = useState(false);
   const [recipientDialogOpen, setRecipientDialogOpen] = useState(false);
   const { settings: markupSettings, updateSettings: updateMarkupSettings } =
@@ -165,6 +168,7 @@ export default function LoadPage() {
 
     const setLoading = status === "PAID" ? setCompleting : setSendingRequest;
     setLoading(true);
+    setSubmitError(null);
 
     try {
       // The recorded sale is the load's face value plus the markup — the
@@ -227,15 +231,16 @@ export default function LoadPage() {
       addTransaction(savedTransaction as Transaction);
       return savedTransaction as Transaction;
     } catch (error) {
-      showSnackbar({
-        message:
-          error instanceof Error
-            ? error.message
-            : status === "PAID"
-              ? "Unable to record load sale"
-              : "Unable to record pending load sale",
-        severity: "error",
-      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : status === "PAID"
+            ? "Unable to record load sale"
+            : "Unable to record pending load sale";
+      // The toast alone is easy to miss if you looked away right as it
+      // submitted — persisted here too so the failure stays visible.
+      setSubmitError(message);
+      showSnackbar({ message, severity: "error" });
       return null;
     } finally {
       setLoading(false);
@@ -347,6 +352,12 @@ export default function LoadPage() {
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>
         <Stack spacing={1.5}>
+          {submitError ? (
+            <Alert severity="error" onClose={() => setSubmitError(null)}>
+              {submitError}
+            </Alert>
+          ) : null}
+
           <Box
             sx={{
               position: "sticky",
@@ -396,7 +407,9 @@ export default function LoadPage() {
           </Box>
 
           {loadItemsLoading ? (
-            <ListEmptyState description="Loading loads..." />
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
+              <CircularProgress size={28} />
+            </Stack>
           ) : filteredItems.length === 0 ? (
             <ListEmptyState description="No load types match your search." />
           ) : (

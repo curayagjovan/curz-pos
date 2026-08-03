@@ -28,6 +28,7 @@ import { useUnassignedPendingOrders } from "@/app/hooks/use-unassigned-pending-o
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 import AppSnackbar from "@/app/components/app-snackbar";
+import { formatCurrency } from "@/lib/currency";
 import type { Customer } from "@/types/customer";
 import type { Transaction } from "@/types/transaction";
 
@@ -61,6 +62,7 @@ export default function CustomersPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState<CustomerFormState>(EMPTY_FORM);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const loadCustomers = useCallback(async () => {
@@ -242,6 +244,7 @@ export default function CustomersPage() {
 
   const handleOpenAdd = () => {
     setForm(EMPTY_FORM);
+    setNameError(null);
     setAddOpen(true);
   };
 
@@ -254,10 +257,17 @@ export default function CustomersPage() {
       phone: selectedCustomer.phone ?? "",
       note: selectedCustomer.note ?? "",
     });
+    setNameError(null);
     setEditOpen(true);
   };
 
   const handleAdd = async () => {
+    if (!form.name.trim()) {
+      setNameError("A name is required");
+      return;
+    }
+    setNameError(null);
+
     setSaving(true);
     try {
       const response = await fetch("/api/customers", {
@@ -290,6 +300,12 @@ export default function CustomersPage() {
     if (!selectedCustomer) {
       return;
     }
+    if (!form.name.trim()) {
+      setNameError("A name is required");
+      return;
+    }
+    setNameError(null);
+
     setSaving(true);
     try {
       const response = await fetch("/api/customers", {
@@ -371,7 +387,7 @@ export default function CustomersPage() {
                   selectedCustomer.balance > 0 ? "error.main" : "success.main"
                 }
               >
-                ₱{selectedCustomer.balance.toFixed(2)}
+                {formatCurrency(selectedCustomer.balance)}
               </Typography>
             </Stack>
 
@@ -414,9 +430,12 @@ export default function CustomersPage() {
               <TextField
                 label="Name"
                 value={form.name}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, name: event.target.value }))
-                }
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, name: event.target.value }));
+                  setNameError(null);
+                }}
+                error={Boolean(nameError)}
+                helperText={nameError}
                 fullWidth
                 autoFocus
               />
@@ -447,7 +466,7 @@ export default function CustomersPage() {
             <Button
               variant="contained"
               onClick={() => void handleEdit()}
-              disabled={saving || !form.name.trim()}
+              disabled={saving}
             >
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -499,11 +518,13 @@ export default function CustomersPage() {
                   <ListItemText
                     primary={customer.name}
                     secondary={customer.phone ?? undefined}
+                    sx={{ minWidth: 0 }}
                   />
                   <Chip
                     size="small"
-                    label={`₱${customer.balance.toFixed(2)}`}
+                    label={formatCurrency(customer.balance)}
                     color={customer.balance > 0 ? "error" : "default"}
+                    sx={{ flexShrink: 0 }}
                   />
                 </ListItemButton>
               ))}
@@ -527,9 +548,12 @@ export default function CustomersPage() {
             <TextField
               label="Name"
               value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
-              }
+              onChange={(event) => {
+                setForm((current) => ({ ...current, name: event.target.value }));
+                setNameError(null);
+              }}
+              error={Boolean(nameError)}
+              helperText={nameError}
               fullWidth
               autoFocus
             />
@@ -560,7 +584,7 @@ export default function CustomersPage() {
           <Button
             variant="contained"
             onClick={() => void handleAdd()}
-            disabled={saving || !form.name.trim()}
+            disabled={saving}
           >
             {saving ? "Adding..." : "Add"}
           </Button>

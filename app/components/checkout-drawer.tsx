@@ -20,6 +20,7 @@ import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import CustomerPicker from "@/app/components/customer-picker";
 import type { CartItem } from "@/app/context/cart-context";
+import { formatCurrency } from "@/lib/currency";
 import type { Customer } from "@/types/customer";
 
 type CheckoutDrawerProps = {
@@ -74,7 +75,7 @@ const CartItemRow = memo(function CartItemRow({
     >
       <ListItemText
         primary={item.name}
-        secondary={`${item.sku} · ₱${item.price.toFixed(2)}`}
+        secondary={`${item.sku} · ${formatCurrency(item.price)}`}
       />
       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mr: 2 }}>
         <IconButton
@@ -225,7 +226,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
         <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.25 }}>
           <Typography variant="subtitle2">Total</Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            ₱{cartTotal.toFixed(2)}
+            {formatCurrency(cartTotal)}
           </Typography>
         </Stack>
 
@@ -255,7 +256,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
               key={amount}
               size="small"
               clickable
-              label={`₱${amount.toLocaleString()}`}
+              label={formatCurrency(amount)}
               onClick={() => onPaidAmountChange(amount.toFixed(2))}
             />
           ))}
@@ -274,7 +275,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
             sx={{ fontWeight: 700 }}
             color={amountDue > 0 ? "error.main" : "success.main"}
           >
-            ₱{(amountDue > 0 ? amountDue : changeAmount).toFixed(2)}
+            {formatCurrency(amountDue > 0 ? amountDue : changeAmount)}
           </Typography>
         </Stack>
 
@@ -332,7 +333,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
               Total
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              ₱{cartTotal.toFixed(2)}
+              {formatCurrency(cartTotal)}
             </Typography>
           </Stack>
 
