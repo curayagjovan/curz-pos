@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import AppSnackbar from "@/app/components/app-snackbar";
 import FilterPopoverButton from "@/app/components/filter-popover-button";
 import type { FilterPopoverOption } from "@/app/components/filter-popover-button";
@@ -11,6 +13,7 @@ import TransactionsCatalog from "@/app/components/transactions-catalog";
 import type { TransactionGroup } from "@/app/components/transactions-catalog";
 import TransactionsTotalsBar from "@/app/components/transactions-totals-bar";
 import WeekStripFilter from "@/app/components/week-strip-filter";
+import { getSaleCategory } from "@/app/components/transaction-card-status-utils";
 import { addDays, startOfDay, startOfWeek } from "@/lib/week-dates";
 import { useCustomers } from "@/app/context/customers-context";
 import { useTransactions } from "@/app/context/transactions-context";
@@ -18,12 +21,17 @@ import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useSalesSummary } from "@/app/hooks/use-sales-summary";
 import { useTransactionsInRange } from "@/app/hooks/use-transactions-in-range";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
-import type { Transaction } from "@/types/transaction";
+import type { SaleCategory, Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
 
 // Palette path strings (not hex) so these track the theme's info/success/
 // warning tokens per color scheme — hardcoding the hex would freeze these
 // at the light-mode values and look wrong in dark mode.
+const SALE_CATEGORY_TABS: { key: SaleCategory; label: string }[] = [
+  { key: "product", label: "Products" },
+  { key: "load_ewallet", label: "Load & E-wallet" },
+];
+
 const STATUS_OPTIONS: FilterPopoverOption[] = [
   { key: "all", label: "All Status" },
   { key: "PENDING", label: "Pending", color: "info.main" },
@@ -55,6 +63,9 @@ export default function TransactionsPage() {
     startOfDay(new Date()),
   );
   const [statusFilter, setStatusFilter] = useState("all");
+  const [saleCategoryTab, setSaleCategoryTab] = useState<SaleCategory>(
+    "product",
+  );
   const [showTotals, setShowTotals] = useState(false);
   const {
     transactions: liveTransactions,
@@ -98,7 +109,7 @@ export default function TransactionsPage() {
     loading: salesSummaryLoading,
     error: salesSummaryError,
     refetch: refetchSalesSummary,
-  } = useSalesSummary(selectedDateIso);
+  } = useSalesSummary(selectedDateIso, saleCategoryTab);
 
   const transactions = useMemo(() => {
     // The range fetch wins on id conflicts — it's a targeted, always-fresh
@@ -189,7 +200,8 @@ export default function TransactionsPage() {
           !Number.isNaN(transactionTime) &&
           transactionTime >= dayStartTime &&
           transactionTime < dayEndTime &&
-          (statusFilter === "all" || transaction.status === statusFilter)
+          (statusFilter === "all" || transaction.status === statusFilter) &&
+          getSaleCategory(transaction) === saleCategoryTab
         );
       })
       .sort(
@@ -197,7 +209,7 @@ export default function TransactionsPage() {
           new Date(right.createdAt).getTime() -
           new Date(left.createdAt).getTime(),
       );
-  }, [transactions, selectedDate, statusFilter]);
+  }, [transactions, selectedDate, statusFilter, saleCategoryTab]);
 
   const dayTotals = useMemo(() => {
     const weekStartTime = weekStart.getTime();
@@ -205,6 +217,10 @@ export default function TransactionsPage() {
     const totals = [0, 0, 0, 0, 0, 0, 0];
 
     for (const transaction of transactions) {
+      if (getSaleCategory(transaction) !== saleCategoryTab) {
+        continue;
+      }
+
       const transactionTime = new Date(transaction.createdAt).getTime();
       if (
         Number.isNaN(transactionTime) ||
@@ -223,7 +239,7 @@ export default function TransactionsPage() {
     }
 
     return totals;
-  }, [transactions, weekStart]);
+  }, [transactions, weekStart, saleCategoryTab]);
 
   const groupedTransactions = useMemo<TransactionGroup[] | undefined>(() => {
     if (filteredTransactions.length === 0) {
@@ -271,6 +287,17 @@ export default function TransactionsPage() {
             dayTotals={dayTotals}
             onSelectDate={setSelectedDate}
           />
+
+          <Tabs
+            value={saleCategoryTab}
+            onChange={(_event, value) => setSaleCategoryTab(value)}
+            variant="fullWidth"
+            sx={{ minHeight: 36, "& .MuiTab-root": { minHeight: 36, py: 0.5 } }}
+          >
+            {SALE_CATEGORY_TABS.map((tab) => (
+              <Tab key={tab.key} value={tab.key} label={tab.label} />
+            ))}
+          </Tabs>
 
           <Stack
             direction="row"

@@ -1,5 +1,7 @@
 export type TransactionStatus = "PENDING" | "PAID" | "REFUNDED" | "VOIDED";
 
+export type SaleCategory = "product" | "load_ewallet";
+
 export type TransactionItem = {
   id: string;
   productName: string;
@@ -7,6 +9,7 @@ export type TransactionItem = {
   unitPrice: number | string;
   lineTotal: number | string;
   returnedQuantity: number;
+  product: { unit: string | null };
 };
 
 export type Transaction = {

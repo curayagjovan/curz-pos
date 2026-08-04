@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/require-user";
 
@@ -99,10 +100,32 @@ type GroupByRow = {
   _count: { _all: number };
 };
 
-function rangeQuery(start: Date, end: Date) {
+// Load and e-wallet sales are checked out as Product rows seeded with unit
+// "load"/"ewallet" (see prisma/seed-mobile-loads.ts,
+// prisma/seed-ewallet-items.ts), and each such order only ever contains a
+// single item, so filtering on "some item has that unit" is equivalent to
+// filtering on the whole order's category — mirrors
+// app/components/transaction-card-status-utils.ts's getSaleCategory().
+function categoryWhere(category: string | null): Prisma.OrderWhereInput {
+  if (category === "load_ewallet") {
+    return {
+      items: { some: { product: { unit: { in: ["load", "ewallet"] } } } },
+    };
+  }
+
+  if (category === "product") {
+    return {
+      items: { none: { product: { unit: { in: ["load", "ewallet"] } } } },
+    };
+  }
+
+  return {};
+}
+
+function rangeQuery(start: Date, end: Date, category: string | null) {
   return prisma.order.groupBy({
     by: ["status"],
-    where: { createdAt: { gte: start, lt: end } },
+    where: { createdAt: { gte: start, lt: end }, ...categoryWhere(category) },
     _sum: { total: true, refundAmount: true, amountPaid: true },
     _count: { _all: true },
   });
@@ -181,6 +204,7 @@ export async function GET(request: Request) {
 
   try {
     const url = new URL(request.url);
+    const category = url.searchParams.get("category");
     const dateParam = url.searchParams.get("date");
     const parsedDate = dateParam ? new Date(dateParam) : new Date();
     const referenceDate = Number.isNaN(parsedDate.getTime())
@@ -198,10 +222,10 @@ export async function GET(request: Request) {
     const yearRange: [Date, Date] = [yearStart, addYears(yearStart, 1)];
 
     const [dayRows, weekRows, monthRows, yearRows] = await prisma.$transaction([
-      rangeQuery(...dayRange),
-      rangeQuery(...weekRange),
-      rangeQuery(...monthRange),
-      rangeQuery(...yearRange),
+      rangeQuery(...dayRange, category),
+      rangeQuery(...weekRange, category),
+      rangeQuery(...monthRange, category),
+      rangeQuery(...yearRange, category),
     ]);
 
     return NextResponse.json({

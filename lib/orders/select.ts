@@ -5,6 +5,9 @@ export const orderItemSelect = {
   unitPrice: true,
   lineTotal: true,
   returnedQuantity: true,
+  product: {
+    select: { unit: true },
+  },
 } as const;
 
 export const orderListSelectBase = {

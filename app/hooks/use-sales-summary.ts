@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import type { SaleCategory } from "@/types/transaction";
 
 export type SalesPeriodSummary = {
   rangeStart: string;
@@ -23,8 +24,11 @@ export type SalesSummary = {
   year: SalesPeriodSummary;
 };
 
-async function fetchSalesSummary(dateIso: string): Promise<SalesSummary> {
-  const params = new URLSearchParams({ date: dateIso });
+async function fetchSalesSummary(
+  dateIso: string,
+  category: SaleCategory,
+): Promise<SalesSummary> {
+  const params = new URLSearchParams({ date: dateIso, category });
   const response = await fetch(`/api/orders/summary?${params.toString()}`, {
     cache: "no-store",
   });
@@ -39,7 +43,7 @@ async function fetchSalesSummary(dateIso: string): Promise<SalesSummary> {
 // Day/week/month/year totals anchored to whatever date the sales page has
 // selected — a single aggregate request instead of pulling raw order rows
 // for a month or year's worth of sales onto the client.
-export function useSalesSummary(dateIso: string) {
+export function useSalesSummary(dateIso: string, category: SaleCategory) {
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +61,7 @@ export function useSalesSummary(dateIso: string) {
       setError(null);
 
       try {
-        const data = await fetchSalesSummary(dateIso);
+        const data = await fetchSalesSummary(dateIso, category);
         if (requestIdRef.current === requestId) {
           setSummary(data);
         }
@@ -73,7 +77,7 @@ export function useSalesSummary(dateIso: string) {
         }
       }
     },
-    [dateIso],
+    [dateIso, category],
   );
 
   useEffect(() => {

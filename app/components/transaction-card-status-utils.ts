@@ -1,4 +1,4 @@
-import type { Transaction } from "@/types/transaction";
+import type { SaleCategory, Transaction } from "@/types/transaction";
 
 export const ALL_STATUSES: Transaction["status"][] = [
   "PENDING",
@@ -36,6 +36,16 @@ export function formatTransactionDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+// Load and e-wallet sales are checked out through Product rows seeded with
+// unit "load"/"ewallet" (see prisma/seed-mobile-loads.ts,
+// prisma/seed-ewallet-items.ts) rather than a dedicated table, and each such
+// order only ever contains a single item — so the first item's product unit
+// is enough to classify the whole sale.
+export function getSaleCategory(transaction: Transaction): SaleCategory {
+  const unit = transaction.items[0]?.product?.unit;
+  return unit === "load" || unit === "ewallet" ? "load_ewallet" : "product";
 }
 
 export function getCashierLabel(cashier: Transaction["cashier"]) {
