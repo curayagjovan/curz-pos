@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/currency";
 import type { Transaction } from "@/types/transaction";
 import {
   formatTransactionDate,
+  getCashierLabel,
   getStatusColor,
 } from "@/app/components/transaction-card-status-utils";
 
@@ -41,6 +42,8 @@ export default function TransactionCardHeader({
   quickAssignLabel,
   onOpenPay,
 }: TransactionCardHeaderProps) {
+  const cashierLabel = getCashierLabel(transaction.cashier);
+
   return (
     <Box
       role="button"
@@ -89,6 +92,16 @@ export default function TransactionCardHeader({
               >
                 {transaction.orderNo}
               </Typography>
+              {cashierLabel ? (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  noWrap
+                  sx={{ display: "block" }}
+                >
+                  Cashier: {cashierLabel}
+                </Typography>
+              ) : null}
             </Box>
           </Stack>
 

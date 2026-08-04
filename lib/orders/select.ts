@@ -20,6 +20,9 @@ export const orderListSelectBase = {
   customer: {
     select: { id: true, name: true, phone: true },
   },
+  cashier: {
+    select: { id: true, displayName: true, email: true },
+  },
   items: {
     select: orderItemSelect,
   },
@@ -43,6 +46,9 @@ export const orderCreateSelectBase = {
   customerId: true,
   customer: {
     select: { id: true, name: true, phone: true },
+  },
+  cashier: {
+    select: { id: true, displayName: true, email: true },
   },
   items: {
     select: orderItemSelect,

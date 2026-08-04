@@ -60,10 +60,14 @@ model Order {
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
 
+  cashierId String?
+  cashier   AppUser? @relation(fields: [cashierId], references: [id], onDelete: SetNull)
+
   items OrderItem[]
 
   @@index([createdAt])
   @@index([customerId, status])
+  @@index([cashierId])
 }
 
 model Customer {
@@ -275,4 +279,6 @@ model AppUser {
   lastLoginAt DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  orders Order[]
 }

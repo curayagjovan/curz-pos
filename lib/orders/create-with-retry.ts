@@ -73,6 +73,7 @@ export async function createOrderWithRetry(
         ...(includeAmountPaid ? { amountPaid } : {}),
         note,
         customerId,
+        cashierId: actor.id,
         items: {
           create: orderItems,
         },

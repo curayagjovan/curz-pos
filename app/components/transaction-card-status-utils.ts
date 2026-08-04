@@ -38,6 +38,14 @@ export function formatTransactionDate(value: string) {
   }).format(date);
 }
 
+export function getCashierLabel(cashier: Transaction["cashier"]) {
+  if (!cashier) {
+    return null;
+  }
+
+  return cashier.displayName?.trim() || cashier.email;
+}
+
 export function getStatusConfirmationMessage(status: Transaction["status"]) {
   switch (status) {
     case "REFUNDED":

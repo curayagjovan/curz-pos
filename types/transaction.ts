@@ -21,5 +21,6 @@ export type Transaction = {
   createdAt: string;
   customerId: string | null;
   customer: { id: string; name: string; phone: string | null } | null;
+  cashier: { id: string; displayName: string | null; email: string } | null;
   items: TransactionItem[];
 };
