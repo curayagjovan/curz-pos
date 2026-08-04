@@ -11,6 +11,7 @@ import CategoryFilterChips from "@/app/components/category-filter-chips";
 import DeleteProductDialog from "@/app/components/delete-product-dialog";
 import ProductFormDrawer from "@/app/components/product-form-drawer";
 import type {
+  ProductFormBundleTier,
   ProductFormErrors,
   ProductFormState,
 } from "@/app/components/product-form-drawer";
@@ -33,8 +34,7 @@ const EMPTY_FORM: ProductFormState = {
   category: DEFAULT_PRODUCT_CATEGORY,
   description: "",
   price: "0",
-  bundleQty: "",
-  bundlePrice: "",
+  bundleTiers: [],
 };
 
 function matchesSearch(product: Product, query: string) {
@@ -100,17 +100,44 @@ export default function InventoryPage() {
       category: product.category ?? DEFAULT_PRODUCT_CATEGORY,
       description: product.description ?? "",
       price: Number(product.price).toFixed(2),
-      bundleQty:
-        product.bundleQty === null || product.bundleQty === undefined
-          ? ""
-          : String(product.bundleQty),
-      bundlePrice:
-        product.bundlePrice === null || product.bundlePrice === undefined
-          ? ""
-          : Number(product.bundlePrice).toFixed(2),
+      bundleTiers: (product.bundleTiers ?? [])
+        .slice()
+        .sort((left, right) => left.quantity - right.quantity)
+        .map((tier) => ({
+          quantity: String(tier.quantity),
+          price: Number(tier.price).toFixed(2),
+        })),
     });
     setFormErrors({});
     setDrawerOpen(true);
+  }, []);
+
+  const handleTierChange = useCallback(
+    (index: number, field: keyof ProductFormBundleTier, value: string) => {
+      setForm((current) => ({
+        ...current,
+        bundleTiers: current.bundleTiers.map((tier, tierIndex) =>
+          tierIndex === index ? { ...tier, [field]: value } : tier,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const handleAddTier = useCallback(() => {
+    setForm((current) => ({
+      ...current,
+      bundleTiers: [...current.bundleTiers, { quantity: "", price: "" }],
+    }));
+  }, []);
+
+  const handleRemoveTier = useCallback((index: number) => {
+    setForm((current) => ({
+      ...current,
+      bundleTiers: current.bundleTiers.filter(
+        (_, tierIndex) => tierIndex !== index,
+      ),
+    }));
   }, []);
 
   const handleAddProductClick = useCallback(() => {
@@ -212,10 +239,26 @@ export default function InventoryPage() {
   const handleSaveProduct = useCallback(async () => {
     const name = form.name.trim();
     const price = Number(form.price);
-    const bundleQty = form.bundleQty.trim() ? Number(form.bundleQty) : null;
-    const bundlePrice = form.bundlePrice.trim()
-      ? Number(form.bundlePrice)
-      : null;
+    // Drop fully-empty trailing rows a cashier added then reconsidered,
+    // rather than forcing them to explicitly delete the row.
+    const nonEmptyTiers = form.bundleTiers.filter(
+      (tier) => tier.quantity.trim() !== "" || tier.price.trim() !== "",
+    );
+    const parsedTiers = nonEmptyTiers.map((tier) => ({
+      quantity: Number(tier.quantity),
+      price: Number(tier.price),
+    }));
+    const seenTierQuantities = new Set<number>();
+    const hasInvalidTier = parsedTiers.some((tier) => {
+      const isInvalid =
+        !Number.isInteger(tier.quantity) ||
+        tier.quantity < 2 ||
+        !Number.isFinite(tier.price) ||
+        tier.price < 0 ||
+        seenTierQuantities.has(tier.quantity);
+      seenTierQuantities.add(tier.quantity);
+      return isInvalid;
+    });
     const nextErrors: ProductFormErrors = {};
 
     if (!name) {
@@ -230,10 +273,12 @@ export default function InventoryPage() {
       nextErrors.sku = "SKU is required when editing";
     }
 
-    if (Object.keys(nextErrors).length > 0) {
+    if (Object.keys(nextErrors).length > 0 || hasInvalidTier) {
       setFormErrors(nextErrors);
       showSnackbar({
-        message: "Please fix the highlighted fields",
+        message: hasInvalidTier
+          ? "Each bundle tier needs a qty of 2+, a price of 0+, and a unique qty"
+          : "Please fix the highlighted fields",
         severity: "error",
       });
       return;
@@ -250,8 +295,7 @@ export default function InventoryPage() {
         category: form.category,
         description: form.description.trim() ? form.description.trim() : null,
         price,
-        bundleQty,
-        bundlePrice,
+        bundleTiers: parsedTiers,
       };
 
       const response = await fetch(
@@ -370,6 +414,9 @@ export default function InventoryPage() {
         saving={saving}
         onClose={handleCloseDrawer}
         onFieldChange={handleFieldChange}
+        onTierChange={handleTierChange}
+        onAddTier={handleAddTier}
+        onRemoveTier={handleRemoveTier}
         onSave={handleSaveProduct}
       />
 

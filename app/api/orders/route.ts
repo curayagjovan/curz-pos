@@ -15,11 +15,11 @@ import {
   orderListSelectWithAmountPaid,
 } from "@/lib/orders/select";
 import {
-  computeLineTotal,
   createOrderNo,
   isMissingAmountPaidColumnError,
   withNullAmountPaid,
 } from "@/lib/orders/helpers";
+import { computeLineTotal } from "@/lib/bundle-pricing";
 import { findAccidentalDuplicateOrder } from "@/lib/orders/duplicate-guard";
 import { createOrderWithRetry } from "@/lib/orders/create-with-retry";
 import { processOrderRefund } from "@/lib/orders/refund";
@@ -301,8 +301,7 @@ export async function POST(request: Request) {
             id: true,
             name: true,
             price: true,
-            bundleQty: true,
-            bundlePrice: true,
+            bundleTiers: { select: { quantity: true, price: true } },
             allowCustomPrice: true,
           },
         }),
@@ -348,13 +347,13 @@ export async function POST(request: Request) {
         const unitPrice = current.allowCustomPrice
           ? Number(item.unitPrice)
           : Number(current.price);
-        const bundlePrice =
-          current.bundlePrice === null ? null : Number(current.bundlePrice);
         const lineTotal = computeLineTotal(
           quantity,
           unitPrice,
-          current.bundleQty,
-          bundlePrice,
+          current.bundleTiers.map((tier) => ({
+            quantity: tier.quantity,
+            price: Number(tier.price),
+          })),
         );
 
         return {

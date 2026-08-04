@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateSmartSku } from "@/lib/sku-generator";
 import { requirePermission, requireUser } from "@/lib/auth/require-user";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
+import { parseBundleTiersInput } from "@/lib/bundle-pricing";
 import {
   DEFAULT_PRODUCT_CATEGORY,
   isValidProductCategory,
@@ -17,8 +18,10 @@ const PRODUCT_LIST_SELECT = {
   category: true,
   description: true,
   price: true,
-  bundleQty: true,
-  bundlePrice: true,
+  bundleTiers: {
+    select: { quantity: true, price: true },
+    orderBy: { quantity: "asc" },
+  },
 } as const;
 
 function isMissingPinnedColumn(error: unknown) {
@@ -118,6 +121,12 @@ export async function GET(request: Request) {
       const products = await prisma.product.findMany({
         where: baseWhere,
         orderBy: { name: "asc" },
+        include: {
+          bundleTiers: {
+            select: { quantity: true, price: true },
+            orderBy: { quantity: "asc" },
+          },
+        },
       });
 
       return NextResponse.json(products);
@@ -293,8 +302,7 @@ export async function POST(request: Request) {
       unit?: string;
       category?: string;
       description?: string;
-      bundleQty?: number | null;
-      bundlePrice?: number | null;
+      bundleTiers?: unknown;
       price?: number;
     };
 
@@ -305,29 +313,12 @@ export async function POST(request: Request) {
       ? body.category
       : DEFAULT_PRODUCT_CATEGORY;
     const description = body.description?.trim();
-    const bundleQty =
-      body.bundleQty === null || body.bundleQty === undefined
-        ? null
-        : Number(body.bundleQty);
-    const bundlePrice =
-      body.bundlePrice === null || body.bundlePrice === undefined
-        ? null
-        : Number(body.bundlePrice);
     const price = Number(body.price);
-
-    const hasBundle = bundleQty !== null || bundlePrice !== null;
-
-    const hasInvalidBundle =
-      (bundleQty !== null && (Number.isNaN(bundleQty) || bundleQty < 2)) ||
-      (bundlePrice !== null && (Number.isNaN(bundlePrice) || bundlePrice < 0));
-
-    const hasIncompleteBundle =
-      hasBundle && (bundleQty === null || bundlePrice === null);
+    const parsedBundleTiers = parseBundleTiersInput(body.bundleTiers);
 
     if (
       !name ||
-      hasInvalidBundle ||
-      hasIncompleteBundle ||
+      !parsedBundleTiers.ok ||
       Number.isNaN(price) ||
       price < 0
     ) {
@@ -338,6 +329,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const bundleTiers = parsedBundleTiers.tiers;
 
     const shouldAutoGenerateSku = !rawSku;
 
@@ -359,12 +352,16 @@ export async function POST(request: Request) {
               description: description || null,
               cost: price,
               markupPct: 0,
-              bundleQty,
-              bundleMarkdownPct: null,
-              bundlePrice,
+              bundleTiers: { create: bundleTiers },
               price,
               isActive: true,
               usesGlobalMarkup: false,
+            },
+            include: {
+              bundleTiers: {
+                select: { quantity: true, price: true },
+                orderBy: { quantity: "asc" },
+              },
             },
           });
 
@@ -406,12 +403,16 @@ export async function POST(request: Request) {
         description: description || null,
         cost: price,
         markupPct: 0,
-        bundleQty,
-        bundleMarkdownPct: null,
-        bundlePrice,
+        bundleTiers: { create: bundleTiers },
         price,
         isActive: true,
         usesGlobalMarkup: false,
+      },
+      include: {
+        bundleTiers: {
+          select: { quantity: true, price: true },
+          orderBy: { quantity: "asc" },
+        },
       },
     });
 

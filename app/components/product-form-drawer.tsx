@@ -1,5 +1,7 @@
 "use client";
 
+import AddRounded from "@mui/icons-material/AddRounded";
+import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
@@ -11,6 +13,11 @@ import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import { PRODUCT_CATEGORY_OPTIONS } from "@/lib/product-categories";
 
+export type ProductFormBundleTier = {
+  quantity: string;
+  price: string;
+};
+
 export type ProductFormState = {
   id: string | null;
   sku: string;
@@ -18,8 +25,7 @@ export type ProductFormState = {
   category: string;
   description: string;
   price: string;
-  bundleQty: string;
-  bundlePrice: string;
+  bundleTiers: ProductFormBundleTier[];
 };
 
 export type ProductFormErrors = {
@@ -35,6 +41,13 @@ type ProductFormDrawerProps = {
   saving: boolean;
   onClose: () => void;
   onFieldChange: (field: keyof ProductFormState, value: string) => void;
+  onTierChange: (
+    index: number,
+    field: keyof ProductFormBundleTier,
+    value: string,
+  ) => void;
+  onAddTier: () => void;
+  onRemoveTier: (index: number) => void;
   onSave: () => void;
 };
 
@@ -45,6 +58,9 @@ export default function ProductFormDrawer({
   saving,
   onClose,
   onFieldChange,
+  onTierChange,
+  onAddTier,
+  onRemoveTier,
   onSave,
 }: ProductFormDrawerProps) {
   return (
@@ -161,40 +177,55 @@ export default function ProductFormDrawer({
             }}
             required
           />
-          <TextField
-            label="Bundle Qty"
-            value={form.bundleQty}
-            onChange={(event) =>
-              onFieldChange("bundleQty", event.target.value)
-            }
-            fullWidth
-            type="number"
-            slotProps={{
-              htmlInput: {
-                min: 2,
-                step: "1",
-                inputMode: "numeric",
-              },
-            }}
-            helperText="Optional, requires Bundle Price"
-          />
-          <TextField
-            label="Bundle Price"
-            value={form.bundlePrice}
-            onChange={(event) =>
-              onFieldChange("bundlePrice", event.target.value)
-            }
-            fullWidth
-            type="number"
-            slotProps={{
-              htmlInput: {
-                min: 0,
-                step: "0.01",
-                inputMode: "decimal",
-              },
-            }}
-            helperText="Optional, requires Bundle Qty"
-          />
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Bundles
+            </Typography>
+            <Stack spacing={1.25}>
+              {form.bundleTiers.map((tier, index) => (
+                <Stack key={index} direction="row" spacing={1} alignItems="center">
+                  <TextField
+                    label="Qty"
+                    value={tier.quantity}
+                    onChange={(event) =>
+                      onTierChange(index, "quantity", event.target.value)
+                    }
+                    type="number"
+                    slotProps={{
+                      htmlInput: { min: 2, step: "1", inputMode: "numeric" },
+                    }}
+                    sx={{ flex: 1 }}
+                  />
+                  <TextField
+                    label="Price"
+                    value={tier.price}
+                    onChange={(event) =>
+                      onTierChange(index, "price", event.target.value)
+                    }
+                    type="number"
+                    slotProps={{
+                      htmlInput: { min: 0, step: "0.01", inputMode: "decimal" },
+                    }}
+                    sx={{ flex: 1 }}
+                  />
+                  <IconButton
+                    onClick={() => onRemoveTier(index)}
+                    aria-label="Remove bundle tier"
+                  >
+                    <DeleteOutlineRounded fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Button
+                startIcon={<AddRounded fontSize="small" />}
+                onClick={onAddTier}
+                variant="outlined"
+                color="inherit"
+              >
+                Add bundle tier
+              </Button>
+            </Stack>
+          </Box>
         </Stack>
 
         <Stack direction="row" spacing={1.25} sx={{ mt: 2 }}>

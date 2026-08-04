@@ -1,5 +1,9 @@
 import { useMemo } from "react";
 import type { CartItem } from "@/app/context/cart-context";
+import {
+  computeLineTotal as computeLineTotalWithTiers,
+  normalizeBundleTiers,
+} from "@/lib/bundle-pricing";
 
 type UseCheckoutCalculationsParams = {
   cartItems: CartItem[];
@@ -7,31 +11,11 @@ type UseCheckoutCalculationsParams = {
 };
 
 function computeLineTotal(item: CartItem) {
-  const bundleQty =
-    item.bundleQty == null
-      ? null
-      : Number.isFinite(item.bundleQty)
-        ? item.bundleQty
-        : null;
-  const bundlePrice =
-    item.bundlePrice == null
-      ? null
-      : Number.isFinite(item.bundlePrice)
-        ? item.bundlePrice
-        : null;
-
-  if (
-    bundleQty !== null &&
-    bundleQty >= 2 &&
-    bundlePrice !== null &&
-    bundlePrice >= 0
-  ) {
-    const bundles = Math.floor(item.quantity / bundleQty);
-    const remainder = item.quantity % bundleQty;
-    return Number((bundles * bundlePrice + remainder * item.price).toFixed(2));
-  }
-
-  return Number((item.price * item.quantity).toFixed(2));
+  return computeLineTotalWithTiers(
+    item.quantity,
+    item.price,
+    normalizeBundleTiers(item.bundleTiers),
+  );
 }
 
 export function useCheckoutCalculations({

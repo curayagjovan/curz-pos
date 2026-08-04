@@ -29,6 +29,7 @@ import { useProductsCheckout } from "@/app/hooks/use-products-checkout";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
 import { computePopularProducts } from "@/lib/popular-products";
+import { normalizeBundleTiers } from "@/lib/bundle-pricing";
 import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
 import Divider from "@mui/material/Divider";
@@ -141,29 +142,29 @@ export default function ProductsPage() {
   }, [filteredProducts, popularProductNameSet]);
 
   const handleAddToCart = useCallback(
-    (product: Product, sourceRect?: DOMRect) => {
-      const bundleQty =
-        product.bundleQty == null ? null : Number(product.bundleQty);
-      const bundlePrice =
-        product.bundlePrice == null ? null : Number(product.bundlePrice);
-
-      addToCart({
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        price: Number(product.price),
-        quantity: 1,
-        bundleQty:
-          bundleQty !== null && Number.isFinite(bundleQty) ? bundleQty : null,
-        bundlePrice:
-          bundlePrice !== null && Number.isFinite(bundlePrice)
-            ? bundlePrice
-            : null,
-      });
+    (product: Product, sourceRect?: DOMRect, quantity = 1) => {
+      addToCart(
+        {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          price: Number(product.price),
+          quantity,
+          bundleTiers: normalizeBundleTiers(product.bundleTiers),
+        },
+        quantity,
+      );
 
       launchCartFlight(product.name, sourceRect);
     },
     [addToCart, launchCartFlight],
+  );
+
+  const handleQuickAddBundle = useCallback(
+    (product: Product, quantity: number) => {
+      handleAddToCart(product, undefined, quantity);
+    },
+    [handleAddToCart],
   );
 
   const {
@@ -260,6 +261,7 @@ export default function ProductsPage() {
                 loading={false}
                 error={null}
                 onAddToCart={handleAddToCart}
+                onQuickAddBundle={handleQuickAddBundle}
               />
             </Stack>
           ) : null}
@@ -278,6 +280,7 @@ export default function ProductsPage() {
               loading={loading}
               error={error}
               onAddToCart={handleAddToCart}
+              onQuickAddBundle={handleQuickAddBundle}
             />
           </Stack>
 

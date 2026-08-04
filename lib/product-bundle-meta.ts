@@ -1,23 +1,24 @@
 import type { Product } from "@/types/product";
 import { formatCurrency } from "@/lib/currency";
+import { normalizeBundleTiers } from "@/lib/bundle-pricing";
 
 export function getBundleMeta(product: Product) {
-  const bundleQty =
-    product.bundleQty == null ? null : Number(product.bundleQty);
-  const bundlePrice =
-    product.bundlePrice == null ? null : Number(product.bundlePrice);
+  const tiers = normalizeBundleTiers(
+    product.bundleTiers?.map((tier) => ({
+      quantity: tier.quantity,
+      price: Number(tier.price),
+    })),
+  );
 
-  const hasBundle =
-    bundleQty != null &&
-    Number.isFinite(bundleQty) &&
-    bundleQty > 0 &&
-    bundlePrice != null &&
-    Number.isFinite(bundlePrice);
+  const hasBundle = tiers.length > 0;
 
   return {
     hasBundle,
+    tiers,
     label: hasBundle
-      ? `Bundle ${bundleQty} for ${formatCurrency(bundlePrice)}`
+      ? `Bundle: ${tiers
+          .map((tier) => `${tier.quantity} for ${formatCurrency(tier.price)}`)
+          .join(" · ")}`
       : "",
   };
 }

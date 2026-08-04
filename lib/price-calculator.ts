@@ -30,29 +30,3 @@ export function roundToNearestPeso(price: number): number {
 
   return Math.round(price);
 }
-
-/**
- * Calculate bundle price from unit price, quantity, and markdown
- * Rounds to nearest whole peso
- */
-export function calculateBundlePrice(
-  unitPrice: number,
-  quantity: number,
-  markdownPercent: number,
-): number {
-  if (
-    Number.isNaN(unitPrice) ||
-    Number.isNaN(quantity) ||
-    Number.isNaN(markdownPercent) ||
-    unitPrice < 0 ||
-    quantity < 2 ||
-    markdownPercent < 0 ||
-    markdownPercent > 100
-  ) {
-    return 0;
-  }
-
-  const regularTotal = quantity * unitPrice;
-  const bundlePrice = regularTotal * (1 - markdownPercent / 100);
-  return Math.round(bundlePrice);
-}

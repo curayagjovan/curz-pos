@@ -25,14 +25,16 @@ import { useCatalogAddGesture } from "@/app/hooks/use-catalog-add-gesture";
 type ProductCardCatalogProps = {
   product: Product;
   onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
+  onQuickAddBundle: (product: Product, quantity: number) => void;
 };
 
 export default function ProductCardCatalog({
   product,
   onAddToCart,
+  onQuickAddBundle,
 }: ProductCardCatalogProps) {
   const hasDescription = Boolean(product.description?.trim());
-  const { hasBundle, label: bundleLabel } = getBundleMeta(product);
+  const { hasBundle, tiers: bundleTiers } = getBundleMeta(product);
   // Products cached in IndexedDB before the category field shipped won't
   // have one until the next refetch — fall back rather than crash on render.
   const safeCategory = isValidProductCategory(product.category)
@@ -155,19 +157,6 @@ export default function ProductCardCatalog({
                     ? `${categoryLabel}, ${product.description}`
                     : categoryLabel}
                 </Typography>
-                {hasBundle ? (
-                  <Chip
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                    label={bundleLabel}
-                    sx={{
-                      height: 18,
-                      fontSize: "0.75rem",
-                      "& .MuiChip-label": { px: 0.75 },
-                    }}
-                  />
-                ) : null}
               </Stack>
             </Box>
 
@@ -178,6 +167,33 @@ export default function ProductCardCatalog({
             />
           </Stack>
         </CardActionArea>
+
+        {hasBundle ? (
+          <Box sx={{ px: 1.25, pb: 1 }}>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              useFlexGap
+              flexWrap="wrap"
+              alignItems="center"
+            >
+              <Typography variant="caption" color="text.secondary">
+                Quick add:
+              </Typography>
+              {bundleTiers.map((tier) => (
+                <Chip
+                  key={tier.quantity}
+                  size="small"
+                  clickable
+                  color="success"
+                  variant="outlined"
+                  label={`${tier.quantity} for ${formatCurrency(tier.price)}`}
+                  onClick={() => onQuickAddBundle(product, tier.quantity)}
+                />
+              ))}
+            </Stack>
+          </Box>
+        ) : null}
       </Card>
     </ListItem>
   );

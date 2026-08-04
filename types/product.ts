@@ -8,6 +8,5 @@ export type Product = {
   category: ProductCategoryValue;
   description?: string | null;
   price: number | string;
-  bundleQty?: number | string | null;
-  bundlePrice?: number | string | null;
+  bundleTiers?: Array<{ quantity: number; price: number | string }> | null;
 };

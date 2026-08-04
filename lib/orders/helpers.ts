@@ -142,24 +142,4 @@ export function createOrderNo() {
   return `ORD-${stamp}-${suffix}`;
 }
 
-export function computeLineTotal(
-  quantity: number,
-  unitPrice: number,
-  bundleQty: number | null,
-  bundlePrice: number | null,
-) {
-  if (
-    bundleQty !== null &&
-    bundleQty >= 2 &&
-    bundlePrice !== null &&
-    bundlePrice >= 0
-  ) {
-    const bundles = Math.floor(quantity / bundleQty);
-    const remainder = quantity % bundleQty;
-    return Number((bundles * bundlePrice + remainder * unitPrice).toFixed(2));
-  }
-
-  return Number((quantity * unitPrice).toFixed(2));
-}
-
 export const ACCIDENTAL_DUPLICATE_WINDOW_MS = 25_000;

@@ -8,6 +8,7 @@ import ProductCardInventory from "@/app/components/product-card-inventory";
 type ProductCardProps = {
   product: Product;
   onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
+  onQuickAddBundle?: (product: Product, quantity: number) => void;
   onRequestDelete?: (product: Product) => void;
   deleteDisabled?: boolean;
   variant?: "catalog" | "inventory";
@@ -16,6 +17,7 @@ type ProductCardProps = {
 const ProductCard = memo(function ProductCard({
   product,
   onAddToCart,
+  onQuickAddBundle,
   onRequestDelete,
   deleteDisabled = false,
   variant = "catalog",
@@ -31,7 +33,13 @@ const ProductCard = memo(function ProductCard({
     );
   }
 
-  return <ProductCardCatalog product={product} onAddToCart={onAddToCart} />;
+  return (
+    <ProductCardCatalog
+      product={product}
+      onAddToCart={onAddToCart}
+      onQuickAddBundle={onQuickAddBundle ?? (() => {})}
+    />
+  );
 });
 
 export default ProductCard;

@@ -3,8 +3,6 @@ export type OrderItemInput = {
   productName?: string;
   quantity?: number;
   unitPrice?: number;
-  bundleQty?: number | null;
-  bundlePrice?: number | null;
 };
 
 export type OrderPayload = {
