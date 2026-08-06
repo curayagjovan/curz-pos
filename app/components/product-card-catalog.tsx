@@ -3,6 +3,7 @@
 import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
 import Chip from "@mui/material/Chip";
@@ -169,27 +170,34 @@ export default function ProductCardCatalog({
         </CardActionArea>
 
         {hasBundle ? (
-          <Box sx={{ px: 1.25, pb: 1 }}>
-            <Stack
-              direction="row"
-              spacing={0.5}
-              useFlexGap
-              flexWrap="wrap"
-              alignItems="center"
+          <Box sx={{ px: 1.25, pb: 0.75, pt: 0 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 0.25, lineHeight: 1.3 }}
             >
-              <Typography variant="caption" color="text.secondary">
-                Quick add:
-              </Typography>
+              Bundle price:
+            </Typography>
+            <Stack direction="row" spacing={0.75}>
               {bundleTiers.map((tier) => (
-                <Chip
+                <Button
                   key={tier.quantity}
-                  size="small"
-                  clickable
-                  color="success"
                   variant="outlined"
-                  label={`${tier.quantity} for ${formatCurrency(tier.price)}`}
+                  color="success"
                   onClick={() => onQuickAddBundle(product, tier.quantity)}
-                />
+                  sx={{
+                    flex: "1 1 0",
+                    minWidth: 0,
+                    minHeight: 30,
+                    borderRadius: 1.5,
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    lineHeight: 1.2,
+                    py: 0,
+                  }}
+                >
+                  {tier.quantity} for {formatCurrency(tier.price)}
+                </Button>
               ))}
             </Stack>
           </Box>
