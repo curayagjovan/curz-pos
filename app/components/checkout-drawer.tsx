@@ -4,13 +4,13 @@ import { memo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
 import Divider from "@mui/material/Divider";
 import SwipeableDrawer from "@mui/material/SwipeableDrawer";
 import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
-import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -124,26 +124,23 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
 }: CheckoutDrawerProps) {
   const anyCheckoutLoading = checkoutLoading || pendingCheckoutLoading;
 
-  const [pendingAnchorEl, setPendingAnchorEl] = useState<HTMLElement | null>(
-    null,
-  );
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
   const [pendingCustomerId, setPendingCustomerId] = useState<string | null>(
     null,
   );
   const [pendingAmountInput, setPendingAmountInput] = useState("0");
-  const pendingPopoverOpen = Boolean(pendingAnchorEl);
 
-  const handleOpenPending = (event: React.MouseEvent<HTMLElement>) => {
+  const handleOpenPending = () => {
     setPendingCustomerId(null);
-    setPendingAmountInput("0");
-    setPendingAnchorEl(event.currentTarget);
+    setPendingAmountInput(paidAmountInput);
+    setPendingDialogOpen(true);
   };
 
   const handleClosePending = () => {
     if (pendingCheckoutLoading) {
       return;
     }
-    setPendingAnchorEl(null);
+    setPendingDialogOpen(false);
   };
 
   const numericPendingAmount = Number(pendingAmountInput);
@@ -162,7 +159,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
         : 0;
 
     onCheckoutPending({ customerId: pendingCustomerId, amountPaid });
-    setPendingAnchorEl(null);
+    setPendingDialogOpen(false);
   };
 
   return (
@@ -318,14 +315,13 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
         </Stack>
       </Box>
 
-      <Popover
-        open={pendingPopoverOpen}
-        anchorEl={pendingAnchorEl}
+      <Dialog
+        open={pendingDialogOpen}
         onClose={handleClosePending}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+        fullWidth
+        maxWidth="xs"
       >
-        <Stack spacing={1.5} sx={{ p: 2, minWidth: 280 }}>
+        <Stack spacing={1.5} sx={{ p: 2 }}>
           <Typography variant="subtitle2">Unpaid Sale (Utang)</Typography>
 
           <Stack direction="row" justifyContent="space-between">
@@ -376,7 +372,7 @@ const CheckoutDrawer = memo(function CheckoutDrawer({
             </Button>
           </Stack>
         </Stack>
-      </Popover>
+      </Dialog>
     </SwipeableDrawer>
   );
 });

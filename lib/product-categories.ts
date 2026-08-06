@@ -14,6 +14,7 @@ import SchoolRounded from "@mui/icons-material/SchoolRounded";
 import SetMealRounded from "@mui/icons-material/SetMealRounded";
 import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import SpaRounded from "@mui/icons-material/SpaRounded";
+import ToysRounded from "@mui/icons-material/ToysRounded";
 
 // Order matters: it drives the deterministic hue spread below and the
 // filter-chip/menu ordering everywhere this list is rendered. Keep this in
@@ -34,6 +35,7 @@ export const PRODUCT_CATEGORY_VALUES = [
   "HOUSEHOLD",
   "SCHOOL_OFFICE_SUPPLIES",
   "LOAD_AND_PROMO",
+  "TOYS",
   "OTHER",
 ] as const;
 
@@ -66,6 +68,7 @@ export const PRODUCT_CATEGORY_LABELS: Record<ProductCategoryValue, string> = {
   HOUSEHOLD: "Household",
   SCHOOL_OFFICE_SUPPLIES: "School & Office Supplies",
   LOAD_AND_PROMO: "Load & Promo",
+  TOYS: "Toys",
   OTHER: "Other",
 };
 
@@ -87,6 +90,7 @@ export const PRODUCT_CATEGORY_ICONS: Record<ProductCategoryValue, IconComponent>
   HOUSEHOLD: CleaningServicesRounded,
   SCHOOL_OFFICE_SUPPLIES: SchoolRounded,
   LOAD_AND_PROMO: SimCardRounded,
+  TOYS: ToysRounded,
   OTHER: CategoryRounded,
 };
 

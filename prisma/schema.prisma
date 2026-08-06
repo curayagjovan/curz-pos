@@ -245,6 +245,7 @@ enum ProductCategory {
   HOUSEHOLD
   SCHOOL_OFFICE_SUPPLIES
   LOAD_AND_PROMO
+  TOYS
   OTHER
 }
 

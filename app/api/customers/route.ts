@@ -107,8 +107,8 @@ export async function PATCH(request: Request) {
   const body = (await request.json()) as {
     id?: string;
     name?: string;
-    phone?: string;
-    note?: string;
+    phone?: string | null;
+    note?: string | null;
     isActive?: boolean;
   };
 
@@ -119,8 +119,8 @@ export async function PATCH(request: Request) {
 
   const nextValues = {
     ...(body.name !== undefined ? { name: body.name.trim() } : {}),
-    ...(body.phone !== undefined ? { phone: body.phone.trim() || null } : {}),
-    ...(body.note !== undefined ? { note: body.note.trim() || null } : {}),
+    ...(body.phone !== undefined ? { phone: body.phone?.trim() || null } : {}),
+    ...(body.note !== undefined ? { note: body.note?.trim() || null } : {}),
     ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
   };
 
