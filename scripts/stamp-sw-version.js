@@ -3,8 +3,12 @@
 // always sees changed bytes and installs the new service worker — without
 // that, sw.js content is byte-identical across deploys and the browser
 // never fires `updatefound`, so the "update available" banner never shows.
+// This runs as a plain Node CommonJS script (no "type": "module" in
+// package.json), so require() here is correct, not legacy.
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require("fs");
 const path = require("path");
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 const swPath = path.join(__dirname, "..", "public", "sw.js");
 const sw = fs.readFileSync(swPath, "utf8");
