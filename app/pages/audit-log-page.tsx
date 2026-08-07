@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import HistoryRounded from "@mui/icons-material/HistoryRounded";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import Collapse from "@mui/material/Collapse";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
@@ -15,7 +15,9 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
 
@@ -127,94 +129,101 @@ export default function AuditLogPage() {
           {error ? <Alert severity="error">{error}</Alert> : null}
 
           {loading ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-              <CircularProgress size={28} />
-            </Stack>
+            <ListSkeleton />
           ) : entries.length === 0 ? (
-            <ListEmptyState description="No activity recorded yet." />
+            <ListEmptyState
+              description="No activity recorded yet."
+              icon={<HistoryRounded fontSize="small" />}
+            />
           ) : (
-            <List sx={{ px: 0 }}>
-              {entries.map((entry) => {
-                const hasChanges =
-                  entry.changes !== null &&
-                  Object.keys(entry.changes).length > 0;
-                const isExpanded = expandedId === entry.id;
+            <FadeInContent>
+              <List sx={{ px: 0 }}>
+                {entries.map((entry) => {
+                  const hasChanges =
+                    entry.changes !== null &&
+                    Object.keys(entry.changes).length > 0;
+                  const isExpanded = expandedId === entry.id;
 
-                return (
-                  <ListItem
-                    key={entry.id}
-                    divider
-                    alignItems="flex-start"
-                    secondaryAction={
-                      hasChanges ? (
-                        <IconButton
-                          onClick={() =>
-                            setExpandedId(isExpanded ? null : entry.id)
-                          }
-                          aria-label={
-                            isExpanded ? "hide changes" : "show changes"
-                          }
-                          aria-expanded={isExpanded}
-                          sx={{
-                            transform: isExpanded
-                              ? "rotate(180deg)"
-                              : "rotate(0deg)",
-                            transition: "transform 150ms ease",
-                          }}
-                        >
-                          <ExpandMoreRounded fontSize="small" />
-                        </IconButton>
-                      ) : undefined
-                    }
-                  >
-                    <ListItemText
-                      primary={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body1">
-                            {entry.summary}
-                          </Typography>
-                          <Chip size="small" label={entry.entityType} />
-                        </Stack>
+                  return (
+                    <ListItem
+                      key={entry.id}
+                      divider
+                      alignItems="flex-start"
+                      secondaryAction={
+                        hasChanges ? (
+                          <IconButton
+                            onClick={() =>
+                              setExpandedId(isExpanded ? null : entry.id)
+                            }
+                            aria-label={
+                              isExpanded ? "hide changes" : "show changes"
+                            }
+                            aria-expanded={isExpanded}
+                            sx={{
+                              transform: isExpanded
+                                ? "rotate(180deg)"
+                                : "rotate(0deg)",
+                              transition: "transform 150ms ease",
+                            }}
+                          >
+                            <ExpandMoreRounded fontSize="small" />
+                          </IconButton>
+                        ) : undefined
                       }
-                      secondary={
-                        <>
-                          {dateFormatter.format(new Date(entry.createdAt))}
-                          {" · "}
-                          {entry.actorEmail ?? "System"}
-                          {hasChanges ? (
-                            <Collapse in={isExpanded} unmountOnExit>
-                              <Box
-                                sx={{
-                                  mt: 1,
-                                  p: 1,
-                                  borderRadius: 1,
-                                  bgcolor: "action.hover",
-                                }}
-                              >
-                                {Object.entries(entry.changes ?? {}).map(
-                                  ([field, { before, after }]) => (
-                                    <Typography
-                                      key={field}
-                                      variant="caption"
-                                      component="div"
-                                    >
-                                      <strong>{field}</strong>:{" "}
-                                      {formatValue(before)} →{" "}
-                                      {formatValue(after)}
-                                    </Typography>
-                                  ),
-                                )}
-                              </Box>
-                            </Collapse>
-                          ) : null}
-                        </>
-                      }
-                      secondaryTypographyProps={{ component: "div" }}
-                    />
-                  </ListItem>
-                );
-              })}
-            </List>
+                    >
+                      <ListItemText
+                        primary={
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <Typography variant="body1">
+                              {entry.summary}
+                            </Typography>
+                            <Chip size="small" label={entry.entityType} />
+                          </Stack>
+                        }
+                        secondary={
+                          <>
+                            {dateFormatter.format(new Date(entry.createdAt))}
+                            {" · "}
+                            {entry.actorEmail ?? "System"}
+                            {hasChanges ? (
+                              <Collapse in={isExpanded} unmountOnExit>
+                                <Box
+                                  sx={{
+                                    mt: 1,
+                                    p: 1,
+                                    borderRadius: 1,
+                                    bgcolor: "action.hover",
+                                  }}
+                                >
+                                  {Object.entries(entry.changes ?? {}).map(
+                                    ([field, { before, after }]) => (
+                                      <Typography
+                                        key={field}
+                                        variant="caption"
+                                        component="div"
+                                      >
+                                        <strong>{field}</strong>:{" "}
+                                        {formatValue(before)} →{" "}
+                                        {formatValue(after)}
+                                      </Typography>
+                                    ),
+                                  )}
+                                </Box>
+                              </Collapse>
+                            ) : null}
+                          </>
+                        }
+                        secondaryTypographyProps={{ component: "div" }}
+                      />
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </FadeInContent>
           )}
 
           {hasMore ? (

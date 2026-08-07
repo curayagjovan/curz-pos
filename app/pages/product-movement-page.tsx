@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LockRounded from "@mui/icons-material/LockRounded";
+import TrendingUpRounded from "@mui/icons-material/TrendingUpRounded";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
@@ -11,7 +13,9 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import { useAuth } from "@/app/context/auth-context";
 import { usePageContext } from "@/app/context/page-context";
 import { useProducts } from "@/app/context/products-context";
@@ -102,7 +106,9 @@ export default function ProductMovementPage() {
 
       try {
         const to = new Date(analysisTimeMs);
-        const from = new Date(analysisTimeMs - WINDOW_DAYS * 24 * 60 * 60 * 1000);
+        const from = new Date(
+          analysisTimeMs - WINDOW_DAYS * 24 * 60 * 60 * 1000,
+        );
         const params = new URLSearchParams({
           status: "PAID",
           from: from.toISOString(),
@@ -145,7 +151,12 @@ export default function ProductMovementPage() {
 
   const movement = useMemo(
     () =>
-      computeProductMovement(products, transactions, analysisTimeMs, WINDOW_DAYS),
+      computeProductMovement(
+        products,
+        transactions,
+        analysisTimeMs,
+        WINDOW_DAYS,
+      ),
     [products, transactions, analysisTimeMs],
   );
 
@@ -163,7 +174,10 @@ export default function ProductMovementPage() {
             <CircularProgress size={28} />
           </Stack>
         ) : !canView ? (
-          <ListEmptyState description="Ask an owner to grant you access to Product Movement." />
+          <ListEmptyState
+            description="Ask an owner to grant you access to Product Movement."
+            icon={<LockRounded fontSize="small" />}
+          />
         ) : (
           <Stack spacing={1.5}>
             <Typography
@@ -187,22 +201,25 @@ export default function ProductMovementPage() {
             {error ? <Alert severity="error">{error}</Alert> : null}
 
             {loading ? (
-              <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-                <CircularProgress size={28} />
-              </Stack>
+              <ListSkeleton showAvatar={false} />
             ) : entries.length === 0 ? (
-              <ListEmptyState description={TAB_CONFIG[tab].emptyDescription} />
+              <ListEmptyState
+                description={TAB_CONFIG[tab].emptyDescription}
+                icon={<TrendingUpRounded fontSize="small" />}
+              />
             ) : (
-              <List disablePadding>
-                {entries.map((entry, index) => (
-                  <MovementRow
-                    key={entry.productId}
-                    rank={index + 1}
-                    entry={entry}
-                    tab={tab}
-                  />
-                ))}
-              </List>
+              <FadeInContent>
+                <List disablePadding>
+                  {entries.map((entry, index) => (
+                    <MovementRow
+                      key={entry.productId}
+                      rank={index + 1}
+                      entry={entry}
+                      tab={tab}
+                    />
+                  ))}
+                </List>
+              </FadeInContent>
             )}
           </Stack>
         )}

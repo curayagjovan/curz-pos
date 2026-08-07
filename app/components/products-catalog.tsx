@@ -1,13 +1,21 @@
 "use client";
 
 import { memo } from "react";
+import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
-import Stack from "@mui/material/Stack";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import ProductCard from "@/app/components/product-card";
+import VirtualizedProductList from "@/app/components/virtualized-product-list";
 import type { Product } from "@/types/product";
+
+// Below this count, a plain mapped <List> is cheap enough that windowing
+// would only add overhead (measurement, absolute positioning). Above it —
+// large catalogs, hundreds of SKUs — virtualization keeps scroll smooth by
+// only mounting the rows actually on screen.
+const VIRTUALIZE_THRESHOLD = 30;
 
 type ProductsCatalogProps = {
   products: Product[];
@@ -37,32 +45,51 @@ const ProductsCatalog = memo(function ProductsCatalog({
   }
 
   if (loading) {
-    return (
-      <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-        <CircularProgress size={28} />
-      </Stack>
-    );
+    return <ListSkeleton />;
   }
 
   if (products.length === 0) {
-    return <ListEmptyState description="No products found." />;
+    return (
+      <ListEmptyState
+        description="No products found."
+        icon={<Inventory2Rounded fontSize="small" />}
+      />
+    );
   }
 
-  return (
-    <List disablePadding>
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
+  if (products.length > VIRTUALIZE_THRESHOLD) {
+    return (
+      <FadeInContent>
+        <VirtualizedProductList
+          products={products}
           onAddToCart={onAddToCart}
           onQuickAddBundle={onQuickAddBundle}
           onRequestDelete={onRequestDelete}
           onTogglePin={onTogglePin}
-          deleteDisabled={deletingProductId === product.id}
+          deletingProductId={deletingProductId}
           variant={variant}
         />
-      ))}
-    </List>
+      </FadeInContent>
+    );
+  }
+
+  return (
+    <FadeInContent>
+      <List disablePadding>
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onAddToCart={onAddToCart}
+            onQuickAddBundle={onQuickAddBundle}
+            onRequestDelete={onRequestDelete}
+            onTogglePin={onTogglePin}
+            deleteDisabled={deletingProductId === product.id}
+            variant={variant}
+          />
+        ))}
+      </List>
+    </FadeInContent>
   );
 });
 

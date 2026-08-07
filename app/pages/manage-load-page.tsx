@@ -2,8 +2,9 @@
 
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
+import ErrorOutlineRounded from "@mui/icons-material/ErrorOutlineRounded";
+import SimCardRounded from "@mui/icons-material/SimCardRounded";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
 import List from "@mui/material/List";
@@ -14,14 +15,20 @@ import AddLoadItemDrawer, {
 } from "@/app/components/add-load-item-drawer";
 import AppSnackbar from "@/app/components/app-snackbar";
 import DeleteLoadItemDialog from "@/app/components/delete-load-item-dialog";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import ManageLoadItemCard from "@/app/components/manage-load-item-card";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useLoadItems } from "@/app/context/load-items-context";
 import { usePageContext } from "@/app/context/page-context";
 import MobilePageWrapper from "@/app/layouts/mobile-page-wrapper";
-import { LOAD_BRANDS, type LoadBrand, type LoadCatalogItem } from "@/lib/mobile-load-catalog";
+import {
+  LOAD_BRANDS,
+  type LoadBrand,
+  type LoadCatalogItem,
+} from "@/lib/mobile-load-catalog";
 
 const EMPTY_FORM: AddLoadItemFormState = {
   brand: "",
@@ -70,9 +77,8 @@ export default function ManageLoadPage() {
   const [form, setForm] = useState<AddLoadItemFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<AddLoadItemFormErrors>({});
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
-  const [deleteCandidate, setDeleteCandidate] = useState<LoadCatalogItem | null>(
-    null,
-  );
+  const [deleteCandidate, setDeleteCandidate] =
+    useState<LoadCatalogItem | null>(null);
 
   const filteredItems = useMemo(() => {
     if (!deferredSearchQuery.trim()) {
@@ -182,7 +188,9 @@ export default function ManageLoadPage() {
       if (!response.ok) {
         throw new Error(
           data?.message ||
-            (editingId ? "Unable to update load item" : "Unable to create load item"),
+            (editingId
+              ? "Unable to update load item"
+              : "Unable to create load item"),
         );
       }
 
@@ -191,14 +199,17 @@ export default function ManageLoadPage() {
         sku: data.sku,
         brand: data.brand,
         group: data.group,
-        category: data.category === "DATA_PROMO" ? "Data Promo" : "Regular Load",
+        category:
+          data.category === "DATA_PROMO" ? "Data Promo" : "Regular Load",
         code: data.code,
         amount: Number(data.amount),
         label: data.label,
         description: data.description ?? undefined,
       });
 
-      showSnackbar({ message: editingId ? "Load item updated" : "Load item created" });
+      showSnackbar({
+        message: editingId ? "Load item updated" : "Load item created",
+      });
       setDrawerOpen(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
@@ -259,7 +270,8 @@ export default function ManageLoadPage() {
       setDeleteCandidate(null);
     } catch (err) {
       showSnackbar({
-        message: err instanceof Error ? err.message : "Unable to delete load item",
+        message:
+          err instanceof Error ? err.message : "Unable to delete load item",
         severity: "error",
       });
     } finally {
@@ -290,26 +302,33 @@ export default function ManageLoadPage() {
           </Box>
 
           {loading ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-              <CircularProgress size={28} />
-            </Stack>
+            <ListSkeleton />
           ) : error ? (
-            <ListEmptyState title="Unable to load" description={error} />
+            <ListEmptyState
+              title="Unable to load"
+              description={error}
+              icon={<ErrorOutlineRounded fontSize="small" />}
+            />
           ) : filteredItems.length === 0 ? (
-            <ListEmptyState description="No loads found." />
+            <ListEmptyState
+              description="No loads found."
+              icon={<SimCardRounded fontSize="small" />}
+            />
           ) : (
-            <List disablePadding>
-              {filteredItems.map((item) => (
-                <ManageLoadItemCard
-                  key={item.id}
-                  item={item}
-                  brandLabel={brandLabel(item.brand)}
-                  onEdit={handleEditClick}
-                  onRequestDelete={handleRequestDelete}
-                  deleteDisabled={deletingItemId === item.id}
-                />
-              ))}
-            </List>
+            <FadeInContent>
+              <List disablePadding>
+                {filteredItems.map((item) => (
+                  <ManageLoadItemCard
+                    key={item.id}
+                    item={item}
+                    brandLabel={brandLabel(item.brand)}
+                    onEdit={handleEditClick}
+                    onRequestDelete={handleRequestDelete}
+                    deleteDisabled={deletingItemId === item.id}
+                  />
+                ))}
+              </List>
+            </FadeInContent>
           )}
 
           <Box sx={{ height: 64 }} aria-hidden />

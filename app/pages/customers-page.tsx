@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import AddRounded from "@mui/icons-material/AddRounded";
+import PersonAddRounded from "@mui/icons-material/PersonAddRounded";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -15,7 +15,9 @@ import TextField from "@mui/material/TextField";
 import AppSnackbar from "@/app/components/app-snackbar";
 import CustomerDetailView from "@/app/components/customer-detail-view";
 import CustomerFormDialog from "@/app/components/customer-form-dialog";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import { useTransactions } from "@/app/context/transactions-context";
 import { useAppSnackbar } from "@/app/hooks/use-app-snackbar";
 import { useCustomerOrderActions } from "@/app/hooks/use-customer-order-actions";
@@ -156,33 +158,36 @@ export default function CustomersPage() {
           />
 
           {loading ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-              <CircularProgress size={28} />
-            </Stack>
+            <ListSkeleton />
           ) : filteredCustomers.length === 0 ? (
-            <ListEmptyState description="No customers yet. Add one to start tracking utang." />
+            <ListEmptyState
+              description="No customers yet. Add one to start tracking utang."
+              icon={<PersonAddRounded fontSize="small" />}
+            />
           ) : (
-            <List sx={{ px: 0 }}>
-              {filteredCustomers.map((customer) => (
-                <ListItemButton
-                  key={customer.id}
-                  divider
-                  onClick={() => setSelectedCustomerId(customer.id)}
-                >
-                  <ListItemText
-                    primary={customer.name}
-                    secondary={customer.phone ?? undefined}
-                    sx={{ minWidth: 0 }}
-                  />
-                  <Chip
-                    size="small"
-                    label={formatCurrency(customer.balance)}
-                    color={customer.balance > 0 ? "error" : "default"}
-                    sx={{ flexShrink: 0 }}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
+            <FadeInContent>
+              <List sx={{ px: 0 }}>
+                {filteredCustomers.map((customer) => (
+                  <ListItemButton
+                    key={customer.id}
+                    divider
+                    onClick={() => setSelectedCustomerId(customer.id)}
+                  >
+                    <ListItemText
+                      primary={customer.name}
+                      secondary={customer.phone ?? undefined}
+                      sx={{ minWidth: 0 }}
+                    />
+                    <Chip
+                      size="small"
+                      label={formatCurrency(customer.balance)}
+                      color={customer.balance > 0 ? "error" : "default"}
+                      sx={{ flexShrink: 0 }}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </FadeInContent>
           )}
 
           <Button

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import List from "@mui/material/List";
 import MenuItem from "@mui/material/MenuItem";
@@ -12,9 +11,12 @@ import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import PercentRounded from "@mui/icons-material/PercentRounded";
 import ListAltRounded from "@mui/icons-material/ListAltRounded";
+import SearchOffRounded from "@mui/icons-material/SearchOffRounded";
 import SendToMobileRounded from "@mui/icons-material/SendToMobileRounded";
 import AppSnackbar from "@/app/components/app-snackbar";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import LoadConfirmDrawer from "@/app/components/load-confirm-drawer";
 import LoadItemCard from "@/app/components/load-item-card";
 import LoadMarkupDialog from "@/app/components/load-markup-dialog";
@@ -256,25 +258,28 @@ export default function LoadPage() {
           </Box>
 
           {loadItemsLoading ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-              <CircularProgress size={28} />
-            </Stack>
+            <ListSkeleton />
           ) : filteredItems.length === 0 ? (
-            <ListEmptyState description="No load types match your search." />
+            <ListEmptyState
+              description="No load types match your search."
+              icon={<SearchOffRounded fontSize="small" />}
+            />
           ) : (
-            <List disablePadding>
-              {filteredItems.map((item) => (
-                <LoadItemCard
-                  key={item.id}
-                  item={item}
-                  brandLabel={brandLabel(item.brand)}
-                  price={getSellPrice(item.amount, markupSettings)}
-                  onSelect={(selected) =>
-                    handleSelectItem(selected, mobileNumber)
-                  }
-                />
-              ))}
-            </List>
+            <FadeInContent>
+              <List disablePadding>
+                {filteredItems.map((item) => (
+                  <LoadItemCard
+                    key={item.id}
+                    item={item}
+                    brandLabel={brandLabel(item.brand)}
+                    price={getSellPrice(item.amount, markupSettings)}
+                    onSelect={(selected) =>
+                      handleSelectItem(selected, mobileNumber)
+                    }
+                  />
+                ))}
+              </List>
+            </FadeInContent>
           )}
         </Stack>
       </Container>

@@ -1,12 +1,14 @@
 "use client";
 
 import { memo } from "react";
+import ReceiptLongRounded from "@mui/icons-material/ReceiptLongRounded";
 import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import FadeInContent from "@/app/components/fade-in-content";
 import ListEmptyState from "@/app/components/list-empty-state";
+import ListSkeleton from "@/app/components/list-skeleton";
 import TransactionCard from "@/app/components/transaction-card";
 import type { Transaction } from "@/types/transaction";
 import type { Customer } from "@/types/customer";
@@ -59,67 +61,72 @@ const TransactionsCatalog = memo(function TransactionsCatalog({
   }
 
   if (loading) {
-    return (
-      <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-        <CircularProgress size={28} />
-      </Stack>
-    );
+    return <ListSkeleton />;
   }
 
   if (transactions.length === 0) {
-    return <ListEmptyState description="No sales found." />;
+    return (
+      <ListEmptyState
+        description="No sales found."
+        icon={<ReceiptLongRounded fontSize="small" />}
+      />
+    );
   }
 
   if (groups && groups.length > 0) {
     return (
-      <Stack spacing={1.5}>
-        {groups.map((group) => (
-          <Stack key={group.key} spacing={0.75}>
-            <Typography
-              variant="overline"
-              sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
-            >
-              {group.label}
-            </Typography>
-            <List disablePadding>
-              {group.transactions.map((transaction) => (
-                <TransactionCard
-                  key={transaction.id}
-                  transaction={transaction}
-                  onUpdateStatus={onUpdateStatus}
-                  onRemoveFromCustomer={onRemoveFromCustomer}
-                  customers={customers}
-                  onAssignCustomer={onAssignCustomer}
-                  onCreateCustomer={onCreateCustomer}
-                  onQuickAssignCustomer={onQuickAssignCustomer}
-                  quickAssignLabel={quickAssignLabel}
-                  limitedActions={limitedActions}
-                />
-              ))}
-            </List>
-          </Stack>
-        ))}
-      </Stack>
+      <FadeInContent>
+        <Stack spacing={1.5}>
+          {groups.map((group) => (
+            <Stack key={group.key} spacing={0.75}>
+              <Typography
+                variant="overline"
+                sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
+              >
+                {group.label}
+              </Typography>
+              <List disablePadding>
+                {group.transactions.map((transaction) => (
+                  <TransactionCard
+                    key={transaction.id}
+                    transaction={transaction}
+                    onUpdateStatus={onUpdateStatus}
+                    onRemoveFromCustomer={onRemoveFromCustomer}
+                    customers={customers}
+                    onAssignCustomer={onAssignCustomer}
+                    onCreateCustomer={onCreateCustomer}
+                    onQuickAssignCustomer={onQuickAssignCustomer}
+                    quickAssignLabel={quickAssignLabel}
+                    limitedActions={limitedActions}
+                  />
+                ))}
+              </List>
+            </Stack>
+          ))}
+        </Stack>
+      </FadeInContent>
     );
   }
 
   return (
-    <List disablePadding>
-      {transactions.map((transaction) => (
-        <TransactionCard
-          key={transaction.id}
-          transaction={transaction}
-          onUpdateStatus={onUpdateStatus}
-          onRemoveFromCustomer={onRemoveFromCustomer}
-          customers={customers}
-          onAssignCustomer={onAssignCustomer}
-          onCreateCustomer={onCreateCustomer}
-          onQuickAssignCustomer={onQuickAssignCustomer}
-          quickAssignLabel={quickAssignLabel}
-          limitedActions={limitedActions}
-        />
-      ))}
-    </List>
+    <FadeInContent>
+      <List disablePadding>
+        {transactions.map((transaction) => (
+          <TransactionCard
+            key={transaction.id}
+            transaction={transaction}
+            onUpdateStatus={onUpdateStatus}
+            onRemoveFromCustomer={onRemoveFromCustomer}
+            customers={customers}
+            onAssignCustomer={onAssignCustomer}
+            onCreateCustomer={onCreateCustomer}
+            onQuickAssignCustomer={onQuickAssignCustomer}
+            quickAssignLabel={quickAssignLabel}
+            limitedActions={limitedActions}
+          />
+        ))}
+      </List>
+    </FadeInContent>
   );
 });
 
