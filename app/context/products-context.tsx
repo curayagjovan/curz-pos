@@ -23,6 +23,7 @@ type ProductsContextType = {
   refreshProducts: (force?: boolean) => Promise<void>;
   upsertProduct: (product: Product) => void;
   removeProduct: (productId: string) => void;
+  togglePin: (productId: string, isPinned: boolean) => Promise<void>;
 };
 
 const ProductsContext = createContext<ProductsContextType | undefined>(
@@ -150,6 +151,52 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Optimistic — flips the flag locally (so the Pinned section reacts
+  // instantly) and rolls back if the PATCH fails, rather than waiting on
+  // the network before a cashier sees the toggle take effect.
+  const togglePin = useCallback(
+    async (productId: string, isPinned: boolean) => {
+      let previousProduct: Product | undefined;
+
+      setProducts((current) => {
+        const nextProducts = current.map((product) => {
+          if (product.id !== productId) {
+            return product;
+          }
+          previousProduct = product;
+          return { ...product, isPinned };
+        });
+        void saveCachedProducts(nextProducts);
+        return nextProducts;
+      });
+
+      try {
+        const response = await fetch(`/api/products/${productId}/pin`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPinned }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update pin");
+        }
+      } catch (err) {
+        if (previousProduct) {
+          const restored = previousProduct;
+          setProducts((current) => {
+            const nextProducts = current.map((product) =>
+              product.id === productId ? restored : product,
+            );
+            void saveCachedProducts(nextProducts);
+            return nextProducts;
+          });
+        }
+        throw err instanceof Error ? err : new Error("Failed to update pin");
+      }
+    },
+    [],
+  );
+
   const value = useMemo(
     () => ({
       products,
@@ -158,8 +205,17 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       refreshProducts,
       upsertProduct,
       removeProduct,
+      togglePin,
     }),
-    [products, loading, error, refreshProducts, upsertProduct, removeProduct],
+    [
+      products,
+      loading,
+      error,
+      refreshProducts,
+      upsertProduct,
+      removeProduct,
+      togglePin,
+    ],
   );
 
   return (

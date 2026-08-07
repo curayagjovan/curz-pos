@@ -16,6 +16,7 @@ type ProductsCatalogProps = {
   onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
   onQuickAddBundle?: (product: Product, quantity: number) => void;
   onRequestDelete?: (product: Product) => void;
+  onTogglePin?: (product: Product) => void;
   deletingProductId?: string | null;
   variant?: "catalog" | "inventory";
 };
@@ -27,6 +28,7 @@ const ProductsCatalog = memo(function ProductsCatalog({
   onAddToCart,
   onQuickAddBundle,
   onRequestDelete,
+  onTogglePin,
   deletingProductId = null,
   variant = "catalog",
 }: ProductsCatalogProps) {
@@ -55,6 +57,7 @@ const ProductsCatalog = memo(function ProductsCatalog({
           onAddToCart={onAddToCart}
           onQuickAddBundle={onQuickAddBundle}
           onRequestDelete={onRequestDelete}
+          onTogglePin={onTogglePin}
           deleteDisabled={deletingProductId === product.id}
           variant={variant}
         />

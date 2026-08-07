@@ -10,6 +10,7 @@ type ProductCardProps = {
   onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
   onQuickAddBundle?: (product: Product, quantity: number) => void;
   onRequestDelete?: (product: Product) => void;
+  onTogglePin?: (product: Product) => void;
   deleteDisabled?: boolean;
   variant?: "catalog" | "inventory";
 };
@@ -19,6 +20,7 @@ const ProductCard = memo(function ProductCard({
   onAddToCart,
   onQuickAddBundle,
   onRequestDelete,
+  onTogglePin,
   deleteDisabled = false,
   variant = "catalog",
 }: ProductCardProps) {
@@ -38,6 +40,7 @@ const ProductCard = memo(function ProductCard({
       product={product}
       onAddToCart={onAddToCart}
       onQuickAddBundle={onQuickAddBundle ?? (() => {})}
+      onTogglePin={onTogglePin}
     />
   );
 });

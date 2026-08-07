@@ -1,12 +1,15 @@
 "use client";
 
 import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
+import PushPinOutlined from "@mui/icons-material/PushPinOutlined";
+import PushPinRounded from "@mui/icons-material/PushPinRounded";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -27,12 +30,14 @@ type ProductCardCatalogProps = {
   product: Product;
   onAddToCart: (product: Product, sourceRect?: DOMRect) => void;
   onQuickAddBundle: (product: Product, quantity: number) => void;
+  onTogglePin?: (product: Product) => void;
 };
 
 export default function ProductCardCatalog({
   product,
   onAddToCart,
   onQuickAddBundle,
+  onTogglePin,
 }: ProductCardCatalogProps) {
   const hasDescription = Boolean(product.description?.trim());
   const { hasBundle, tiers: bundleTiers } = getBundleMeta(product);
@@ -112,6 +117,30 @@ export default function ProductCardCatalog({
           )}
         </Box>
 
+        {onTogglePin ? (
+          <IconButton
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              onTogglePin(product);
+            }}
+            aria-label={product.isPinned ? `Unpin ${product.name}` : `Pin ${product.name}`}
+            sx={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              zIndex: 3,
+              color: product.isPinned ? "warning.main" : "text.disabled",
+            }}
+          >
+            {product.isPinned ? (
+              <PushPinRounded fontSize="small" />
+            ) : (
+              <PushPinOutlined fontSize="small" />
+            )}
+          </IconButton>
+        ) : null}
+
         <CardActionArea
           onClick={handleCardTap}
           onPointerDown={handlePointerDown}
@@ -120,7 +149,8 @@ export default function ProductCardCatalog({
           onPointerCancel={endHold}
           onContextMenu={(event) => event.preventDefault()}
           sx={{
-            px: 1.25,
+            pl: 1.25,
+            pr: onTogglePin ? 4.5 : 1.25,
             py: 1.1,
             userSelect: "none",
             WebkitTouchCallout: "none",

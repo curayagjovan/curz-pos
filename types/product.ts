@@ -9,4 +9,5 @@ export type Product = {
   description?: string | null;
   price: number | string;
   bundleTiers?: Array<{ quantity: number; price: number | string }> | null;
+  isPinned?: boolean;
 };

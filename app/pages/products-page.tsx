@@ -28,7 +28,6 @@ import { useCartFlightAnimation } from "@/app/hooks/use-cart-flight-animation";
 import { useProductsCheckout } from "@/app/hooks/use-products-checkout";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
-import { computePopularProducts } from "@/lib/popular-products";
 import { normalizeBundleTiers } from "@/lib/bundle-pricing";
 import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
@@ -38,9 +37,8 @@ export default function ProductsPage() {
   const { searchQuery, setSearchQuery, setCurrentPage } = usePageContext();
   const { addToCart, cartItems, cartCount, updateQuantity, removeFromCart, clearCart } =
     useCart();
-  const { products, loading, error } = useProducts();
-  const { transactions, addTransaction, refreshTransactions } =
-    useTransactions();
+  const { products, loading, error, togglePin } = useProducts();
+  const { addTransaction, refreshTransactions } = useTransactions();
   const { customers, createCustomer } = useCustomers();
   const {
     snackbarOpen,
@@ -51,7 +49,6 @@ export default function ProductsPage() {
   } = useAppSnackbar();
   const [categoryFilter, setCategoryFilter] =
     useState<ProductCategoryValue | null>(null);
-  const [analysisTimeMs] = useState(() => Date.now());
   const senderPushEndpointRef = useSenderPushEndpoint();
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -99,47 +96,15 @@ export default function ProductsPage() {
     });
   }, [categoryFilteredProducts, deferredSearchQuery]);
 
-  const popularItems = useMemo(
-    () => computePopularProducts(transactions, analysisTimeMs),
-    [analysisTimeMs, transactions],
+  const pinnedProducts = useMemo(
+    () => filteredProducts.filter((product) => product.isPinned),
+    [filteredProducts],
   );
 
-  const popularProducts = useMemo(() => {
-    if (popularItems.items.length === 0) {
-      return [] as Product[];
-    }
-
-    const productByName = new Map(
-      filteredProducts.map((product) => [
-        product.name.trim().toLowerCase(),
-        product,
-      ]),
-    );
-
-    // Match the ranked list against real products first, then cap the
-    // section at 5 — a load/e-wallet line in the ranking can't steal a slot.
-    return popularItems.items
-      .map((item) => productByName.get(item.productName.trim().toLowerCase()))
-      .filter((product): product is Product => Boolean(product))
-      .slice(0, 5);
-  }, [filteredProducts, popularItems.items]);
-
-  const popularProductNameSet = useMemo(() => {
-    return new Set(
-      popularProducts.map((product) => product.name.trim().toLowerCase()),
-    );
-  }, [popularProducts]);
-
-  const regularProducts = useMemo(() => {
-    if (popularProductNameSet.size === 0) {
-      return filteredProducts;
-    }
-
-    return filteredProducts.filter(
-      (product) =>
-        !popularProductNameSet.has(product.name.trim().toLowerCase()),
-    );
-  }, [filteredProducts, popularProductNameSet]);
+  const regularProducts = useMemo(
+    () => filteredProducts.filter((product) => !product.isPinned),
+    [filteredProducts],
+  );
 
   const handleAddToCart = useCallback(
     (product: Product, sourceRect?: DOMRect, quantity = 1) => {
@@ -165,6 +130,20 @@ export default function ProductsPage() {
       handleAddToCart(product, undefined, quantity);
     },
     [handleAddToCart],
+  );
+
+  const handleTogglePin = useCallback(
+    async (product: Product) => {
+      try {
+        await togglePin(product.id, !product.isPinned);
+      } catch (err) {
+        showSnackbar({
+          message: err instanceof Error ? err.message : "Unable to update pin",
+          severity: "error",
+        });
+      }
+    },
+    [togglePin, showSnackbar],
   );
 
   const {
@@ -248,26 +227,27 @@ export default function ProductsPage() {
               : `${filteredProducts.length.toLocaleString()} products`}
           </Box>
 
-          {!loading && !error && popularProducts.length > 0 ? (
+          {!loading && !error && pinnedProducts.length > 0 ? (
             <Stack spacing={0.75}>
               <Typography
                 variant="overline"
                 sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
               >
-                Popular Items
+                Pinned
               </Typography>
               <ProductsCatalog
-                products={popularProducts}
+                products={pinnedProducts}
                 loading={false}
                 error={null}
                 onAddToCart={handleAddToCart}
                 onQuickAddBundle={handleQuickAddBundle}
+                onTogglePin={handleTogglePin}
               />
             </Stack>
           ) : null}
 
           <Stack spacing={0.75}>
-            {!loading && !error && popularProducts.length > 0 ? (
+            {!loading && !error && pinnedProducts.length > 0 ? (
               <Typography
                 variant="overline"
                 sx={{ px: 0.5, color: "text.secondary", fontWeight: 700 }}
@@ -281,6 +261,7 @@ export default function ProductsPage() {
               error={error}
               onAddToCart={handleAddToCart}
               onQuickAddBundle={handleQuickAddBundle}
+              onTogglePin={handleTogglePin}
             />
           </Stack>
 
