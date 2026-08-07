@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AppPermission" ADD VALUE 'VIEW_PRODUCT_MOVEMENT';

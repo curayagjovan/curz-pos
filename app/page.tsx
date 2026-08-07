@@ -8,6 +8,7 @@ import LoginScreen from "@/app/components/login-screen";
 import ProductsPage from "./pages/products-page";
 import TransactionsPage from "./pages/transactions-page";
 import InventoryPage from "./pages/inventory-page";
+import ProductMovementPage from "./pages/product-movement-page";
 import LoadPage from "./pages/load-page";
 import ManageLoadPage from "./pages/manage-load-page";
 import EWalletPage from "./pages/ewallet-page";
@@ -42,6 +43,7 @@ export default function Page() {
     products: <ProductsPage />,
     transactions: <TransactionsPage />,
     inventory: <InventoryPage />,
+    productMovement: <ProductMovementPage />,
     load: <LoadPage />,
     manageLoad: <ManageLoadPage />,
     ewallet: <EWalletPage />,

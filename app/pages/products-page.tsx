@@ -13,11 +13,13 @@ import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
 import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
+import TrendingUpRounded from "@mui/icons-material/TrendingUpRounded";
 import CartFlightOverlay from "@/app/components/cart-flight-overlay";
 import CategoryFilterChips from "@/app/components/category-filter-chips";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
+import { useAuth } from "@/app/context/auth-context";
 import { useCustomers } from "@/app/context/customers-context";
 import { useProducts } from "@/app/context/products-context";
 import { useTransactions } from "@/app/context/transactions-context";
@@ -28,6 +30,7 @@ import { useCartFlightAnimation } from "@/app/hooks/use-cart-flight-animation";
 import { useProductsCheckout } from "@/app/hooks/use-products-checkout";
 import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import { normalizeBundleTiers } from "@/lib/bundle-pricing";
 import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
@@ -40,6 +43,11 @@ export default function ProductsPage() {
   const { products, loading, error, togglePin } = useProducts();
   const { addTransaction, refreshTransactions } = useTransactions();
   const { customers, createCustomer } = useCustomers();
+  const { appUser } = useAuth();
+  const canViewProductMovement = hasPermission(
+    appUser,
+    "VIEW_PRODUCT_MOVEMENT",
+  );
   const {
     snackbarOpen,
     snackbarMessage,
@@ -189,6 +197,22 @@ export default function ProductsPage() {
           </ListItemIcon>
           <ListItemText>Inventory</ListItemText>
         </MenuItem>,
+        ...(canViewProductMovement
+          ? [
+              <MenuItem
+                key="productMovement"
+                onClick={() => {
+                  closeMenu();
+                  setCurrentPage("productMovement");
+                }}
+              >
+                <ListItemIcon>
+                  <TrendingUpRounded fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Product Movement</ListItemText>
+              </MenuItem>,
+            ]
+          : []),
       ]}
     >
       <Container maxWidth="sm" sx={{ py: 0.5 }}>

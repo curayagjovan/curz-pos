@@ -7,6 +7,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   MANAGE_SETTINGS: "Manage Settings",
   MANAGE_STAFF: "Manage Staff",
   VIEW_AUDIT_LOG: "View Audit Trail",
+  VIEW_PRODUCT_MOVEMENT: "View Product Movement",
 };
 
 export const ALL_PERMISSIONS = Object.keys(

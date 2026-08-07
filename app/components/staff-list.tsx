@@ -40,9 +40,11 @@ export default function StaffList({
         <ListItem
           key={member.id}
           divider
+          sx={{ py: 1.25, pr: 14 }}
           secondaryAction={
-            <Stack direction="row" spacing={0.5} alignItems="center">
+            <Stack direction="row" spacing={1.25} alignItems="center">
               <IconButton
+                size="small"
                 onClick={() => onEdit(member)}
                 aria-label={`edit ${member.email}`}
               >
@@ -59,7 +61,7 @@ export default function StaffList({
           <ListItemText
             sx={{ minWidth: 0 }}
             primary={
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography variant="body1" noWrap>
                     {member.displayName || member.email}

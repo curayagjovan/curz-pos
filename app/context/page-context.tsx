@@ -6,6 +6,7 @@ type PageType =
   | "products"
   | "transactions"
   | "inventory"
+  | "productMovement"
   | "load"
   | "manageLoad"
   | "ewallet"

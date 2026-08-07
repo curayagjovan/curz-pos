@@ -267,6 +267,7 @@ enum AppPermission {
   MANAGE_SETTINGS
   MANAGE_STAFF
   VIEW_AUDIT_LOG
+  VIEW_PRODUCT_MOVEMENT
 }
 
 model AppUser {
