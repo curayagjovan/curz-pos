@@ -32,6 +32,7 @@ import { useSenderPushEndpoint } from "@/app/hooks/use-sender-push-endpoint";
 import { usePageContext } from "@/app/context/page-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { normalizeBundleTiers } from "@/lib/bundle-pricing";
+import { hapticTick } from "@/lib/haptics";
 import type { ProductCategoryValue } from "@/lib/product-categories";
 import type { Product } from "@/types/product";
 import Divider from "@mui/material/Divider";
@@ -128,6 +129,7 @@ export default function ProductsPage() {
         quantity,
       );
 
+      hapticTick();
       launchCartFlight(product.name, sourceRect);
     },
     [addToCart, launchCartFlight],

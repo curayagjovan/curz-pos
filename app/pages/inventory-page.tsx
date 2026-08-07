@@ -65,9 +65,6 @@ export default function InventoryPage() {
   } = useAppSnackbar();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [deletingProductId, setDeletingProductId] = useState<string | null>(
-    null,
-  );
   const [deleteCandidate, setDeleteCandidate] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
@@ -151,22 +148,30 @@ export default function InventoryPage() {
   }, []);
 
   const handleCloseDeleteDialog = useCallback(() => {
-    if (deletingProductId) {
-      return;
-    }
-
     setDeleteCandidate(null);
-  }, [deletingProductId]);
+  }, []);
 
+  // Optimistic — removes the product from the list and closes the dialog
+  // immediately, then rolls back (restoring the product and showing an
+  // error) if the DELETE request turns out to have failed, rather than
+  // keeping the dialog open on a spinner while a cashier waits.
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteCandidate) {
       return;
     }
 
-    setDeletingProductId(deleteCandidate.id);
+    const productToDelete = deleteCandidate;
+    removeProduct(productToDelete.id);
+    setDeleteCandidate(null);
+
+    if (form.id === productToDelete.id) {
+      setDrawerOpen(false);
+      setForm(EMPTY_FORM);
+      setFormErrors({});
+    }
 
     try {
-      const response = await fetch(`/api/products/${deleteCandidate.id}`, {
+      const response = await fetch(`/api/products/${productToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -184,26 +189,16 @@ export default function InventoryPage() {
         throw new Error(message);
       }
 
-      removeProduct(deleteCandidate.id);
-
-      if (form.id === deleteCandidate.id) {
-        setDrawerOpen(false);
-        setForm(EMPTY_FORM);
-        setFormErrors({});
-      }
-
       showSnackbar({ message: "Product deleted" });
-      setDeleteCandidate(null);
     } catch (err) {
+      upsertProduct(productToDelete);
       showSnackbar({
         message:
           err instanceof Error ? err.message : "Unable to delete product",
         severity: "error",
       });
-    } finally {
-      setDeletingProductId(null);
     }
-  }, [deleteCandidate, form.id, removeProduct, showSnackbar]);
+  }, [deleteCandidate, form.id, removeProduct, upsertProduct, showSnackbar]);
 
   const handleCloseDrawer = useCallback(() => {
     if (saving) {
@@ -385,7 +380,6 @@ export default function InventoryPage() {
             error={error}
             onAddToCart={handleProductTap}
             onRequestDelete={handleRequestDelete}
-            deletingProductId={deletingProductId}
             variant="inventory"
           />
 
@@ -422,7 +416,6 @@ export default function InventoryPage() {
 
       <DeleteProductDialog
         product={deleteCandidate}
-        deletingProductId={deletingProductId}
         onClose={handleCloseDeleteDialog}
         onConfirm={handleConfirmDelete}
       />

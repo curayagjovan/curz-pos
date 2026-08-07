@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CartItem } from "@/app/context/cart-context";
 import { useCheckoutCalculations } from "@/app/hooks/use-checkout-calculations";
+import { hapticSuccess } from "@/lib/haptics";
 import type { Transaction } from "@/types/transaction";
 
 type ShowSnackbar = (options: {
@@ -203,6 +204,7 @@ export function useProductsCheckout({
         addTransaction(savedTransaction as Transaction);
         void refreshTransactions(false);
 
+        hapticSuccess();
         clearCart();
         setPaidAmountInput("0");
         setCartOpen(false);

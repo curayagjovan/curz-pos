@@ -10,14 +10,12 @@ import type { Product } from "@/types/product";
 
 type DeleteProductDialogProps = {
   product: Product | null;
-  deletingProductId: string | null;
   onClose: () => void;
   onConfirm: () => void;
 };
 
 export default function DeleteProductDialog({
   product,
-  deletingProductId,
   onClose,
   onConfirm,
 }: DeleteProductDialogProps) {
@@ -32,20 +30,11 @@ export default function DeleteProductDialog({
         </DialogContentText>
       </DialogContent>
       <DialogActions sx={{ px: 2, pb: 2 }}>
-        <Button
-          onClick={onClose}
-          color="inherit"
-          disabled={Boolean(deletingProductId)}
-        >
+        <Button onClick={onClose} color="inherit">
           Cancel
         </Button>
-        <Button
-          onClick={onConfirm}
-          color="error"
-          variant="contained"
-          disabled={Boolean(deletingProductId)}
-        >
-          {deletingProductId ? "Deleting..." : "Delete"}
+        <Button onClick={onConfirm} color="error" variant="contained">
+          Delete
         </Button>
       </DialogActions>
     </Dialog>

@@ -59,14 +59,15 @@ export default function MobilePageWrapper({
   hideBottomNav = false,
   children,
 }: MobilePageWrapperProps) {
-  const { currentPage, setCurrentPage, setSearchQuery } = usePageContext();
+  const { currentPage, setCurrentPage, setSearchQuery, scrollContainerRef } =
+    usePageContext();
   const { user, appUser, signOut } = useAuth();
   const { mode, systemMode, setMode } = useColorScheme();
   const resolvedMode = mode === "system" ? systemMode : mode;
   const toggleColorMode = useCallback(() => {
     setMode(resolvedMode === "dark" ? "light" : "dark");
   }, [resolvedMode, setMode]);
-  const mainRef = useRef<HTMLElement | null>(null);
+  const mainRef = scrollContainerRef;
   const touchStartYRef = useRef<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,7 +81,7 @@ export default function MobilePageWrapper({
   const handleScroll = useCallback(() => {
     const scrollTop = mainRef.current?.scrollTop ?? 0;
     setScrolled(scrollTop > TITLE_COLLAPSE_THRESHOLD);
-  }, []);
+  }, [mainRef]);
 
   const resetPullState = useCallback(() => {
     touchStartYRef.current = null;
@@ -109,7 +110,7 @@ export default function MobilePageWrapper({
 
       touchStartYRef.current = event.touches[0]?.clientY ?? null;
     },
-    [refreshing],
+    [refreshing, mainRef],
   );
 
   const handleTouchMove = useCallback(
