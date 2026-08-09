@@ -132,17 +132,25 @@ const MiniCartBar = memo(function MiniCartBar({
       >
         <Paper
           elevation={0}
-          sx={{
+          sx={(theme) => ({
             borderRadius: "18px",
             overflow: "hidden",
             bgcolor: "rgba(var(--mui-palette-background-paperChannel) / 0.82)",
             backdropFilter: "saturate(180%) blur(20px)",
             WebkitBackdropFilter: "saturate(180%) blur(20px)",
+            border: "1px solid transparent",
             boxShadow:
-              "0 14px 30px -10px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.12)",
+              "0 22px 48px -12px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.28)",
             transform: isPulsing ? "scale(1.02)" : "scale(1)",
             transition: `transform 180ms ${easeIOS}`,
-          }}
+            // Shadows don't read against the near-black dark background, so
+            // separation there comes from a light hairline border instead.
+            ...theme.applyStyles("dark", {
+              borderColor: "rgba(255, 255, 255, 0.14)",
+              boxShadow:
+                "0 22px 48px -12px rgba(0, 0, 0, 0.6), 0 6px 18px rgba(0, 0, 0, 0.4)",
+            }),
+          })}
         >
           <Collapse in={expanded}>
             <List dense sx={{ px: 1, py: 0.5, maxHeight: 236, overflowY: "auto" }}>
