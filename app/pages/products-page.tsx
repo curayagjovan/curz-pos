@@ -3,20 +3,18 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
-import Fab from "@mui/material/Fab";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
-import Badge from "@mui/material/Badge";
 import Typography from "@mui/material/Typography";
 import AppSnackbar from "@/app/components/app-snackbar";
 import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
-import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import TrendingUpRounded from "@mui/icons-material/TrendingUpRounded";
 import CartFlightOverlay from "@/app/components/cart-flight-overlay";
 import CategoryFilterChips from "@/app/components/category-filter-chips";
 import CheckoutDrawer from "@/app/components/checkout-drawer";
+import MiniCartBar from "@/app/components/mini-cart-bar";
 import ProductsCatalog from "@/app/components/products-catalog";
 import ProductsSearchBar from "@/app/components/products-search-bar";
 import { useAuth } from "@/app/context/auth-context";
@@ -291,7 +289,7 @@ export default function ProductsPage() {
             />
           </Stack>
 
-          <Box sx={{ height: 72 }} aria-hidden />
+          <Box sx={{ height: 88 }} aria-hidden />
         </Stack>
       </Container>
 
@@ -305,43 +303,17 @@ export default function ProductsPage() {
       <CartFlightOverlay flights={cartFlights} />
 
       {!cartOpen ? (
-        <Fab
-          ref={cartFabRef}
-          color="primary"
-          aria-label="open cart"
-          onClick={handleCartFabClick}
-          sx={{
-            position: "fixed",
-            right: "calc(env(safe-area-inset-right) + 16px)",
-            bottom: "calc(env(safe-area-inset-bottom) + 88px)",
-            zIndex: 1201,
-            transform: isCartPulseVisible ? "scale(1.08)" : "scale(1)",
-            boxShadow: isCartPulseVisible
-              ? "0 0 0 10px rgba(33, 150, 243, 0.16), 0 12px 28px rgba(33, 150, 243, 0.28)"
-              : undefined,
-            transition: "transform 180ms ease, box-shadow 240ms ease",
-          }}
-        >
-          <Badge
-            color="error"
-            badgeContent={cartCount}
-            overlap="circular"
-            max={99}
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-            sx={{
-              "& .MuiBadge-badge": {
-                top: 0,
-                right: 0,
-                transform: isCartPulseVisible
-                  ? "translate(100%, -100%) scale(1.18)"
-                  : "translate(100%, -100%) scale(1)",
-                transition: "transform 180ms ease",
-              },
-            }}
-          >
-            <ShoppingCartRounded />
-          </Badge>
-        </Fab>
+        <MiniCartBar
+          barRef={cartFabRef}
+          cartItems={cartItems}
+          cartCount={cartCount}
+          cartTotal={cartTotal}
+          isPulsing={isCartPulseVisible}
+          onRemoveFromCart={removeFromCart}
+          onUpdateQuantity={updateQuantity}
+          onClearCart={handleClearCart}
+          onCheckout={handleCartFabClick}
+        />
       ) : null}
 
       <CheckoutDrawer
