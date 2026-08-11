@@ -167,6 +167,7 @@ export default function ProductsPage() {
     handleCartFabClick,
     handlePaidAmountChange,
     handleCheckout,
+    handleExactCheckout,
     handleCheckoutPending,
     handleCloseCart,
     handleClearCart,
@@ -312,7 +313,10 @@ export default function ProductsPage() {
           onRemoveFromCart={removeFromCart}
           onUpdateQuantity={updateQuantity}
           onClearCart={handleClearCart}
-          onCheckout={handleCartFabClick}
+          onCheckout={handleExactCheckout}
+          onOpenDrawer={handleCartFabClick}
+          checkoutLoading={checkoutLoading}
+          checkoutDisabled={checkoutCooldown || pendingCheckoutLoading}
         />
       ) : null}
 

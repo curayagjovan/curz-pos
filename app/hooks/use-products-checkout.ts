@@ -96,6 +96,7 @@ export function useProductsCheckout({
     async (
       status: "PAID" | "PENDING",
       pendingDetails?: { customerId: string; amountPaid: number },
+      paidOverride?: number,
     ) => {
       if (checkoutCooldown) {
         showSnackbar({
@@ -110,7 +111,9 @@ export function useProductsCheckout({
         return;
       }
 
-      if (status === "PAID" && parsedPaidAmount < cartTotal) {
+      const paidAmount = paidOverride ?? parsedPaidAmount;
+
+      if (status === "PAID" && paidAmount < cartTotal) {
         showSnackbar({
           message: "Insufficient payment amount",
           severity: "error",
@@ -143,7 +146,7 @@ export function useProductsCheckout({
           requestId,
           status,
           amountPaid:
-            status === "PENDING" ? pendingDetails!.amountPaid : parsedPaidAmount,
+            status === "PENDING" ? pendingDetails!.amountPaid : paidAmount,
           customerId:
             status === "PENDING" ? pendingDetails!.customerId : undefined,
           senderPushEndpoint: senderPushEndpointRef.current,
@@ -248,6 +251,13 @@ export function useProductsCheckout({
     () => submitCheckout("PAID"),
     [submitCheckout],
   );
+  // Quick checkout from the mini cart bar: assumes cash tendered matches the
+  // total exactly (the common case) and completes the sale in one tap,
+  // bypassing the drawer entirely.
+  const handleExactCheckout = useCallback(
+    () => submitCheckout("PAID", undefined, cartTotal),
+    [submitCheckout, cartTotal],
+  );
   const handleCheckoutPending = useCallback(
     (details: { customerId: string; amountPaid: number }) =>
       submitCheckout("PENDING", details),
@@ -277,6 +287,7 @@ export function useProductsCheckout({
     handleCartFabClick,
     handlePaidAmountChange,
     handleCheckout,
+    handleExactCheckout,
     handleCheckoutPending,
     handleCloseCart,
     handleClearCart,

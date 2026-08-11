@@ -16,6 +16,7 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import RemoveRounded from "@mui/icons-material/RemoveRounded";
 import ShoppingCartRounded from "@mui/icons-material/ShoppingCartRounded";
 import type { CartItem } from "@/app/context/cart-context";
@@ -33,6 +34,9 @@ type MiniCartBarProps = {
   onUpdateQuantity: (id: string, quantity: number) => void;
   onClearCart: () => void;
   onCheckout: () => void;
+  onOpenDrawer: () => void;
+  checkoutLoading: boolean;
+  checkoutDisabled?: boolean;
 };
 
 type MiniCartRowProps = {
@@ -91,9 +95,11 @@ const MiniCartRow = memo(function MiniCartRow({
 
 // Docked cart summary that lives above the bottom nav whenever the cart has
 // items. Tapping the summary row expands the item list in place (qty edits,
-// removal); "Checkout" always jumps straight to CheckoutDrawer regardless of
-// expanded state. `barRef` is the flight animation's landing target — same
-// role the Fab used to play in useCartFlightAnimation.
+// removal). "Checkout" is a one-tap quick sale assuming cash tendered equals
+// the total exactly — the common case — and skips the drawer entirely; the
+// "more" icon next to it opens CheckoutDrawer for a custom amount or a
+// pending/utang sale. `barRef` is the flight animation's landing target —
+// same role the Fab used to play in useCartFlightAnimation.
 const MiniCartBar = memo(function MiniCartBar({
   cartItems,
   cartCount,
@@ -104,6 +110,9 @@ const MiniCartBar = memo(function MiniCartBar({
   onUpdateQuantity,
   onClearCart,
   onCheckout,
+  onOpenDrawer,
+  checkoutLoading,
+  checkoutDisabled = false,
 }: MiniCartBarProps) {
   const [expanded, setExpanded] = useState(false);
   const visible = cartCount > 0;
@@ -218,8 +227,21 @@ const MiniCartBar = memo(function MiniCartBar({
               <DeleteOutlineRounded fontSize="small" />
             </IconButton>
 
-            <Button variant="contained" size="small" onClick={onCheckout}>
-              Checkout
+            <IconButton
+              size="small"
+              onClick={onOpenDrawer}
+              aria-label="custom amount or pending sale"
+            >
+              <MoreVertRounded fontSize="small" />
+            </IconButton>
+
+            <Button
+              variant="contained"
+              size="small"
+              disabled={checkoutLoading || checkoutDisabled}
+              onClick={onCheckout}
+            >
+              {checkoutLoading ? "..." : "Checkout"}
             </Button>
           </Stack>
         </Paper>
