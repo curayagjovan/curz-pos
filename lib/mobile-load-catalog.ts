@@ -74,6 +74,11 @@ type DataPromoSeed = {
   amount: number;
   label: string;
   description: string;
+  // Restricts which brands within the group get this promo, for codes that
+  // aren't actually shared across the group (e.g. UTP is TNT-exclusive, even
+  // though TNT shares its SMART_TNT group with Smart). Defaults to all
+  // brands in the group.
+  brands?: LoadBrand[];
 };
 
 const GLOBE_TM_DATA_PROMOS: DataPromoSeed[] = [
@@ -176,6 +181,22 @@ const SMART_TNT_DATA_PROMOS: DataPromoSeed[] = [
     label: "Power All w/ TikTok 99",
     description: "10GB + unli TikTok · 7 days",
   },
+  {
+    code: "UTP15",
+    amount: 15,
+    label: "UTP15",
+    description:
+      "Unli call/text to Smart/TNT/Sun + 50 texts all-net + 30MB/day · 2 days",
+    brands: ["TNT"],
+  },
+  {
+    code: "UTP20",
+    amount: 20,
+    label: "UTP+20",
+    description:
+      "Unli call/text all-net + 600MB data (300MB open access + 300MB FB/Messenger/IG/TikTok/MLBB) · 2 days",
+    brands: ["TNT"],
+  },
 ];
 
 const DITO_DATA_PROMOS: DataPromoSeed[] = [
@@ -217,8 +238,12 @@ function buildDataPromoCatalog(
 ): LoadCatalogItem[] {
   const brandsInGroup = LOAD_BRANDS.filter((entry) => entry.group === group);
 
-  return brandsInGroup.flatMap(({ brand }) =>
-    seeds.map((seed) => ({
+  return seeds.flatMap((seed) => {
+    const brands = seed.brands
+      ? brandsInGroup.filter((entry) => seed.brands!.includes(entry.brand))
+      : brandsInGroup;
+
+    return brands.map(({ brand }) => ({
       id: `promo-${brand.toLowerCase()}-${seed.code.toLowerCase()}`,
       sku: `PROMO-${seed.code}`,
       brand,
@@ -228,8 +253,8 @@ function buildDataPromoCatalog(
       amount: seed.amount,
       label: seed.label,
       description: seed.description,
-    })),
-  );
+    }));
+  });
 }
 
 const DATA_PROMO_CATALOG: LoadCatalogItem[] = [
