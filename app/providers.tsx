@@ -4,6 +4,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import AppUpdateBanner from "@/app/components/app-update-banner";
+import ConnectivityBanner from "@/app/components/connectivity-banner";
 import NotificationPermissionManager from "@/app/components/notification-permission-manager";
 import { AuthProvider } from "@/app/context/auth-context";
 import { PageProvider } from "@/app/context/page-context";
@@ -24,6 +25,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       >
         <CssBaseline enableColorScheme />
         <AppUpdateBanner />
+        <ConnectivityBanner />
         <AuthProvider>
           <PageProvider>
             <ProductsProvider>
