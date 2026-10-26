@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "./globals.css";
 import Providers from "./providers";
+import DevModeBanner from "@/app/components/dev-mode-banner";
 import { isDevDeployment } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -61,6 +62,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <InitColorSchemeScript defaultMode="system" attribute="data" />
+        <DevModeBanner />
         <Providers>{children}</Providers>
       </body>
     </html>
