@@ -2,25 +2,39 @@ import type { Metadata, Viewport } from "next";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "./globals.css";
 import Providers from "./providers";
+import { isDevDeployment } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: "SHOPMAE",
+  title: isDevDeployment ? "SHOPMAE (Dev)" : "SHOPMAE",
   description:
     "SHOPMAE point-of-sale app built with Next.js, Prisma, and Supabase.",
-  applicationName: "SHOPMAE",
+  applicationName: isDevDeployment ? "SHOPMAE (Dev)" : "SHOPMAE",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SHOPMAE",
+    title: isDevDeployment ? "SHOPMAE (Dev)" : "SHOPMAE",
   },
   icons: {
     icon: [
-      { url: "/pwa-icon.svg", type: "image/svg+xml" },
-      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      {
+        url: isDevDeployment ? "/pwa-icon-dev.svg" : "/pwa-icon.svg",
+        type: "image/svg+xml",
+      },
+      {
+        url: isDevDeployment ? "/icon-192-dev.png" : "/icon-192.png",
+        type: "image/png",
+        sizes: "192x192",
+      },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+      {
+        url: isDevDeployment
+          ? "/apple-touch-icon-dev.png"
+          : "/apple-touch-icon.png",
+        type: "image/png",
+        sizes: "180x180",
+      },
     ],
   },
 };

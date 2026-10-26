@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#3ba0ff" />
+      <stop offset="55%" stop-color="#0a84ff" />
+      <stop offset="100%" stop-color="#0757c9" />
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="512" height="512" rx="114" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <rect width="512" height="512" rx="114" fill="url(#bg)" />
+    <g transform="translate(0,-18)">
+      <!-- awning: bar with scalloped edge -->
+      <g fill="#ffffff">
+        <path d="M106 160 v-28 a20 20 0 0 1 20 -20 h260 a20 20 0 0 1 20 20 v28 z" />
+        <circle cx="136" cy="160" r="30" />
+        <circle cx="196" cy="160" r="30" />
+        <circle cx="256" cy="160" r="30" />
+        <circle cx="316" cy="160" r="30" />
+        <circle cx="376" cy="160" r="30" />
+      </g>
+      <!-- peso sign -->
+      <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M218 424 V240 h62 a58 58 0 0 1 0 116 h-62" stroke-width="42" />
+        <path d="M154 274 H388" stroke-width="28" />
+        <path d="M154 322 H388" stroke-width="28" />
+      </g>
+    </g>
+    <!-- dev ribbon -->
+    <g transform="rotate(45 392 392)">
+      <rect x="252" y="364" width="280" height="56" fill="#e02020" />
+      <rect x="252" y="360" width="280" height="4" fill="#ffffff" fill-opacity="0.35" />
+      <text x="392" y="403" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="3">DEV</text>
+    </g>
+  </g>
+</svg>
